@@ -1,4 +1,4 @@
-# Feature Spec: Shared Household Inbox and Follow-Through Queue
+# Feature Spec: Shared Household Inbox
 
 ## Status
 Draft
@@ -17,7 +17,7 @@ When a household obligation surfaces — a bill to pay, a follow-up call to make
 
 ## Target Users
 - **Primary user:** Stakeholder (project owner) — adds items, reviews the inbox, acts on suggestions, and manages ownership assignments.
-- **Secondary user:** Spouse — has read-only visibility into the household inbox; may receive lightweight notifications when relevant items are assigned to them or approaching a due date. Full collaborative participation is deferred.
+- **Secondary user:** Spouse — has read-only visibility into the household inbox. Proactive notifications to the spouse are not in scope for this spec; the spouse can access the inbox by actively checking it. Notification mechanisms for the spouse, if introduced later, would require explicit stakeholder approval per the advisory-only model. Full collaborative participation is deferred.
 - **Future users:** Other household members — not a design target in this phase.
 
 ---
@@ -315,13 +315,13 @@ No advisory exceptions apply to this spec.
 
 **Assumptions:**
 - A-001: Shared household state is the best first wedge — this spec is the primary test of that assumption.
-- New assumption (to be logged): A 14-day staleness threshold will surface genuinely stale items without creating excessive noise. Low confidence — requires real household usage to validate.
+- A-004: A 14-day staleness threshold will surface genuinely stale items without creating excessive noise. Low confidence — requires real household usage to validate. See `docs/learnings/assumptions-log.md`.
 
 **Decisions:**
 - D-002: Advisory-only trust model applies throughout this spec without exception.
 - D-004: Spouse is read-only in this first spec; full collaborative participation is deferred.
 - D-007: Implementation planning for this workflow should target an installable mobile-first PWA rather than Slack or a native-first client strategy.
-- Spec-level decision: Reminders are not a first-class object in this spec. They are represented as item properties (due date, timeframe) rather than a separate entity type. This keeps scope narrow and allows a dedicated reminder spec to be written once inbox usage patterns are understood.
+- D-005: Reminders are not a first-class object in this spec — they are represented as item properties (due date, timeframe) rather than a separate entity type. See `docs/learnings/decision-history.md` for rationale and trade-offs.
 
 ---
 
