@@ -51,3 +51,14 @@ Use this structure for future entries:
 - Validation path: define the first implementation-ready workflow and test which surface enables the fastest local-first validation.
 - Status: active
 - Related docs: `docs/vision/product-vision.md`, `docs/roadmap/roadmap.md`
+
+### A-004: A 14-day staleness threshold will surface genuinely stale items without creating excessive noise
+- Date: 2026-03-08
+- Area: feature behavior
+- Statement: Inbox items that have had no status update for 14 or more days and remain open or in-progress should be surfaced by Olivia as potentially stale. This threshold will produce useful signal rather than noise in a typical household context.
+- Confidence: low
+- Why it matters: the staleness threshold directly shapes how often Olivia surfaces items to the stakeholder. Too short and it creates noise; too long and genuinely forgotten items go unnoticed.
+- Evidence so far: none — this is a placeholder value chosen for plausibility. No household usage data exists yet.
+- Validation path: observe stakeholder behavior during the first weeks of real inbox use. If the stakeholder ignores or dismisses stale item flags regularly, reduce the threshold or adjust the logic. If items are being missed, consider shortening it.
+- Status: active
+- Related docs: `docs/specs/shared-household-inbox.md`
