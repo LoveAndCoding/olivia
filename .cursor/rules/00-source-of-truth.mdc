@@ -1,0 +1,27 @@
+---
+description: Olivia source-of-truth and orientation rules
+alwaysApply: true
+---
+
+# Olivia Source-Of-Truth Rules
+
+- Treat `docs/` as the authoritative source of truth.
+- If `AGENTS.md`, `skills/`, `.cursor/rules/`, chat context, or another artifact conflicts with `docs/`, follow `docs/`.
+- Before substantial work, read the core orientation docs in this order:
+  1. `docs/vision/product-vision.md`
+  2. `docs/vision/product-ethos.md`
+  3. `docs/strategy/agentic-development-principles.md`
+  4. `docs/glossary.md`
+  5. `docs/roadmap/roadmap.md`
+  6. `docs/roadmap/milestones.md`
+  7. `docs/learnings/decision-history.md`
+  8. `docs/learnings/assumptions-log.md`
+  9. `docs/learnings/learnings-log.md`
+- Prefer the documented source-of-truth hierarchy:
+  1. vision and ethos
+  2. roadmap and milestones
+  3. learnings and decision history
+  4. feature specs
+  5. implementation plans
+  6. transient conversations only when no durable artifact exists yet
+- If product docs change, sync the derivative support files later so they continue to match the docs.

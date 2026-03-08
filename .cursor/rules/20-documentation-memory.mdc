@@ -1,0 +1,28 @@
+---
+description: Olivia documentation and durable memory rules
+alwaysApply: true
+---
+
+# Olivia Documentation And Memory Rules
+
+- Write for a future agent with little or no session context.
+- Make artifacts answer three questions clearly:
+  - What is true?
+  - What is decided?
+  - What still needs judgment?
+- Explicitly distinguish `Facts`, `Decisions`, `Assumptions`, `Open Questions`, and `Deferred Decisions` instead of mixing them together in prose.
+- Optimize for handoff:
+  - state the problem plainly
+  - define the intended outcome
+  - explain why the recommendation was chosen
+  - link to upstream and downstream docs
+  - avoid hidden or implied context
+- Prefer curated memory over raw transcript history.
+- Update the learnings system when an assumption changes, a durable lesson appears, or a meaningful decision is made or reversed.
+- Keep project writing explicit, structured, concise, opinionated where decisions exist, and transparent where uncertainty remains.
+- Avoid these anti-patterns:
+  - using chat as the main source of truth
+  - writing vague specs that require product intent to be inferred later
+  - mixing settled decisions with open questions in the same prose
+  - locking implementation details too early when only constraints are known
+  - creating artifacts that describe activity instead of clarifying direction

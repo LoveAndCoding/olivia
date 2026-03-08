@@ -1,0 +1,22 @@
+---
+description: Olivia product and behavior guardrails
+alwaysApply: true
+---
+
+# Olivia Product Guardrails
+
+- Olivia is a household command center, not a general-purpose assistant.
+- Favor shared household state and follow-through over broader assistant ambitions.
+- Preserve local-first handling of sensitive household data and durable records.
+- Treat external AI providers as replaceable dependencies, never the system of record.
+- Default to an advisory-only trust model:
+  - Olivia may summarize, suggest, draft, highlight, and organize.
+  - Olivia may not take consequential actions, send messages, modify important records, or trigger external effects without explicit user approval.
+- Optimize for reduced cognitive load, shared clarity, calm competence, and reversible decisions.
+- When evaluating a proposal, ask:
+  - Does this reduce mental overhead for the household?
+  - Does this increase trust or create ambiguity?
+  - Does this strengthen shared clarity and follow-through?
+  - Does this preserve local control over sensitive information?
+  - Is this still a reversible choice?
+- In early workflows, assume a primary-operator model: the stakeholder is the main user and evaluator, while spouse visibility or lightweight participation may exist without requiring full parity.

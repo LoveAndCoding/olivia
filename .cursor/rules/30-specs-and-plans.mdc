@@ -1,0 +1,29 @@
+---
+description: Olivia spec and implementation planning standards
+alwaysApply: true
+---
+
+# Olivia Spec And Plan Standards
+
+- Check `docs/roadmap/milestones.md` before claiming readiness or moving into a new phase.
+- Do not begin major implementation work unless the project is at M3 (Build Readiness) or the user explicitly asks to work earlier.
+- Use `docs/specs/spec-template.md` for any new feature or workflow spec.
+- Feature specs should be concrete enough that an implementation agent can execute without re-deriving product intent.
+- Feature specs should cover, when relevant:
+  - summary and intended outcome
+  - user problem and target users
+  - scope and boundaries
+  - workflow and behavior
+  - data and memory handling
+  - permissions and trust model
+  - AI role and fallback behavior
+  - failure modes
+  - UX notes
+  - acceptance criteria
+  - validation and testing
+  - dependencies, related learnings, and open questions
+- Implementation plans should:
+  - cite the strategic and feature docs they derive from
+  - avoid resolving product ambiguity inside engineering tasks
+  - define verification steps and evidence required
+  - be explicit enough for an execution agent to follow without guessing the goal
