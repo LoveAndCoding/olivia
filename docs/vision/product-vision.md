@@ -69,7 +69,8 @@ Early product success should look like:
 - Logic and sensitive information should be stored locally.
 - External AI providers may be used where helpful, but are not the system of record.
 - The current trust model direction is advisory-only.
-- The next product-definition step is to turn a candidate first workflow into the first implementation-ready spec.
+- The recommended MVP surface is an installable mobile-first PWA.
+- The next product-definition step is to turn the shared household inbox workflow and chosen interface direction into an implementation-ready plan.
 
 ## Assumptions
 - A household command center is a stronger first product shape than a general assistant.
@@ -78,11 +79,11 @@ Early product success should look like:
 - Text interaction is sufficient for early value, even if richer interfaces arrive later.
 
 ## Open Questions
-- Should the earliest live interface be Slack, a local app, a web UI, or a hybrid of those?
-- Which concrete day-one workflow should be the first implementation-ready spec?
+- What is the minimum notification set that creates useful signal without creating noise?
+- What evidence would justify moving beyond the PWA to a native shell or shared-display mode?
 - What level of spouse visibility or lightweight interaction is most useful in the earliest version without requiring full collaboration parity?
 
 ## Deferred Decisions
-- Final interface choice.
+- Whether native clients or a dedicated shared-display surface are warranted beyond the PWA.
 - Deployment model beyond local-first constraints.
 - Specific implementation stack and infrastructure choices.

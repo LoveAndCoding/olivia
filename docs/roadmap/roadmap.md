@@ -42,6 +42,7 @@ Recommended product shape:
 - advisory-only behavior
 - local-first data handling
 - text-first interaction
+- an installable mobile-first PWA as the near-term canonical surface
 - explicit ownership, status, reminders, and next-step visibility
 - a primary-operator model for the stakeholder, with spouse visibility or lightweight participation allowed but full collaboration deferred
 
@@ -105,11 +106,11 @@ This is intentionally later. Olivia should earn the right to act by first provin
 ## Assumptions
 - A narrow MVP will create more durable value than attempting broad assistant capabilities early.
 - The best early validation will come from real household use by the stakeholder and spouse.
-- Interface decisions can remain flexible until product usage reveals what surface deserves to become primary.
+- Long-term interface decisions can remain flexible beyond the chosen PWA MVP surface until product usage reveals whether native clients or other surfaces deserve to become primary.
 
 ## Open Questions
-- Which exact workflow should become the first implementation-ready spec?
-- What should the earliest delivery surface be?
+- What is the minimum notification set that supports the PWA MVP without creating noise?
+- What evidence should justify moving beyond the PWA to native clients or a shared-display mode?
 - When should spouse-specific collaborative flows become first-class rather than secondary?
 
 ## Deferred Decisions

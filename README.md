@@ -17,6 +17,7 @@ The current direction is:
 - `docs/vision/product-vision.md` for the core product thesis, users, outcomes, and non-goals
 - `docs/vision/product-ethos.md` for trust model, product principles, and behavioral boundaries
 - `docs/strategy/agentic-development-principles.md` for the agentic documentation standard and PM operating model
+- `docs/strategy/interface-direction.md` for the current MVP interface recommendation and revisit triggers
 
 ### Product Direction
 - `docs/roadmap/roadmap.md` for the broader, future-looking product trajectory

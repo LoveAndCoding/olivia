@@ -285,9 +285,10 @@ No advisory exceptions apply to this spec.
 
 - **D-002**: Advisory-only trust model — all actions in this spec require user confirmation. This constraint shapes the full permissions section.
 - **D-004**: Primary-operator model — the stakeholder is the primary user; spouse is read-only in this spec. This shapes the target user and workflow sections.
+- **D-007**: MVP interface direction — implementation planning should target an installable mobile-first PWA as the canonical surface for this workflow, with notifications primarily serving the stakeholder.
 - **A-001**: Shared household state is the best first wedge — this spec is the direct implementation of that assumption. Validation of A-001 comes from real household use of this workflow.
 - **A-002**: Advisory-only behavior is the right trust model — confirmed applicable to this spec; advisory compliance is documented throughout.
-- **A-003**: Early interaction can remain channel-agnostic — this spec intentionally does not specify the delivery surface (Slack, CLI, web). The data model and workflow are defined independently of surface, which preserves this optionality.
+- **A-003**: Early interaction can remain channel-agnostic — this assumption has been validated for planning purposes. The workflow was specified without locking the surface, and implementation direction was later chosen as an installable mobile-first PWA.
 - **L-001**: Household command center framing — this spec stays within that framing; it does not attempt to build a general assistant workflow.
 - **L-002**: Durable project memory is a core need — the data model in this spec explicitly distinguishes durable from transient state and treats all household data as local-first.
 
@@ -295,7 +296,7 @@ No advisory exceptions apply to this spec.
 
 ## Open Questions
 
-1. **Interface surface**: This spec is channel-agnostic, but an implementation plan will need to select a delivery surface. The open question from A-003 must be answered before implementation begins. The most relevant options are a local CLI or web UI (privacy-first), a Slack-based interface (faster to prototype), or a hybrid. This is a genuine blocker for implementation planning.
+1. **Notification scope**: Which primary-operator notifications should ship in the first implementation slice to create useful signal without creating noise? Candidates include due-soon alerts, stale-item review prompts, and optional digests. This matters because the chosen PWA surface can support notifications, but the product ethos requires a calm posture.
 
 2. **Staleness threshold**: The spec proposes 14 days as the threshold for surfacing a stale item. This is a placeholder that should be validated against real household usage. If it proves too noisy or too lenient, it should be adjusted.
 
@@ -310,22 +311,23 @@ No advisory exceptions apply to this spec.
 - Household data is sensitive and must be stored locally per the product ethos.
 - The stakeholder is the primary evaluator for this workflow.
 - The trust model is advisory-only in the first major phase (D-002).
+- The recommended MVP surface for implementation planning is an installable mobile-first PWA (D-007).
 
 **Assumptions:**
 - A-001: Shared household state is the best first wedge — this spec is the primary test of that assumption.
-- A-003: The spec can remain channel-agnostic and still be implementation-ready — the workflow and data model are defined without locking the interface surface.
 - New assumption (to be logged): A 14-day staleness threshold will surface genuinely stale items without creating excessive noise. Low confidence — requires real household usage to validate.
 
 **Decisions:**
 - D-002: Advisory-only trust model applies throughout this spec without exception.
 - D-004: Spouse is read-only in this first spec; full collaborative participation is deferred.
+- D-007: Implementation planning for this workflow should target an installable mobile-first PWA rather than Slack or a native-first client strategy.
 - Spec-level decision: Reminders are not a first-class object in this spec. They are represented as item properties (due date, timeframe) rather than a separate entity type. This keeps scope narrow and allows a dedicated reminder spec to be written once inbox usage patterns are understood.
 
 ---
 
 ## Deferred Decisions
 
-- **Interface surface selection**: Which delivery channel or UI surface will host this workflow. Must be decided before the implementation plan can be written. Candidates: Slack, local web UI, local CLI, or hybrid.
+- **Post-PWA client strategy**: Whether native clients or a dedicated shared-display mode are warranted beyond the installable PWA.
 - **Reminder model**: Whether reminders become a first-class object in a future spec or remain a property of inbox items. Revisit after the inbox workflow has been used and patterns around reminder needs become clear.
 - **Spouse lightweight participation**: Whether the spouse should be able to add items, mark items done, or leave notes on items. Deferred until primary-operator model is validated through real use. D-004 applies.
 - **Item archiving policy**: How long done or deferred items are retained before they are archived or removed from active views. No retention policy is defined in this spec.

@@ -61,12 +61,12 @@ Use this structure for future entries:
 ### D-006: The inbox spec is channel-agnostic and does not prescribe an interface surface
 - Date: 2026-03-08
 - Area: feature scope
-- Decision: The shared household inbox feature spec defines the workflow and data model without specifying a delivery surface (Slack, web UI, CLI, or other). Interface surface selection is deferred to the implementation plan.
+- Decision: The shared household inbox feature spec defines the workflow and data model without specifying a delivery surface (Slack, web UI, CLI, or other).
 - Rationale: this preserves the optionality described in A-003 and ensures the spec can be used regardless of which surface the stakeholder decides to validate first.
 - Alternatives considered: writing a Slack-specific spec; writing a web UI-specific spec.
-- Trade-offs: the spec is more portable, but implementation agents will need to resolve the interface question before they can build. Surface selection is an explicit open question in the spec.
+- Trade-offs: the spec is more portable, but the project later needed a separate interface decision for implementation planning. That later decision is captured in D-007.
 - Status: active
-- Related docs: `docs/specs/shared-household-inbox.md`, `docs/learnings/assumptions-log.md` (A-003)
+- Related docs: `docs/specs/shared-household-inbox.md`, `docs/learnings/assumptions-log.md` (A-003), `docs/learnings/decision-history.md` (D-007)
 
 ### D-004: The earliest workflow will use a primary-operator model
 - Date: 2026-03-08
@@ -77,3 +77,13 @@ Use this structure for future entries:
 - Trade-offs: increases early focus and feasibility, but delays richer collaboration design until later horizons.
 - Status: active
 - Related docs: `docs/vision/product-vision.md`, `docs/roadmap/roadmap.md`, `docs/specs/first-workflow-candidates.md`
+
+### D-007: The MVP interface will be an installable mobile-first PWA
+- Date: 2026-03-08
+- Area: interface strategy
+- Decision: Olivia's MVP should use an installable, mobile-first PWA as its canonical interface surface, with notifications aimed primarily at the stakeholder and native clients deferred unless later usage justifies them.
+- Rationale: the stakeholder's current household workflow requires low-friction mobile capture and structured review, while the product still benefits from reversible implementation choices. A PWA provides app-like installability, cross-device reach, and sufficient support for the current advisory-only inbox workflow without forcing an early native commitment.
+- Alternatives considered: Slack as the primary interface; a desktop-first local web app; fully native mobile apps from the start.
+- Trade-offs: gains speed, reversibility, and a shared cross-platform surface, but may later require a native shell if notification depth, widgets, or richer cross-app capture become core product needs.
+- Status: active
+- Related docs: `docs/strategy/interface-direction.md`, `docs/specs/shared-household-inbox.md`, `docs/vision/product-vision.md`

@@ -47,10 +47,10 @@ Use this structure for future entries:
 - Statement: The project can defer locking in a long-term interface because the earliest product value is defined more by workflow usefulness than by surface choice.
 - Confidence: medium
 - Why it matters: this assumption preserves optionality around Slack, local app, web UI, or hybrid paths.
-- Evidence so far: the stakeholder is open to multiple surfaces and has Slack available for experimentation.
-- Validation path: define the first implementation-ready workflow and test which surface enables the fastest local-first validation.
-- Status: active
-- Related docs: `docs/vision/product-vision.md`, `docs/roadmap/roadmap.md`
+- Evidence so far: the stakeholder was open to multiple surfaces during product definition. After the shared household inbox workflow was specified and the household's actual capture/review pattern was discussed, the project selected an installable mobile-first PWA as the near-term interface direction.
+- Validation path: completed for near-term planning. Future validation should focus on whether the chosen PWA remains sufficient in real household use or whether native-only capabilities become important enough to justify a new decision.
+- Status: validated
+- Related docs: `docs/vision/product-vision.md`, `docs/roadmap/roadmap.md`, `docs/strategy/interface-direction.md`, `docs/learnings/decision-history.md` (D-007)
 
 ### A-004: A 14-day staleness threshold will surface genuinely stale items without creating excessive noise
 - Date: 2026-03-08
