@@ -59,6 +59,6 @@ Use this structure for future entries:
 - Confidence: low
 - Why it matters: the staleness threshold directly shapes how often Olivia surfaces items to the stakeholder. Too short and it creates noise; too long and genuinely forgotten items go unnoticed.
 - Evidence so far: none — this is a placeholder value chosen for plausibility. No household usage data exists yet.
-- Validation path: observe stakeholder behavior during the first weeks of real inbox use. If the stakeholder ignores or dismisses stale item flags regularly, reduce the threshold or adjust the logic. If items are being missed, consider shortening it.
+- Validation path: observe stakeholder behavior during the first weeks of real inbox use. If the stakeholder ignores or dismisses stale item flags regularly, increase the threshold or adjust the logic. If items are being missed, consider shortening it.
 - Status: active
 - Related docs: `docs/specs/shared-household-inbox.md`
