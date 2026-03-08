@@ -48,6 +48,26 @@ Use this structure for future entries:
 - Status: active
 - Related docs: `docs/learnings/README.md`, `docs/strategy/agentic-development-principles.md`
 
+### D-005: Reminders are not a first-class object in the inbox spec
+- Date: 2026-03-08
+- Area: feature scope
+- Decision: In the shared household inbox spec, reminders are represented as a property of inbox items (due date and timeframe) rather than as a separate entity type.
+- Rationale: keeping reminders as item properties reduces the data model complexity for the first spec and avoids locking in a reminder architecture before inbox usage patterns are understood. A dedicated reminder spec can be written once real use reveals what reminders need to do.
+- Alternatives considered: modeling reminders as first-class objects from the start with links to inbox items.
+- Trade-offs: simpler initial data model and narrower spec scope, but may require a data migration or model expansion later if reminders turn out to need richer behavior.
+- Status: active
+- Related docs: `docs/specs/shared-household-inbox.md`
+
+### D-006: The inbox spec is channel-agnostic and does not prescribe an interface surface
+- Date: 2026-03-08
+- Area: feature scope
+- Decision: The shared household inbox feature spec defines the workflow and data model without specifying a delivery surface (Slack, web UI, CLI, or other). Interface surface selection is deferred to the implementation plan.
+- Rationale: this preserves the optionality described in A-003 and ensures the spec can be used regardless of which surface the stakeholder decides to validate first.
+- Alternatives considered: writing a Slack-specific spec; writing a web UI-specific spec.
+- Trade-offs: the spec is more portable, but implementation agents will need to resolve the interface question before they can build. Surface selection is an explicit open question in the spec.
+- Status: active
+- Related docs: `docs/specs/shared-household-inbox.md`, `docs/learnings/assumptions-log.md` (A-003)
+
 ### D-004: The earliest workflow will use a primary-operator model
 - Date: 2026-03-08
 - Area: MVP definition
