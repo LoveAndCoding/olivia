@@ -97,3 +97,13 @@ Use this structure for future entries:
 - Trade-offs: gains clear boundaries, easier reasoning about trust and sync, and more reversible infrastructure choices, but uses a composed stack rather than a single ecosystem and may later need revision if notifications, concurrency, or native-only capabilities become more important than expected.
 - Status: active
 - Related docs: `docs/strategy/system-architecture.md`, `docs/strategy/interface-direction.md`, `docs/specs/shared-household-inbox.md`
+
+### D-009: The shared household inbox spec is approved for implementation planning
+- Date: 2026-03-09
+- Area: delivery planning
+- Decision: Treat `docs/specs/shared-household-inbox.md` as approved and implementation-ready for planning purposes, and use it as the first workflow artifact for the next planning stage.
+- Rationale: the spec now has concrete workflow scope, acceptance criteria, trust-model constraints, testing expectations, and bounded open questions, so another agent should be able to produce an implementation plan without re-deriving basic product intent.
+- Alternatives considered: leaving the spec in draft pending more product refinement; approving only the workflow direction without approving the full spec for planning.
+- Trade-offs: gains momentum and a clearer handoff into implementation planning, but shifts remaining execution ambiguity into explicit planning work rather than allowing further open-ended product refinement first.
+- Status: active
+- Related docs: `docs/specs/shared-household-inbox.md`, `docs/roadmap/milestones.md`, `docs/strategy/system-architecture.md`

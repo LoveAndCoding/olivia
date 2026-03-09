@@ -1,7 +1,7 @@
 # Feature Spec: Shared Household Inbox
 
 ## Status
-Draft
+Approved
 
 ---
 
