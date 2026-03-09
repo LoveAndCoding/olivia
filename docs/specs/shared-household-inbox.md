@@ -286,6 +286,7 @@ No advisory exceptions apply to this spec.
 - **D-002**: Advisory-only trust model — all actions in this spec require user confirmation. This constraint shapes the full permissions section.
 - **D-004**: Primary-operator model — the stakeholder is the primary user; spouse is read-only in this spec. This shapes the target user and workflow sections.
 - **D-007**: MVP interface direction — implementation planning should target an installable mobile-first PWA as the canonical surface for this workflow, with notifications primarily serving the stakeholder.
+- **System architecture recommendation**: `docs/strategy/system-architecture.md` defines the current recommended runtime shape, persistence model, sync direction, and library-versus-custom boundary for implementing this workflow.
 - **A-001**: Shared household state is the best first wedge — this spec is the direct implementation of that assumption. Validation of A-001 comes from real household use of this workflow.
 - **A-002**: Advisory-only behavior is the right trust model — confirmed applicable to this spec; advisory compliance is documented throughout.
 - **A-003**: Early interaction can remain channel-agnostic — this assumption has been validated for planning purposes. The workflow was specified without locking the surface, and implementation direction was later chosen as an installable mobile-first PWA.

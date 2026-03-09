@@ -6,6 +6,7 @@ This document records the current interface recommendation for Olivia so future 
 It should be read alongside:
 - `docs/vision/product-vision.md`
 - `docs/vision/product-ethos.md`
+- `docs/strategy/system-architecture.md`
 - `docs/specs/shared-household-inbox.md`
 - `docs/learnings/decision-history.md`
 
