@@ -62,3 +62,25 @@ Use this structure for future entries:
 - Validation path: observe stakeholder behavior during the first weeks of real inbox use. If the stakeholder ignores or dismisses stale item flags regularly, increase the threshold or adjust the logic. If items are being missed, consider shortening it.
 - Status: active
 - Related docs: `docs/specs/shared-household-inbox.md`
+
+### A-005: Web Push will be sufficient for the first PWA notification posture
+- Date: 2026-03-09
+- Area: system architecture
+- Statement: The installable PWA plus Web Push will be reliable enough for Olivia's first notification scope, which is currently limited to calm, primary-operator prompts such as due-soon, stale-item, and optional digest notifications.
+- Confidence: medium
+- Why it matters: this assumption helps determine whether the PWA remains the right MVP surface or whether a native shell becomes necessary earlier for notification quality alone.
+- Evidence so far: the current inbox workflow has a narrow notification scope, and the interface strategy already limits notification ambition to a calm, primary-operator model.
+- Validation path: implement the first notification slice and observe whether delivery reliability, open behavior, and user response are good enough in actual household use. If notifications are unreliable or too constrained, revisit the native-shell threshold.
+- Status: active
+- Related docs: `docs/strategy/interface-direction.md`, `docs/strategy/system-architecture.md`, `docs/specs/shared-household-inbox.md`
+
+### A-006: Versioned command sync is sufficient for early household concurrency
+- Date: 2026-03-09
+- Area: system architecture
+- Statement: Olivia's first household workflow will have low enough concurrency that explicit versioned command sync is sufficient, without needing CRDTs, peer-to-peer sync, or event-sourced conflict machinery.
+- Confidence: medium
+- Why it matters: this assumption shapes the persistence and sync architecture, implementation complexity, and how much infrastructure is needed before the product has proven real household value.
+- Evidence so far: the first workflow uses a primary-operator model, spouse access is read-only, and the current product scope does not imply simultaneous high-conflict edits.
+- Validation path: observe real usage once spouse participation or multi-device use increases. If conflicting edits or offline merge failures become common, revisit the sync model and evaluate stronger conflict-resolution infrastructure.
+- Status: active
+- Related docs: `docs/strategy/system-architecture.md`, `docs/specs/shared-household-inbox.md`, `docs/learnings/decision-history.md` (D-008)

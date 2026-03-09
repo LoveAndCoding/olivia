@@ -87,3 +87,13 @@ Use this structure for future entries:
 - Trade-offs: gains speed, reversibility, and a shared cross-platform surface, but may later require a native shell if notification depth, widgets, or richer cross-app capture become core product needs.
 - Status: active
 - Related docs: `docs/strategy/interface-direction.md`, `docs/specs/shared-household-inbox.md`, `docs/vision/product-vision.md`
+
+### D-008: Near-term implementation planning will target a local-first modular monolith
+- Date: 2026-03-09
+- Area: system architecture
+- Decision: For near-term implementation planning, Olivia should target a TypeScript modular monolith with an installable PWA client, a household-controlled SQLite canonical store, browser-local offline cache and outbox, explicit versioned command sync, and AI behind a narrow provider adapter boundary.
+- Rationale: this architecture best matches Olivia's current product shape: advisory-only writes, local-first handling of sensitive household data, mobile-first capture, and low expected write concurrency. It also keeps the system legible enough for future implementation agents without prematurely committing to heavier infrastructure.
+- Alternatives considered: a broader all-in-one TanStack-centered stack; a cloud-first SaaS architecture; a native-mobile-first architecture; a CRDT-heavy local-first design.
+- Trade-offs: gains clear boundaries, easier reasoning about trust and sync, and more reversible infrastructure choices, but uses a composed stack rather than a single ecosystem and may later need revision if notifications, concurrency, or native-only capabilities become more important than expected.
+- Status: active
+- Related docs: `docs/strategy/system-architecture.md`, `docs/strategy/interface-direction.md`, `docs/specs/shared-household-inbox.md`

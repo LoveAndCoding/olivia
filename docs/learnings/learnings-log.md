@@ -43,3 +43,21 @@ Use this structure for future entries:
 - Implication: product docs should reflect recommendation, rationale, and trade-offs rather than only option catalogs.
 - Source: planning refinement with the stakeholder
 - Related docs: `docs/strategy/agentic-development-principles.md`
+
+### L-004: Local-first shared household products need a canonical shared store plus device-local caches
+- Date: 2026-03-09
+- Area: system architecture
+- Learning: For Olivia's household use case, local-first should not mean browser-local-only storage. Shared household continuity works better when a household-controlled canonical store exists alongside device-local caches and offline outboxes.
+- Why it matters: this clarifies a key architectural ambiguity that would otherwise recur whenever the project discusses privacy, offline behavior, or spouse visibility.
+- Implication: future implementation work should distinguish clearly between canonical durable memory, client caches, and sync semantics rather than treating all local storage as equivalent.
+- Source: architecture exploration for the shared household inbox workflow
+- Related docs: `docs/strategy/system-architecture.md`, `docs/specs/shared-household-inbox.md`
+
+### L-005: Stack cohesion matters less than keeping product-shaping seams explicit
+- Date: 2026-03-09
+- Area: architecture decision-making
+- Learning: A single broader ecosystem can reduce integration overhead, but for Olivia's current phase the more important property is explicit control over product-shaping seams such as persistence, sync, approvals, and AI boundaries.
+- Why it matters: this helps future agents evaluate frameworks without over-valuing single-stack consistency at the expense of trust, reversibility, or architectural legibility.
+- Implication: Olivia should use TanStack heavily where it clearly fits the client problem, but remain selective about adopting broader ecosystem pieces when they would also define core data or AI boundaries prematurely.
+- Source: architecture recommendation and follow-up stack evaluation
+- Related docs: `docs/strategy/system-architecture.md`

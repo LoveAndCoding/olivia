@@ -178,6 +178,43 @@ AI should not:
 | AI integration | Provider SDK behind an internal `AiProvider` interface | Olivia needs replaceability and clear control of what data crosses the boundary; a large agent framework is unnecessary now. |
 | Logging | Pino structured logs | Durable, low-overhead logs for sync, approval, and notification debugging. |
 
+## Why Not Use A Single More Complete Stack
+
+TanStack is compelling, and this recommendation already leans on it where it most clearly fits the product:
+- TanStack Router for client navigation and route-state structure
+- TanStack Query for client/server state boundaries, caching, and revalidation patterns
+
+The reason not to standardize more aggressively on the broader TanStack ecosystem is not that a single ecosystem is inherently bad. It is that Olivia's highest-risk technical questions are not generic React app questions. They are:
+- what the canonical household data store should be
+- how local-first sync should work across devices
+- how approval-gated writes should be enforced
+- where AI boundaries should sit in an advisory-only system
+
+For those concerns, this recommendation prefers narrower and more explicit seams over broader stack unification.
+
+### Why not TanStack DB as the center
+TanStack DB is promising, but Olivia's current architecture needs a very clear distinction between:
+- the household-controlled canonical store
+- the device-local offline cache
+- the explicit command-sync path between them
+
+Using SQLite plus Drizzle for the canonical store and Dexie for browser-local persistence keeps those roles legible. That makes the trust model, sync model, backup story, and future surface expansion easier to reason about while the product is still proving its first workflow.
+
+### Why not TanStack AI as the center
+TanStack AI is aligned with vendor-neutral AI integration, which is good, but Olivia's current AI posture is intentionally narrow. The product does not yet need an AI-centric application runtime or tool orchestration layer. It needs:
+- a replaceable provider adapter
+- strict control of what household data leaves the local boundary
+- deterministic write rules that AI cannot bypass
+
+That is easier to preserve with a thin internal AI boundary than with a more expansive AI framework at this stage.
+
+### The trade-off
+An all-in-one stack would reduce the number of technologies in play and could speed some integration work. The downside is correlated abstraction risk: if Olivia later needs to change its persistence, sync, or AI boundary, more of the system would be coupled to one evolving ecosystem choice.
+
+For Olivia's current phase, the better principle is:
+- use TanStack heavily where the problem is clearly client-state and routing
+- use simpler, best-fit technologies where the problem is canonical data ownership, sync semantics, and AI boundary control
+
 ## Library Usage Versus Building It Ourselves
 
 ### Use libraries aggressively for commodity capabilities
