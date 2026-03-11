@@ -1,0 +1,17 @@
+{
+  "name": "@olivia/domain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run test"
+  },
+  "dependencies": {
+    "@olivia/contracts": "0.1.0",
+    "chrono-node": "latest",
+    "date-fns": "latest"
+  }
+}

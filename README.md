@@ -3,13 +3,26 @@
 Olivia is a local-first household command center designed to reduce the mental tax of managing day-to-day life. It is being defined and built as an agentic project, with durable documentation intended to help future agents and collaborators pick up context quickly and make good decisions without rediscovering product intent from scratch.
 
 ## Current Status
-The project is in its documentation and product-definition phase.
+The project now includes the first runnable implementation of the shared household inbox workflow alongside the documentation system that defines product intent and constraints.
 
 The current direction is:
 - focused household coordination rather than a general-purpose assistant
 - advisory-only behavior in the first major phase
 - local-first handling of logic and sensitive household information
 - a documentation-first workflow that supports agentic iteration
+
+## Workspace Layout
+- `apps/pwa`: React + Vite installable PWA for capture, review, item detail, role switching, and settings
+- `apps/api`: Fastify + SQLite API for approval-gated writes, history, and notification subscription storage
+- `packages/domain`: deterministic inbox rules for parsing, status updates, stale detection, suggestions, and offline-safe write shaping
+- `packages/contracts`: shared Zod schemas and API payload contracts
+
+## Top-Level Scripts
+- `npm run dev`: start the API and PWA together for local development
+- `npm run typecheck`: run TypeScript checks across all apps and packages
+- `npm run lint`: lint the workspace
+- `npm test`: run domain, API, and Playwright end-to-end coverage
+- `npm run build`: produce production builds for all apps and packages
 
 ## Documentation Map
 
@@ -41,4 +54,4 @@ The current direction is:
 - Treat durable docs as the source of truth over transient conversation history.
 
 ## Near-Term Goal
-The near-term goal is to identify and specify the first implementation-ready workflow around shared household state and follow-through, then use that narrow wedge to validate the product in real household use before expanding scope.
+The near-term goal is to validate the shared household inbox in real household use, capture learnings about durability, signal quality, and notification posture, and then decide what the next coordination slice should be.

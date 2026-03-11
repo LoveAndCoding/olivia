@@ -1,0 +1,42 @@
+{
+  "name": "olivia",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,pwa \"npm run dev -w @olivia/api\" \"npm run dev -w @olivia/pwa\"",
+    "build": "npm run build -w @olivia/contracts && npm run build -w @olivia/domain && npm run build -w @olivia/api && npm run build -w @olivia/pwa",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck -w @olivia/contracts && npm run typecheck -w @olivia/domain && npm run typecheck -w @olivia/api && npm run typecheck -w @olivia/pwa",
+    "test": "npm run test:domain && npm run test:api && npm run test:e2e",
+    "test:domain": "vitest run packages/domain/test",
+    "test:api": "vitest run apps/api/test",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@playwright/test": "latest",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@typescript-eslint/eslint-plugin": "latest",
+    "@typescript-eslint/parser": "latest",
+    "@vitejs/plugin-react": "latest",
+    "concurrently": "latest",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "latest",
+    "eslint-plugin-react-refresh": "latest",
+    "jsdom": "latest",
+    "playwright": "latest",
+    "tsup": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vitest": "latest"
+  }
+}
