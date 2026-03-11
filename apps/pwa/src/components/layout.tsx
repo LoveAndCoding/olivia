@@ -19,7 +19,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const syncNow = async () => {
       try {
-        await flushOutbox(role);
+        await flushOutbox();
       } catch {
         // Keep the stale state visible until the user retries online.
       } finally {

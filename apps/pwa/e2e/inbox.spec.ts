@@ -39,5 +39,5 @@ test('stakeholder can queue an item offline and sync it on reconnect', async ({ 
     .poll(async () => await page.locator('.status-bar').textContent(), { timeout: 10_000 })
     .toContain('Pending sync: 0');
   await page.goto('/');
-  await expect(page.getByText('replace smoke detector batteries')).toBeVisible();
+  await expect(page.getByRole('main')).toContainText('replace smoke detector batteries');
 });
