@@ -29,6 +29,8 @@ import { DisabledAiProvider } from './ai';
 import type { AppConfig } from './config';
 import { createDatabase } from './db/client';
 import { DraftStore } from './drafts';
+import { startBackgroundJobs } from './jobs';
+import { createPushProvider } from './push';
 import { InboxRepository } from './repository';
 
 type BuildAppOptions = {
@@ -71,6 +73,9 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   const repository = new InboxRepository(db);
   const drafts = new DraftStore();
   const aiProvider = new DisabledAiProvider();
+  const push = createPushProvider(config);
+  const stopJobs = startBackgroundJobs(repository, push, config, app.log);
+  app.addHook('onClose', async () => stopJobs());
 
   app.get('/api/health', async () => ({ ok: true }));
 
@@ -251,6 +256,11 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   });
 
   app.get('/api/admin/export', async () => repository.exportSnapshot());
+
+  app.get('/api/notifications/vapid-public-key', async () => ({
+    vapidPublicKey: config.vapidPublicKey ?? null,
+    notificationsEnabled: config.notificationsEnabled
+  }));
 
   app.setErrorHandler((error, _request, reply) => {
     const statusCode = (error as Error & { statusCode?: number }).statusCode ?? 400;
