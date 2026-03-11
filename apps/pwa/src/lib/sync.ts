@@ -4,6 +4,7 @@ import { buildCachedView, cacheInboxView, cacheItem, cacheItemDetail, clientDb, 
 import { ApiError, confirmCreate, confirmUpdate, fetchInboxView, fetchItemDetail, listNotificationSubscriptions, previewCreate, previewUpdate, saveNotificationSubscription } from './api';
 
 const isOffline = () => !window.navigator.onLine;
+let inFlightFlush: Promise<void> | null = null;
 
 async function persistAndReturnView(role: ActorRole, view: 'active' | 'all'): Promise<InboxViewResponse> {
   const response = await fetchInboxView(role);
@@ -26,7 +27,7 @@ async function persistAndReturnView(role: ActorRole, view: 'active' | 'all'): Pr
 export async function loadInboxView(role: ActorRole, view: 'active' | 'all'): Promise<InboxViewResponse> {
   if (!isOffline()) {
     try {
-      await flushOutbox(role);
+      await flushOutbox();
       return await persistAndReturnView(role, view);
     } catch {
       return buildCachedView(view);
@@ -38,6 +39,7 @@ export async function loadInboxView(role: ActorRole, view: 'active' | 'all'): Pr
 export async function loadItemDetail(role: ActorRole, itemId: string): Promise<ItemDetailResponse> {
   if (!isOffline()) {
     try {
+      await flushOutbox();
       const detail = await fetchItemDetail(role, itemId);
       await cacheItemDetail(detail);
       return detail;
@@ -99,27 +101,37 @@ export async function confirmUpdateCommand(role: ActorRole, itemId: string, expe
   return pendingItem;
 }
 
-export async function flushOutbox(role: ActorRole) {
-  if (isOffline()) return;
+async function flushOutboxOnce() {
   const commands = await listOutbox();
   for (const command of commands) {
     try {
       if (command.kind === 'create') {
-        const response = await confirmCreate(role, command.finalItem);
+        const response = await confirmCreate(command.actorRole, command.finalItem);
         await cacheItem({ ...response.savedItem, pendingSync: false });
       } else {
-        const response = await confirmUpdate(role, command.itemId, command.expectedVersion, command.proposedChange);
+        const response = await confirmUpdate(command.actorRole, command.itemId, command.expectedVersion, command.proposedChange);
         await cacheItem({ ...response.savedItem, pendingSync: false });
       }
       await removeOutboxCommand(command.commandId);
       await setMeta('last-sync-at', new Date().toISOString());
     } catch (error) {
-      if (error instanceof ApiError && error.statusCode == 409) {
+      if (error instanceof ApiError && error.statusCode === 409) {
         await markOutboxConflict(command.commandId, 'Version conflict: refresh this item and retry.');
       }
       throw error;
     }
   }
+}
+
+export async function flushOutbox() {
+  if (isOffline()) return;
+  if (!inFlightFlush) {
+    // React StrictMode and route reloads can trigger multiple sync attempts at once.
+    inFlightFlush = flushOutboxOnce().finally(() => {
+      inFlightFlush = null;
+    });
+  }
+  return inFlightFlush;
 }
 
 export async function loadNotificationState(role: ActorRole) {
