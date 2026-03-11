@@ -1,1 +1,12 @@
-.worktrees/
+node_modules
+dist
+coverage
+playwright-report
+test-results
+*.tsbuildinfo
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+apps/api/data
+apps/pwa/dev-dist
+.DS_Store

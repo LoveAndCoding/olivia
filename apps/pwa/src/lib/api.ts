@@ -1,0 +1,91 @@
+import {
+  itemDetailResponseSchema,
+  inboxViewResponseSchema,
+  previewCreateResponseSchema,
+  previewUpdateResponseSchema,
+  type ActorRole,
+  type ConfirmCreateResponse,
+  type ConfirmUpdateResponse,
+  type DraftItem,
+  type ItemDetailResponse,
+  type InboxViewResponse,
+  type PreviewCreateResponse,
+  type PreviewUpdateResponse,
+  type StructuredInput,
+  type UpdateChange
+} from '@olivia/contracts';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3001';
+
+export class ApiError extends Error {
+  constructor(message: string, public readonly statusCode: number, public readonly payload: unknown) {
+    super(message);
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    ...init
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError((payload as { message?: string } | null)?.message ?? 'Request failed.', response.status, payload);
+  }
+  return payload as T;
+}
+
+export async function fetchInboxView(role: ActorRole): Promise<InboxViewResponse> {
+  return inboxViewResponseSchema.parse(await request<InboxViewResponse>(`/api/inbox/items?actorRole=${role}&view=all`));
+}
+
+export async function fetchItemDetail(role: ActorRole, itemId: string): Promise<ItemDetailResponse> {
+  return itemDetailResponseSchema.parse(await request<ItemDetailResponse>(`/api/inbox/items/${itemId}?actorRole=${role}`));
+}
+
+export async function previewCreate(role: ActorRole, inputText?: string, structuredInput?: Partial<StructuredInput>): Promise<PreviewCreateResponse> {
+  return previewCreateResponseSchema.parse(
+    await request<PreviewCreateResponse>('/api/inbox/items/preview-create', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, inputText, structuredInput })
+    })
+  );
+}
+
+export async function confirmCreate(role: ActorRole, finalItem: DraftItem, draftId?: string): Promise<ConfirmCreateResponse> {
+  return request<ConfirmCreateResponse>('/api/inbox/items/confirm-create', {
+    method: 'POST',
+    body: JSON.stringify({ actorRole: role, draftId, approved: true, finalItem })
+  });
+}
+
+export async function previewUpdate(role: ActorRole, itemId: string, expectedVersion: number, proposedChange: UpdateChange): Promise<PreviewUpdateResponse> {
+  return previewUpdateResponseSchema.parse(
+    await request<PreviewUpdateResponse>('/api/inbox/items/preview-update', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, itemId, expectedVersion, proposedChange })
+    })
+  );
+}
+
+export async function confirmUpdate(role: ActorRole, itemId: string, expectedVersion: number, proposedChange?: UpdateChange, draftId?: string): Promise<ConfirmUpdateResponse> {
+  return request<ConfirmUpdateResponse>('/api/inbox/items/confirm-update', {
+    method: 'POST',
+    body: JSON.stringify({ actorRole: role, itemId, expectedVersion, draftId, approved: true, proposedChange })
+  });
+}
+
+export async function saveNotificationSubscription(role: ActorRole) {
+  return request<{ subscription: unknown }>('/api/notifications/subscriptions', {
+    method: 'POST',
+    body: JSON.stringify({
+      actorRole: role,
+      endpoint: `${window.location.origin}/notifications/${role}`,
+      payload: { permission: Notification.permission, userAgent: navigator.userAgent, storedAt: new Date().toISOString() }
+    })
+  });
+}
+
+export async function listNotificationSubscriptions(role: ActorRole) {
+  return request<{ subscriptions: unknown[] }>(`/api/notifications/subscriptions?actorRole=${role}`);
+}

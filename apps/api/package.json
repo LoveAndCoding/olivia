@@ -1,0 +1,25 @@
+{
+  "name": "@olivia/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts --format esm --target node20 --clean",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run test"
+  },
+  "dependencies": {
+    "@fastify/cors": "latest",
+    "@olivia/contracts": "0.1.0",
+    "@olivia/domain": "0.1.0",
+    "better-sqlite3": "latest",
+    "chrono-node": "latest",
+    "date-fns": "latest",
+    "drizzle-orm": "latest",
+    "fastify": "latest",
+    "pino": "latest",
+    "web-push": "latest",
+    "zod": "latest"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@olivia/pwa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 4173",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@olivia/contracts": "0.1.0",
+    "@olivia/domain": "0.1.0",
+    "@tanstack/react-query": "latest",
+    "@tanstack/react-router": "latest",
+    "date-fns": "latest",
+    "dexie": "latest",
+    "dexie-react-hooks": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite-plugin-pwa": "latest"
+  }
+}
