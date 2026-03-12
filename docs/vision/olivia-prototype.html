@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Olivia — v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,500;1,9..144,700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg: #FAF8FF;
+  --surface: #FFFFFF;
+  --lavender-soft: #EDE9FF;
+  --lavender-mid: #D4CCFF;
+  --violet: #6C5CE7;
+  --violet-2: #8B7FF5;
+  --violet-dim: rgba(108,92,231,0.1);
+  --violet-glow: rgba(108,92,231,0.18);
+  --rose: #FF7EB3;
+  --rose-soft: #FFE8F2;
+  --rose-dim: rgba(255,126,179,0.12);
+  --peach: #FFB347;
+  --peach-soft: #FFF3E0;
+  --peach-dim: rgba(255,179,71,0.12);
+  --mint: #00C9A7;
+  --mint-soft: #E0FFF9;
+  --mint-dim: rgba(0,201,167,0.1);
+  --sky: #48CAE4;
+  --ink: #1A1033;
+  --ink-2: rgba(26,16,51,0.55);
+  --ink-3: rgba(26,16,51,0.3);
+  --ink-4: rgba(26,16,51,0.15);
+  --border: rgba(108,92,231,0.1);
+  --shadow-sm: 0 2px 8px rgba(26,16,51,0.06);
+  --shadow-md: 0 4px 20px rgba(26,16,51,0.08);
+  --shadow-lg: 0 8px 32px rgba(26,16,51,0.1);
+}
+
+body {
+  background: #E8E4FF;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--ink);
+}
+
+/* ─── PHONE SHELL ─────────────────────────────── */
+.phone {
+  width: 390px;
+  min-height: 844px;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ambient background blobs */
+.ambient {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+}
+.ambient-1 {
+  top: -80px; right: -80px;
+  width: 260px; height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(180,166,255,0.28) 0%, transparent 65%);
+}
+.ambient-2 {
+  top: 320px; left: -100px;
+  width: 240px; height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,126,179,0.14) 0%, transparent 65%);
+}
+.ambient-3 {
+  bottom: 180px; right: -60px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,201,167,0.1) 0%, transparent 65%);
+}
+
+/* ─── SCREENS ─────────────────────────────────── */
+.screen {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  animation: screenIn 0.3s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+.screen.active { display: flex; }
+
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── STATUS BAR ──────────────────────────────── */
+.statusbar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+.statusbar-time {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.statusbar-icons {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* ─── HOME SCREEN ─────────────────────────────── */
+.home-header {
+  padding: 0 22px 18px;
+}
+.home-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.wordmark {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-weight: 300;
+  font-size: 30px;
+  color: var(--violet);
+  letter-spacing: -1px;
+}
+.avatar-stack {
+  display: flex;
+  align-items: center;
+}
+.av {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2.5px solid var(--bg);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.av:hover { transform: scale(1.08); }
+.av-j { background: linear-gradient(135deg, var(--violet), var(--violet-2)); color: white; z-index: 2; }
+.av-a { background: linear-gradient(135deg, var(--rose), #FF9EC6); color: white; margin-left: -9px; z-index: 1; }
+
+.greeting {
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.greeting em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--violet);
+}
+.greeting-sub {
+  font-size: 13px;
+  color: var(--ink-2);
+  font-weight: 400;
+}
+
+/* Olivia nudge card */
+.nudge {
+  margin: 0 16px 20px;
+  background: linear-gradient(135deg, #6C5CE7 0%, #8B7FF5 50%, #a78bfa 100%);
+  border-radius: 24px;
+  padding: 20px 22px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 8px 28px rgba(108,92,231,0.3);
+}
+.nudge:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(108,92,231,0.35); }
+.nudge:active { transform: scale(0.98); }
+
+.nudge-deco {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.nudge-deco-1 { width: 120px; height: 120px; top: -40px; right: -30px; background: rgba(255,255,255,0.07); }
+.nudge-deco-2 { width: 70px; height: 70px; bottom: -20px; right: 40px; background: rgba(255,255,255,0.05); }
+.nudge-deco-3 { width: 40px; height: 40px; top: 20px; right: 60px; background: rgba(255,255,255,0.06); }
+
+.nudge-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nudge-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #FFE066;
+  animation: blink 2s ease infinite;
+  box-shadow: 0 0 6px rgba(255,224,102,0.8);
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.nudge-msg {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 17px;
+  color: white;
+  line-height: 1.45;
+  margin-bottom: 14px;
+  font-weight: 300;
+}
+
+.nudge-actions {
+  display: flex;
+  gap: 8px;
+}
+.nudge-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.nudge-btn-primary {
+  background: white;
+  color: var(--violet);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.nudge-btn-primary:hover { background: #f3f0ff; }
+.nudge-btn-secondary {
+  background: rgba(255,255,255,0.18);
+  color: white;
+}
+.nudge-btn-secondary:hover { background: rgba(255,255,255,0.25); }
+
+/* Scroll area */
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding-bottom: 12px;
+}
+.scroll-area::-webkit-scrollbar { display: none; }
+
+/* Section */
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 22px;
+  margin-bottom: 12px;
+}
+.section-title {
+  font-family: 'Fraunces', serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.section-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--violet);
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--violet-dim);
+  transition: background 0.15s;
+}
+.section-link:hover { background: var(--lavender-mid); }
+
+/* Task cards */
+.tasks {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-bottom: 24px;
+}
+
+.task {
+  background: white;
+  border-radius: 18px;
+  padding: 15px 16px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  box-shadow: var(--shadow-sm);
+  border: 1.5px solid var(--ink-4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  animation: taskIn 0.35s cubic-bezier(0.22,1,0.36,1) forwards;
+  opacity: 0;
+}
+.task:hover { transform: translateX(3px); box-shadow: var(--shadow-md); border-color: var(--lavender-mid); }
+.task:active { transform: scale(0.98); }
+.task:nth-child(1) { animation-delay: 0.05s; }
+.task:nth-child(2) { animation-delay: 0.1s; }
+.task:nth-child(3) { animation-delay: 0.15s; }
+
+@keyframes taskIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.task-checkbox {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-4);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.task-checkbox:hover { border-color: var(--violet); background: var(--violet-dim); }
+.task-checkbox.checked { background: var(--violet); border-color: var(--violet); }
+.task-checkbox.checked::after { content: '✓'; color: white; font-size: 11px; font-weight: 700; }
+
+.task.rose .task-checkbox:hover { border-color: var(--rose); background: var(--rose-dim); }
+.task.peach .task-checkbox:hover { border-color: var(--peach); background: var(--peach-dim); }
+
+.task-info { flex: 1; min-width: 0; }
+.task-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-meta {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  letter-spacing: 0.2px;
+}
+.badge-rose { background: var(--rose-soft); color: #D4527A; }
+.badge-peach { background: var(--peach-soft); color: #B8610A; }
+.badge-violet { background: var(--lavender-soft); color: var(--violet); }
+.badge-mint { background: var(--mint-soft); color: #007A68; }
+
+/* Color accents on left */
+.task.rose { border-left: 3px solid var(--rose); }
+.task.peach { border-left: 3px solid var(--peach); }
+.task.mint { border-left: 3px solid var(--mint); }
+
+/* Upcoming strip */
+.upcoming-strip {
+  padding: 0 16px;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-bottom: 8px;
+}
+.upcoming-strip::-webkit-scrollbar { display: none; }
+
+.event-tile {
+  flex-shrink: 0;
+  width: 128px;
+  background: white;
+  border-radius: 20px;
+  padding: 14px 14px;
+  box-shadow: var(--shadow-sm);
+  border: 1.5px solid var(--ink-4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.event-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+.event-date-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--lavender-soft);
+  border-radius: 10px;
+  padding: 5px 8px;
+  margin-bottom: 9px;
+}
+.event-date-num {
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--violet);
+  line-height: 1;
+}
+.event-date-mo {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--violet-2);
+  letter-spacing: 0.5px;
+  align-self: flex-end;
+  margin-bottom: 1px;
+}
+.event-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.3;
+  margin-bottom: 3px;
+}
+.event-time {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+/* ─── BOTTOM NAV ──────────────────────────────── */
+.bottom-nav {
+  height: 66px;
+  background: white;
+  border-top: 1.5px solid var(--ink-4);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 4px 8px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 -4px 20px rgba(26,16,51,0.05);
+}
+.nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 18px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border: none;
+  background: transparent;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.nav-btn:hover { background: var(--lavender-soft); }
+.nav-btn.active { background: var(--lavender-soft); }
+.nav-icon {
+  font-size: 19px;
+  transition: transform 0.2s ease;
+}
+.nav-btn.active .nav-icon { transform: scale(1.1); }
+.nav-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-3);
+  letter-spacing: 0.2px;
+}
+.nav-btn.active .nav-label { color: var(--violet); }
+
+/* ─── TASKS SCREEN ────────────────────────────── */
+.screen-header {
+  padding: 8px 22px 16px;
+}
+.screen-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--violet);
+  cursor: pointer;
+  margin-bottom: 14px;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+.screen-back:hover { background: var(--violet-dim); }
+.screen-title {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.screen-sub {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* Filter tabs */
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.filter-tabs::-webkit-scrollbar { display: none; }
+.ftab {
+  flex-shrink: 0;
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid var(--ink-4);
+  background: white;
+  color: var(--ink-2);
+  transition: all 0.15s ease;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.ftab:hover { border-color: var(--violet); color: var(--violet); }
+.ftab.active { background: var(--violet); color: white; border-color: var(--violet); box-shadow: 0 3px 10px rgba(108,92,231,0.2); }
+
+/* Add task button */
+.add-task-btn {
+  margin: 0 16px 16px;
+  background: white;
+  border: 2px dashed var(--lavender-mid);
+  border-radius: 18px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.add-task-btn:hover { border-color: var(--violet); background: var(--lavender-soft); }
+.add-icon {
+  width: 26px; height: 26px;
+  border-radius: 8px;
+  background: var(--violet-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--violet);
+  font-weight: 300;
+}
+.add-label { font-size: 13px; font-weight: 500; color: var(--ink-2); }
+
+/* Task full row */
+.task-full {
+  background: white;
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin: 0 16px 9px;
+  box-shadow: var(--shadow-sm);
+  border: 1.5px solid var(--ink-4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  animation: taskIn 0.35s cubic-bezier(0.22,1,0.36,1) forwards;
+  opacity: 0;
+}
+.task-full:hover { box-shadow: var(--shadow-md); border-color: var(--lavender-mid); }
+.task-full:nth-child(1) { animation-delay: 0.03s; }
+.task-full:nth-child(2) { animation-delay: 0.07s; }
+.task-full:nth-child(3) { animation-delay: 0.11s; }
+.task-full:nth-child(4) { animation-delay: 0.15s; }
+.task-full:nth-child(5) { animation-delay: 0.19s; }
+
+.tf-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.tf-check {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-4);
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tf-check.done { background: var(--mint); border-color: var(--mint); }
+.tf-check.done::after { content: '✓'; color: white; font-size: 11px; font-weight: 700; }
+.tf-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.tf-name.done { text-decoration: line-through; color: var(--ink-3); }
+.tf-bottom {
+  padding-left: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tf-meta { font-size: 11.5px; color: var(--ink-3); }
+.tf-assign {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--lavender-soft);
+  border-radius: 10px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--violet);
+}
+.tf-mini-av {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--violet);
+  color: white;
+  font-size: 8px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tf-mini-av.rose-av { background: var(--rose); }
+
+/* ─── AI SCREEN ───────────────────────────────── */
+.ai-header {
+  padding: 8px 22px 16px;
+  border-bottom: 1.5px solid var(--ink-4);
+}
+.ai-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.olivia-orb {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6C5CE7, #a78bfa, #FF7EB3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 4px 14px rgba(108,92,231,0.35);
+  animation: orbPulse 3s ease infinite;
+  flex-shrink: 0;
+}
+@keyframes orbPulse {
+  0%,100% { box-shadow: 0 4px 14px rgba(108,92,231,0.35); }
+  50% { box-shadow: 0 4px 22px rgba(108,92,231,0.55), 0 0 0 6px rgba(108,92,231,0.07); }
+}
+.ai-title {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.ai-sub { font-size: 12px; color: var(--ink-2); }
+
+/* Chat area */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 16px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.chat-area::-webkit-scrollbar { display: none; }
+
+/* Messages */
+.msg {
+  max-width: 88%;
+  animation: msgIn 0.3s cubic-bezier(0.22,1,0.36,1) forwards;
+  opacity: 0;
+}
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.msg:nth-child(1) { animation-delay: 0.05s; }
+.msg:nth-child(2) { animation-delay: 0.15s; }
+.msg:nth-child(3) { animation-delay: 0.3s; }
+.msg:nth-child(4) { animation-delay: 0.45s; }
+.msg:nth-child(5) { animation-delay: 0.6s; }
+
+.msg-olivia { align-self: flex-start; }
+.msg-user { align-self: flex-end; }
+
+.msg-olivia .msg-bubble {
+  background: white;
+  color: var(--ink);
+  border-radius: 4px 20px 20px 20px;
+  padding: 13px 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  box-shadow: var(--shadow-sm);
+  border: 1.5px solid var(--ink-4);
+}
+.msg-user .msg-bubble {
+  background: linear-gradient(135deg, var(--violet), var(--violet-2));
+  color: white;
+  border-radius: 20px 4px 20px 20px;
+  padding: 13px 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  box-shadow: 0 4px 14px rgba(108,92,231,0.25);
+}
+
+.msg-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--ink-3);
+  margin-bottom: 5px;
+  padding-left: 4px;
+}
+.msg-user .msg-label { text-align: right; padding-right: 4px; }
+
+/* Special Olivia actions */
+.olivia-action-card {
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-top: 8px;
+  box-shadow: var(--shadow-sm);
+}
+.oa-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--violet-2);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.oa-preview {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.5;
+  padding: 10px 12px;
+  background: var(--lavender-soft);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  border-left: 3px solid var(--violet);
+}
+.oa-buttons {
+  display: flex;
+  gap: 8px;
+}
+.oa-btn {
+  flex: 1;
+  padding: 9px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.oa-btn-send { background: var(--violet); color: white; box-shadow: 0 3px 10px rgba(108,92,231,0.2); }
+.oa-btn-send:hover { background: #5B4DD6; }
+.oa-btn-edit { background: var(--lavender-soft); color: var(--violet); }
+.oa-btn-edit:hover { background: var(--lavender-mid); }
+
+/* Quick suggestions */
+.quick-chips {
+  display: flex;
+  gap: 8px;
+  padding: 0 0 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.quick-chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: white;
+  border: 1.5px solid var(--ink-4);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.chip:hover { border-color: var(--violet); color: var(--violet); background: var(--lavender-soft); }
+.chip:active { transform: scale(0.96); }
+
+/* Chat input */
+.chat-input-area {
+  padding: 8px 16px 12px;
+  border-top: 1.5px solid var(--ink-4);
+  background: var(--bg);
+}
+.chat-input-bar {
+  background: white;
+  border: 2px solid var(--lavender-mid);
+  border-radius: 20px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.chat-input-bar:focus-within {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 4px rgba(108,92,231,0.1);
+}
+.chat-textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  resize: none;
+  max-height: 80px;
+  line-height: 1.5;
+}
+.chat-textarea::placeholder { color: var(--ink-3); font-style: italic; }
+.chat-send {
+  width: 34px; height: 34px;
+  border-radius: 12px;
+  background: var(--violet);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(108,92,231,0.25);
+  color: white;
+  font-size: 14px;
+}
+.chat-send:hover { background: #5B4DD6; transform: scale(1.05); }
+.chat-send:active { transform: scale(0.95); }
+
+/* ─── MEMORY SCREEN ───────────────────────────── */
+.memory-search {
+  margin: 0 16px 16px;
+  background: white;
+  border: 1.5px solid var(--ink-4);
+  border-radius: 16px;
+  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+}
+.memory-search:focus-within {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 4px rgba(108,92,231,0.08);
+}
+.search-icon { font-size: 15px; color: var(--ink-3); }
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.search-input::placeholder { color: var(--ink-3); }
+
+.mem-category {
+  margin-bottom: 20px;
+}
+.mem-cat-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--ink-3);
+  padding: 0 22px;
+  margin-bottom: 10px;
+}
+.mem-cards {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mem-card {
+  background: white;
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  box-shadow: var(--shadow-sm);
+  border: 1.5px solid var(--ink-4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  animation: taskIn 0.35s ease forwards;
+  opacity: 0;
+}
+.mem-card:hover { box-shadow: var(--shadow-md); border-color: var(--lavender-mid); }
+.mem-card:nth-child(1) { animation-delay: 0.05s; }
+.mem-card:nth-child(2) { animation-delay: 0.1s; }
+.mem-card:nth-child(3) { animation-delay: 0.15s; }
+
+.mem-icon {
+  width: 36px; height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.mem-icon.violet { background: var(--lavender-soft); }
+.mem-icon.rose { background: var(--rose-soft); }
+.mem-icon.peach { background: var(--peach-soft); }
+.mem-icon.mint { background: var(--mint-soft); }
+
+.mem-body { flex: 1; min-width: 0; }
+.mem-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.mem-detail {
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.4;
+}
+.mem-age {
+  font-size: 10px;
+  color: var(--ink-3);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--ink-4);
+  margin: 0 22px 20px;
+}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- AMBIENT BLOBS -->
+  <div class="ambient ambient-1"></div>
+  <div class="ambient ambient-2"></div>
+  <div class="ambient ambient-3"></div>
+
+  <!-- ══════════════ HOME SCREEN ══════════════ -->
+  <div class="screen active" id="screen-home">
+    <div class="statusbar">
+      <span class="statusbar-time">9:41</span>
+      <div class="statusbar-icons"><span>●●●</span></div>
+    </div>
+
+    <div class="home-header">
+      <div class="home-header-row">
+        <div class="wordmark">olivia</div>
+        <div class="avatar-stack">
+          <div class="av av-j">J</div>
+          <div class="av av-a">A</div>
+        </div>
+      </div>
+      <div class="greeting">Good morning,<br><em>Jamie.</em></div>
+      <div class="greeting-sub">Thursday, March 12 · 3 things need you today</div>
+    </div>
+
+    <!-- Olivia's nudge -->
+    <div class="nudge" onclick="showScreen('screen-ai')">
+      <div class="nudge-deco nudge-deco-1"></div>
+      <div class="nudge-deco nudge-deco-2"></div>
+      <div class="nudge-deco nudge-deco-3"></div>
+      <div class="nudge-eyebrow"><div class="nudge-dot"></div> Olivia noticed</div>
+      <div class="nudge-msg">"The plumber hasn't replied in 3 days. Want me to draft a follow-up for you?"</div>
+      <div class="nudge-actions">
+        <button class="nudge-btn nudge-btn-primary" onclick="event.stopPropagation(); showScreen('screen-ai')">✍️ Yes, draft it</button>
+        <button class="nudge-btn nudge-btn-secondary" onclick="event.stopPropagation()">Later</button>
+      </div>
+    </div>
+
+    <div class="scroll-area">
+      <div class="section-head">
+        <div class="section-title">Needs doing</div>
+        <div class="section-link" onclick="showScreen('screen-tasks')">All tasks →</div>
+      </div>
+
+      <div class="tasks">
+        <div class="task rose" onclick="showScreen('screen-tasks')">
+          <div class="task-checkbox"></div>
+          <div class="task-info">
+            <div class="task-name">Follow up on plumber quote</div>
+            <div class="task-meta">Added 3 days ago · no reply</div>
+          </div>
+          <div class="badge badge-rose">Overdue</div>
+        </div>
+        <div class="task peach" onclick="showScreen('screen-tasks')">
+          <div class="task-checkbox"></div>
+          <div class="task-info">
+            <div class="task-name">Pick up dry cleaning</div>
+            <div class="task-meta">Due tomorrow, Mar 14</div>
+          </div>
+          <div class="badge badge-peach">Soon</div>
+        </div>
+        <div class="task mint" onclick="showScreen('screen-tasks')">
+          <div class="task-checkbox"></div>
+          <div class="task-info">
+            <div class="task-name">Renew car registration</div>
+            <div class="task-meta">Mar 31 · Alex</div>
+          </div>
+          <div class="badge badge-violet">Shared</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section-head">
+        <div class="section-title">Coming up</div>
+      </div>
+
+      <div class="upcoming-strip" style="margin-bottom: 24px;">
+        <div class="event-tile">
+          <div class="event-date-pill">
+            <div class="event-date-num">14</div>
+            <div class="event-date-mo">Mar</div>
+          </div>
+          <div class="event-name">HVAC service visit</div>
+          <div class="event-time">10:00 – 12:00</div>
+        </div>
+        <div class="event-tile">
+          <div class="event-date-pill">
+            <div class="event-date-num">15</div>
+            <div class="event-date-mo">Mar</div>
+          </div>
+          <div class="event-name">Jordan's birthday dinner</div>
+          <div class="event-time">7:00 PM · River North</div>
+        </div>
+        <div class="event-tile">
+          <div class="event-date-pill">
+            <div class="event-date-num">18</div>
+            <div class="event-date-mo">Mar</div>
+          </div>
+          <div class="event-name">Vet — Luna annual</div>
+          <div class="event-time">2:30 PM · Dr. Patel</div>
+        </div>
+        <div class="event-tile">
+          <div class="event-date-pill">
+            <div class="event-date-num">31</div>
+            <div class="event-date-mo">Mar</div>
+          </div>
+          <div class="event-name">Car registration due</div>
+          <div class="event-time">Don't forget!</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <button class="nav-btn active" onclick="showScreen('screen-home')">
+        <span class="nav-icon">🏡</span><span class="nav-label">Home</span>
+      </button>
+      <button class="nav-btn" onclick="showScreen('screen-tasks')">
+        <span class="nav-icon">✅</span><span class="nav-label">Tasks</span>
+      </button>
+      <button class="nav-btn" onclick="showScreen('screen-ai')">
+        <span class="nav-icon">✦</span><span class="nav-label">Olivia</span>
+      </button>
+      <button class="nav-btn" onclick="showScreen('screen-memory')">
+        <span class="nav-icon">🗂️</span><span class="nav-label">Memory</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════ TASKS SCREEN ══════════════ -->
+  <div class="screen" id="screen-tasks">
+    <div class="statusbar">
+      <span class="statusbar-time">9:41</span>
+      <div class="statusbar-icons"><span>●●●</span></div>
+    </div>
+
+    <div class="screen-header">
+      <div class="screen-title">Tasks</div>
+      <div class="screen-sub">5 open · 2 completed this week</div>
+    </div>
+
+    <div class="filter-tabs">
+      <div class="ftab active">All</div>
+      <div class="ftab">Mine</div>
+      <div class="ftab">Shared</div>
+      <div class="ftab">Overdue</div>
+      <div class="ftab">Snoozed</div>
+    </div>
+
+    <div class="scroll-area">
+      <div class="add-task-btn">
+        <div class="add-icon">+</div>
+        <div class="add-label">Add a new task…</div>
+      </div>
+
+      <div class="task-full rose" style="border-left: 3px solid var(--rose);">
+        <div class="tf-top">
+          <div class="tf-check"></div>
+          <div class="tf-name">Follow up on plumber quote for bathroom reno</div>
+          <div class="badge badge-rose" style="flex-shrink:0;margin-top:1px;">Overdue</div>
+        </div>
+        <div class="tf-bottom">
+          <div class="tf-meta">Added Mar 9</div>
+          <div class="tf-assign">
+            <div class="tf-mini-av">J</div>
+            Jamie
+          </div>
+        </div>
+      </div>
+
+      <div class="task-full peach" style="border-left: 3px solid var(--peach);">
+        <div class="tf-top">
+          <div class="tf-check"></div>
+          <div class="tf-name">Pick up dry cleaning before Saturday</div>
+          <div class="badge badge-peach" style="flex-shrink:0;margin-top:1px;">Soon</div>
+        </div>
+        <div class="tf-bottom">
+          <div class="tf-meta">Due Mar 14</div>
+          <div class="tf-assign">
+            <div class="tf-mini-av">J</div>
+            Jamie
+          </div>
+        </div>
+      </div>
+
+      <div class="task-full" style="border-left: 3px solid var(--mint);">
+        <div class="tf-top">
+          <div class="tf-check"></div>
+          <div class="tf-name">Renew car registration — expires end of month</div>
+          <div class="badge badge-violet" style="flex-shrink:0;margin-top:1px;">Shared</div>
+        </div>
+        <div class="tf-bottom">
+          <div class="tf-meta">Due Mar 31</div>
+          <div class="tf-assign">
+            <div class="tf-mini-av rose-av">A</div>
+            Alex
+          </div>
+        </div>
+      </div>
+
+      <div class="task-full">
+        <div class="tf-top">
+          <div class="tf-check"></div>
+          <div class="tf-name">Buy birthday card for Jordan</div>
+        </div>
+        <div class="tf-bottom">
+          <div class="tf-meta">Before Mar 15</div>
+          <div class="tf-assign">
+            <div class="tf-mini-av">J</div>
+            Jamie
+          </div>
+        </div>
+      </div>
+
+      <div class="task-full">
+        <div class="tf-top">
+          <div class="tf-check"></div>
+          <div class="tf-name">Replace furnace filter</div>
+        </div>
+        <div class="tf-bottom">
+          <div class="tf-meta">Due ~Apr 4 · last changed Feb 4</div>
+          <div class="tf-assign">
+            <div class="tf-mini-av rose-av">A</div>
+            Alex
+          </div>
+        </div>
+      </div>
+
+      <div class="mem-cat-label" style="margin-top: 8px;">Completed</div>
+
+      <div class="task-full" style="opacity: 0.55; animation-delay: 0.23s;">
+        <div class="tf-top">
+          <div class="tf-check done"></div>
+          <div class="tf-name done">Schedule HVAC annual service</div>
+        </div>
+        <div class="tf-bottom">
+          <div class="tf-meta">Completed Mar 10</div>
+        </div>
+      </div>
+
+      <div class="task-full" style="opacity: 0.55; animation-delay: 0.27s;">
+        <div class="tf-top">
+          <div class="tf-check done"></div>
+          <div class="tf-name done">Pay property tax installment</div>
+        </div>
+        <div class="tf-bottom">
+          <div class="tf-meta">Completed Mar 7</div>
+        </div>
+      </div>
+
+      <div style="height: 12px;"></div>
+    </div>
+
+    <div class="bottom-nav">
+      <button class="nav-btn" onclick="showScreen('screen-home')">
+        <span class="nav-icon">🏡</span><span class="nav-label">Home</span>
+      </button>
+      <button class="nav-btn active" onclick="showScreen('screen-tasks')">
+        <span class="nav-icon">✅</span><span class="nav-label">Tasks</span>
+      </button>
+      <button class="nav-btn" onclick="showScreen('screen-ai')">
+        <span class="nav-icon">✦</span><span class="nav-label">Olivia</span>
+      </button>
+      <button class="nav-btn" onclick="showScreen('screen-memory')">
+        <span class="nav-icon">🗂️</span><span class="nav-label">Memory</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════ OLIVIA AI SCREEN ══════════════ -->
+  <div class="screen" id="screen-ai">
+    <div class="statusbar">
+      <span class="statusbar-time">9:41</span>
+      <div class="statusbar-icons"><span>●●●</span></div>
+    </div>
+
+    <div class="ai-header">
+      <div class="ai-title-row">
+        <div class="olivia-orb">✦</div>
+        <div>
+          <div class="ai-title">Olivia</div>
+          <div class="ai-sub">Your household assistant · always here</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-area" id="chat-area">
+
+      <div class="msg msg-olivia">
+        <div class="msg-label">Olivia</div>
+        <div class="msg-bubble">
+          Hey Jamie! 👋 I noticed the plumber (Mike's Plumbing) hasn't responded to your quote request from 3 days ago. Want me to write a follow-up for you?
+        </div>
+      </div>
+
+      <div class="msg msg-user">
+        <div class="msg-label">You</div>
+        <div class="msg-bubble">Yes please, keep it friendly but nudge them on timing.</div>
+      </div>
+
+      <div class="msg msg-olivia">
+        <div class="msg-label">Olivia</div>
+        <div class="msg-bubble">
+          Done! Here's a draft — feel free to edit before sending:
+          <div class="olivia-action-card">
+            <div class="oa-label">✉️ Draft message</div>
+            <div class="oa-preview">Hi Mike, just checking in on the quote from earlier this week — we're keen to get the bathroom project moving and would love to hear back when you have a moment. Any update on timing? Thanks!</div>
+            <div class="oa-buttons">
+              <button class="oa-btn oa-btn-send" onclick="sendDraft()">Send it ✓</button>
+              <button class="oa-btn oa-btn-edit">Edit first</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg msg-user" id="msg-sent" style="display:none;">
+        <div class="msg-label">You</div>
+        <div class="msg-bubble">Sent! ✅</div>
+      </div>
+
+      <div class="msg msg-olivia" id="msg-confirm" style="display:none;">
+        <div class="msg-label">Olivia</div>
+        <div class="msg-bubble">
+          Perfect, I'll mark the plumber task as <em>waiting on reply</em> and remind you if there's no response in 2 days. 🎉
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Quick chips -->
+    <div style="padding: 0 16px 8px;">
+      <div class="quick-chips">
+        <div class="chip" onclick="addChip(this)">📅 What's this week?</div>
+        <div class="chip" onclick="addChip(this)">🛠️ Home maintenance due</div>
+        <div class="chip" onclick="addChip(this)">👤 What's Alex working on?</div>
+        <div class="chip" onclick="addChip(this)">💡 What should I remember?</div>
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <div class="chat-input-bar">
+        <textarea class="chat-textarea" id="chat-input" rows="1" placeholder="Ask Olivia anything…" oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+        <button class="chat-send" onclick="sendMessage()">↑</button>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <button class="nav-btn" onclick="showScreen('screen-home')">
+        <span class="nav-icon">🏡</span><span class="nav-label">Home</span>
+      </button>
+      <button class="nav-btn" onclick="showScreen('screen-tasks')">
+        <span class="nav-icon">✅</span><span class="nav-label">Tasks</span>
+      </button>
+      <button class="nav-btn active" onclick="showScreen('screen-ai')">
+        <span class="nav-icon">✦</span><span class="nav-label">Olivia</span>
+      </button>
+      <button class="nav-btn" onclick="showScreen('screen-memory')">
+        <span class="nav-icon">🗂️</span><span class="nav-label">Memory</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════ MEMORY SCREEN ══════════════ -->
+  <div class="screen" id="screen-memory">
+    <div class="statusbar">
+      <span class="statusbar-time">9:41</span>
+      <div class="statusbar-icons"><span>●●●</span></div>
+    </div>
+
+    <div class="screen-header">
+      <div class="screen-title">Household memory</div>
+      <div class="screen-sub">Things worth keeping</div>
+    </div>
+
+    <div class="scroll-area">
+      <div class="memory-search">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" placeholder="Search decisions, info, notes…">
+      </div>
+
+      <div class="mem-category">
+        <div class="mem-cat-label">Decisions made</div>
+        <div class="mem-cards">
+          <div class="mem-card">
+            <div class="mem-icon violet">🎨</div>
+            <div class="mem-body">
+              <div class="mem-title">Living room paint color</div>
+              <div class="mem-detail">Benjamin Moore "Pale Oak" — agreed Feb 28</div>
+            </div>
+            <div class="mem-age">2w</div>
+          </div>
+          <div class="mem-card">
+            <div class="mem-icon rose">🏡</div>
+            <div class="mem-body">
+              <div class="mem-title">Bathroom reno budget</div>
+              <div class="mem-detail">Max $8,500 including labor and fixtures</div>
+            </div>
+            <div class="mem-age">1w</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mem-category">
+        <div class="mem-cat-label">Home maintenance</div>
+        <div class="mem-cards">
+          <div class="mem-card">
+            <div class="mem-icon peach">🔧</div>
+            <div class="mem-body">
+              <div class="mem-title">Furnace filter last changed</div>
+              <div class="mem-detail">Feb 4, 2025 · 3M 1500 MPR filter · next due ~Apr 4</div>
+            </div>
+            <div class="mem-age">5w</div>
+          </div>
+          <div class="mem-card">
+            <div class="mem-icon mint">❄️</div>
+            <div class="mem-body">
+              <div class="mem-title">AC last serviced</div>
+              <div class="mem-detail">May 2024 · Johnson HVAC · annual service booked Mar 14</div>
+            </div>
+            <div class="mem-age">10m</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mem-category">
+        <div class="mem-cat-label">Contacts & services</div>
+        <div class="mem-cards">
+          <div class="mem-card">
+            <div class="mem-icon violet">🔑</div>
+            <div class="mem-body">
+              <div class="mem-title">Mike's Plumbing</div>
+              <div class="mem-detail">(312) 555-0182 · awaiting bathroom quote</div>
+            </div>
+            <div class="mem-age">3d</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height: 12px;"></div>
+    </div>
+
+    <div class="bottom-nav">
+      <button class="nav-btn" onclick="showScreen('screen-home')">
+        <span class="nav-icon">🏡</span><span class="nav-label">Home</span>
+      </button>
+      <button class="nav-btn" onclick="showScreen('screen-tasks')">
+        <span class="nav-icon">✅</span><span class="nav-label">Tasks</span>
+      </button>
+      <button class="nav-btn" onclick="showScreen('screen-ai')">
+        <span class="nav-icon">✦</span><span class="nav-label">Olivia</span>
+      </button>
+      <button class="nav-btn active" onclick="showScreen('screen-memory')">
+        <span class="nav-icon">🗂️</span><span class="nav-label">Memory</span>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  // Sync nav
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const map = { 'screen-home': 0, 'screen-tasks': 1, 'screen-ai': 2, 'screen-memory': 3 };
+  const idx = map[id];
+  document.querySelectorAll('.nav-btn').forEach((b, i) => { if(i === idx) b.classList.add('active'); });
+}
+
+function sendDraft() {
+  const sent = document.getElementById('msg-sent');
+  const confirm = document.getElementById('msg-confirm');
+  sent.style.display = 'block';
+  sent.style.animation = 'none';
+  void sent.offsetWidth;
+  sent.style.animation = 'msgIn 0.3s cubic-bezier(0.22,1,0.36,1) forwards';
+  setTimeout(() => {
+    confirm.style.display = 'block';
+    confirm.style.animation = 'none';
+    void confirm.offsetWidth;
+    confirm.style.animation = 'msgIn 0.3s cubic-bezier(0.22,1,0.36,1) forwards';
+    scrollChat();
+  }, 600);
+  scrollChat();
+}
+
+function scrollChat() {
+  const ca = document.getElementById('chat-area');
+  setTimeout(() => ca.scrollTo({ top: ca.scrollHeight, behavior: 'smooth' }), 100);
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function addChip(chip) {
+  const input = document.getElementById('chat-input');
+  input.value = chip.textContent.replace(/^[^\w]*/, '').trim();
+  input.focus();
+}
+
+const oliviaReplies = [
+  "On it! Let me look at what's coming up for you this week… 🗓️",
+  "Great question. Based on your household notes, here's what I found:",
+  "I'll add that to your memory so you don't have to remember it yourself! 💡",
+  "Noted — want me to set a reminder for this? I can nudge you at the right time.",
+  "I can help with that! Give me a second to check your recent context…"
+];
+let replyIdx = 0;
+
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const ca = document.getElementById('chat-area');
+
+  const userMsg = document.createElement('div');
+  userMsg.className = 'msg msg-user';
+  userMsg.innerHTML = `<div class="msg-label">You</div><div class="msg-bubble">${text}</div>`;
+  ca.appendChild(userMsg);
+  input.value = '';
+  input.style.height = 'auto';
+  scrollChat();
+
+  setTimeout(() => {
+    const oliviaMsg = document.createElement('div');
+    oliviaMsg.className = 'msg msg-olivia';
+    oliviaMsg.innerHTML = `<div class="msg-label">Olivia</div><div class="msg-bubble">${oliviaReplies[replyIdx % oliviaReplies.length]}</div>`;
+    ca.appendChild(oliviaMsg);
+    replyIdx++;
+    scrollChat();
+  }, 900);
+}
+
+// Task checkbox toggle
+document.querySelectorAll('.task-checkbox').forEach(cb => {
+  cb.addEventListener('click', e => {
+    e.stopPropagation();
+    cb.classList.toggle('checked');
+  });
+});
+</script>
+</body>
+</html>
