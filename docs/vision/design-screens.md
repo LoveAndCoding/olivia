@@ -59,7 +59,7 @@ The bottom nav is **always visible** on all screens. It never hides on scroll.
 ```
 wordmark ("olivia" — Fraunces italic, violet, 30px)     [Avatar stack]
 Good morning,                                            ← Fraunces 700
-Jamie.                                                   ← Fraunces italic 300, violet
+Lexi.                                                    ← Fraunces italic 300, violet
 Thursday, March 12 · 3 things need you today            ← Plus Jakarta Sans 13px, ink-2
 ```
 
@@ -116,7 +116,7 @@ Horizontal-scroll pill tabs. Default active tab: "All".
 All  |  Mine  |  Shared  |  Overdue  |  Snoozed
 ```
 
-- "Mine" filters to tasks assigned to the primary user (Jamie).
+- "Mine" filters to tasks assigned to the primary user (Lexi).
 - "Shared" shows tasks with two or more assignees, or tasks explicitly marked shared.
 - "Overdue" filters to tasks past their due date.
 - "Snoozed" is a future feature — include the tab but show empty state for MVP.
@@ -174,7 +174,7 @@ Shown above the input bar when the chat has few messages (less than 4). Hide onc
 Chips are short conversational prompts, not commands:
 - "📅 What's this week?"
 - "🛠️ Home maintenance due"
-- "👤 What's Alex working on?"
+- "👤 What's Alexander working on?"
 - "💡 What should I remember?"
 
 ### Input Bar
