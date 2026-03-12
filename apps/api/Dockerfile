@@ -52,9 +52,10 @@ COPY --from=builder /build/packages/contracts/dist/ ./packages/contracts/dist/
 COPY --from=builder /build/packages/domain/dist/ ./packages/domain/dist/
 
 # CRITICAL: The migration SQL is resolved at runtime via import.meta.url.
-# With the bundle at /app/dist/server.js, the path resolves to /app/drizzle/.
-# See apps/api/src/db/client.ts: new URL('../../drizzle/...', import.meta.url)
-COPY --from=builder /build/apps/api/drizzle/ ./drizzle/
+# new URL('../../drizzle/...', 'file:///app/dist/server.js') resolves to
+# file:///drizzle/ (two levels up from /app/dist/ reaches /, then drizzle/).
+# Copy to the absolute path /drizzle/ so the lookup succeeds.
+COPY --from=builder /build/apps/api/drizzle/ /drizzle/
 
 ENV NODE_ENV=production
 ENV PORT=3001
