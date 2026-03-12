@@ -1,9 +1,11 @@
-import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
 import { AppLayout } from './components/layout';
-import { AddPage } from './routes/add-page';
+import { HomePage } from './routes/home-page';
+import { TasksPage } from './routes/tasks-page';
+import { OliviaPage } from './routes/olivia-page';
+import { MemoryPage } from './routes/memory-page';
 import { ItemDetailPage } from './routes/item-detail-page';
 import { ReEntryPage } from './routes/re-entry-page';
-import { ReviewPage } from './routes/review-page';
 import { SettingsPage } from './routes/settings-page';
 
 const rootRoute = createRootRoute({
@@ -14,8 +16,13 @@ const rootRoute = createRootRoute({
   )
 });
 
-const reviewRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: ReviewPage });
-const addRoute = createRoute({ getParentRoute: () => rootRoute, path: '/add', component: AddPage });
+// ── Primary four-tab routes ──────────────────────────────────────────────────
+const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: HomePage });
+const tasksRoute = createRoute({ getParentRoute: () => rootRoute, path: '/tasks', component: TasksPage });
+const oliviaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/olivia', component: OliviaPage });
+const memoryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/memory', component: MemoryPage });
+
+// ── Supporting routes (token-compliant, hidden from primary nav) ─────────────
 const itemRoute = createRoute({ getParentRoute: () => rootRoute, path: '/items/$itemId', component: ItemDetailPage });
 const reEntryRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -25,7 +32,25 @@ const reEntryRoute = createRoute({
 });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage });
 
-const routeTree = rootRoute.addChildren([reviewRoute, addRoute, itemRoute, reEntryRoute, settingsRoute]);
+// ── Legacy redirects (old routes → new primary nav) ──────────────────────────
+const addRedirectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/add',
+  beforeLoad: () => {
+    throw redirect({ to: '/tasks' });
+  }
+});
+
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  tasksRoute,
+  oliviaRoute,
+  memoryRoute,
+  itemRoute,
+  reEntryRoute,
+  settingsRoute,
+  addRedirectRoute,
+]);
 
 export const router = createRouter({ routeTree });
 
