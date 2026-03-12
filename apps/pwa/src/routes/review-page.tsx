@@ -32,23 +32,60 @@ export function ReviewPage() {
     };
   }, [inboxQuery.data, ownerFilter]);
 
+  const overview = useMemo(() => {
+    if (!groups || !inboxQuery.data) {
+      return null;
+    }
+
+    const visibleItems = [...groups.open, ...groups.inProgress, ...(view === 'all' ? [...groups.deferred, ...groups.done] : [])];
+    const attentionCount = visibleItems.filter((item) => {
+      const flags = computeFlags(item);
+      return flags.overdue || flags.dueSoon || flags.stale || flags.unassigned;
+    }).length;
+
+    return [
+      { label: 'Active items', value: groups.open.length + groups.inProgress.length, tone: 'neutral' },
+      { label: 'Need attention', value: attentionCount, tone: 'warning' },
+      { label: 'Suggestions', value: inboxQuery.data.suggestions.length, tone: 'info' },
+      { label: 'Viewing as', value: role === 'stakeholder' ? 'Stakeholder' : 'Spouse', tone: 'success' }
+    ];
+  }, [groups, inboxQuery.data, role, view]);
+
   return (
     <div className="stack-lg">
-      <section className="card toolbar-card">
-        <div>
-          <h2>Review household state</h2>
-          <p className="muted">Grouped active items, calm suggestions, and spouse-safe visibility.</p>
+      <section className="card hero-card stack-md">
+        <div className="section-header">
+          <div className="stack-sm">
+            <p className="eyebrow">Review</p>
+            <h2>Household state at a glance</h2>
+            <p className="muted">
+              Grouped active items, calm suggestions, and spouse-safe visibility in a softer mobile-first layout.
+            </p>
+          </div>
+          <span className="section-note">{view === 'active' ? 'Focused on active work' : 'Showing the full household record'}</span>
         </div>
+
+        {overview ? (
+          <div className="metrics-grid">
+            {overview.map((metric) => (
+              <div key={metric.label} className={`metric-card tone-${metric.tone}`}>
+                <span className="metric-label">{metric.label}</span>
+                <strong className="metric-value">{metric.value}</strong>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         <div className="toolbar-row">
-          <label>
-            View
+          <label className="stack-sm">
+            <span className="field-label">View</span>
             <select value={view} onChange={(event) => setView(event.target.value as 'active' | 'all')}>
               <option value="active">Active</option>
               <option value="all">All items</option>
             </select>
           </label>
-          <label>
-            Owner filter
+          <label className="stack-sm">
+            <span className="field-label">Owner filter</span>
             <select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value as Owner | 'all')}>
               {ownerOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
@@ -65,16 +102,22 @@ export function ReviewPage() {
 
           <section className="card stack-md">
             <div className="section-header">
-              <h2>Suggestions</h2>
-              <span className="muted">At most two prioritized nudges</span>
+              <div className="stack-sm">
+                <p className="eyebrow">Suggestions</p>
+                <h2>Priority nudges</h2>
+              </div>
+              <span className="section-note">At most two prioritized nudges</span>
             </div>
             {inboxQuery.data.suggestions.length === 0 ? <p className="muted">No urgent suggestions right now.</p> : null}
-            {inboxQuery.data.suggestions.map((suggestion) => (
-              <Link key={suggestion.itemId} to="/items/$itemId" params={{ itemId: suggestion.itemId }} className="suggestion-card">
-                <strong>{suggestion.title}</strong>
-                <span>{suggestion.message}</span>
-              </Link>
-            ))}
+            <div className="suggestion-grid">
+              {inboxQuery.data.suggestions.map((suggestion) => (
+                <Link key={suggestion.itemId} to="/items/$itemId" params={{ itemId: suggestion.itemId }} className="suggestion-card">
+                  <span className="chip info">Suggested next step</span>
+                  <strong>{suggestion.title}</strong>
+                  <span>{suggestion.message}</span>
+                </Link>
+              ))}
+            </div>
           </section>
 
           <StatusGroup title="Open" items={groups?.open ?? []} />
@@ -91,17 +134,23 @@ function StatusGroup({ title, items }: { title: string; items: InboxItem[] }) {
   return (
     <section className="card stack-md">
       <div className="section-header">
-        <h2>{title}</h2>
-        <span className="muted">{items.length} items</span>
+        <div className="stack-sm">
+          <p className="eyebrow">Status</p>
+          <h2>{title}</h2>
+        </div>
+        <span className="section-note">{items.length} items</span>
       </div>
       {items.length === 0 ? <p className="muted">Nothing here.</p> : null}
-      <div className="stack-md">
+      <div className="item-grid">
         {items.map((item) => {
           const flags = computeFlags(item);
           return (
             <Link key={item.id} to="/items/$itemId" params={{ itemId: item.id }} className="item-card">
               <div className="item-card-header">
-                <strong>{item.title}</strong>
+                <div className="stack-sm">
+                  <span className="eyebrow">Inbox item</span>
+                  <strong>{item.title}</strong>
+                </div>
                 {item.pendingSync ? <span className="chip pending">Pending sync</span> : null}
               </div>
               <p className="muted">Owner: {item.owner} · Status: {item.status.replace('_', ' ')}</p>

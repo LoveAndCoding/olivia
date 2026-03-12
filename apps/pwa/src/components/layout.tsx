@@ -32,15 +32,30 @@ export function AppLayout({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('online', handleOnline);
   }, [queryClient, role]);
 
+  const statusItems = [
+    { label: 'Connection', value: navigator.onLine ? 'Online' : 'Offline' },
+    { label: 'Pending sync', value: String(diagnostics?.pending ?? 0) },
+    { label: 'Conflicts', value: String(diagnostics?.conflict ?? 0) },
+    {
+      label: 'Last sync',
+      value: diagnostics?.lastSyncAt ? new Date(diagnostics.lastSyncAt).toLocaleString() : 'Never'
+    }
+  ];
+
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div>
+        <div className="stack-sm">
           <p className="eyebrow">Olivia</p>
-          <h1>Shared household inbox</h1>
+          <div className="stack-sm">
+            <h1>Shared household inbox</h1>
+            <p className="muted hero-supporting-text">
+              Calm review, clear ownership, and advisory-only follow-through for household logistics.
+            </p>
+          </div>
         </div>
-        <label className="role-switcher">
-          Active role
+        <label className="role-switcher stack-sm">
+          <span className="field-label">Active role</span>
           <select value={role} onChange={(event) => setRole(event.target.value as typeof role)} aria-label="Active role">
             <option value="stakeholder">Stakeholder</option>
             <option value="spouse">Spouse</option>
@@ -55,10 +70,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </nav>
 
       <section className="status-bar">
-        <span>{navigator.onLine ? 'Online' : 'Offline'}</span>
-        <span>Pending sync: {diagnostics?.pending ?? 0}</span>
-        <span>Conflicts: {diagnostics?.conflict ?? 0}</span>
-        <span>Last sync: {diagnostics?.lastSyncAt ? new Date(diagnostics.lastSyncAt).toLocaleString() : 'Never'}</span>
+        {statusItems.map((item) => (
+          <div key={item.label} className="status-pill">
+            <span className="status-label">{item.label}</span>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
       </section>
 
       <main className="page-shell">{children}</main>
