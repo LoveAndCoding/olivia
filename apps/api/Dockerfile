@@ -47,6 +47,10 @@ RUN npm ci --omit=dev
 # Copy the built bundle.
 COPY --from=builder /build/apps/api/dist/ ./dist/
 
+# Copy built workspace package dist folders (symlinked via npm workspaces).
+COPY --from=builder /build/packages/contracts/dist/ ./packages/contracts/dist/
+COPY --from=builder /build/packages/domain/dist/ ./packages/domain/dist/
+
 # CRITICAL: The migration SQL is resolved at runtime via import.meta.url.
 # With the bundle at /app/dist/server.js, the path resolves to /app/drizzle/.
 # See apps/api/src/db/client.ts: new URL('../../drizzle/...', import.meta.url)
