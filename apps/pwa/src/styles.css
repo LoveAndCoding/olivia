@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap');
+
 :root {
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
@@ -26,6 +28,7 @@
   --accent-sky: #38bdf8;
   --accent-orchid: #8b5cf6;
   --focus: 0 0 0 4px rgba(96, 165, 250, 0.2);
+  --font-brand: 'Dancing Script', cursive;
 }
 
 * {
@@ -711,4 +714,348 @@ p {
   .hero-tag {
     font-size: 0.76rem;
   }
+}
+
+/* ── Brand ───────────────────────────────────────────────── */
+
+.olivia-brand {
+  font-family: var(--font-brand);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--primary-flat);
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+/* ── Avatar group ────────────────────────────────────────── */
+
+.avatar-group {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+}
+
+.avatar-group--md .avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 0.88rem;
+}
+
+.avatar-group--sm .avatar {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.72rem;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 700;
+  border: 2px solid white;
+  color: white;
+  margin-left: -0.5rem;
+  flex-shrink: 0;
+}
+
+.avatar-group .avatar:last-child {
+  margin-left: 0;
+}
+
+.avatar--0 { background: var(--primary-flat); }
+.avatar--1 { background: var(--accent-coral); }
+.avatar--2 { background: var(--accent-mint); }
+.avatar--3 { background: var(--accent-gold); color: #4a3000; }
+.avatar--4 { background: var(--accent-orchid); }
+
+/* ── Greeting ────────────────────────────────────────────── */
+
+.greeting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.greeting-heading {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.greeting-name {
+  font-style: italic;
+  color: var(--primary-flat);
+}
+
+.greeting-meta {
+  font-size: 0.9rem;
+}
+
+/* ── Olivia Noticed card ─────────────────────────────────── */
+
+.olivia-noticed-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.3rem;
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, #5b4dd4 0%, #7c5cbf 50%, #9d6fd6 100%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: var(--shadow-lg);
+  color: white;
+}
+
+.olivia-noticed-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.olivia-noticed-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #34d399;
+  flex-shrink: 0;
+}
+
+.olivia-noticed-message {
+  font-size: 1.05rem;
+  font-style: italic;
+  line-height: 1.55;
+  color: white;
+  margin: 0;
+}
+
+.olivia-noticed-accept {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: white;
+  color: var(--primary-flat);
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.olivia-noticed-accept:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.olivia-noticed-dismiss {
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.olivia-noticed-dismiss:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.olivia-noticed-card .button-row {
+  flex-wrap: nowrap;
+}
+
+/* ── Section link ────────────────────────────────────────── */
+
+.section-link {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--primary-flat);
+  white-space: nowrap;
+}
+
+/* ── Home task items ─────────────────────────────────────── */
+
+.home-task-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.95rem 1rem;
+  background: var(--surface-strong);
+  border-radius: 1.25rem;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-left-color: var(--border);
+  box-shadow: var(--shadow-md);
+  transition: transform 140ms ease;
+}
+
+.home-task-item:hover {
+  transform: translateY(-1px);
+}
+
+.home-task-item--overdue {
+  border-left-color: var(--accent-coral);
+}
+
+.home-task-item--soon {
+  border-left-color: var(--accent-gold);
+}
+
+.home-task-item--shared {
+  border-left-color: var(--accent-mint);
+}
+
+.task-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  border: 2px solid rgba(148, 163, 184, 0.5);
+  background: transparent;
+  flex-shrink: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.task-checkbox:hover {
+  border-color: var(--accent-mint);
+  transform: none;
+}
+
+.task-checkbox--checked {
+  background: var(--accent-mint);
+  border-color: var(--accent-mint);
+}
+
+.home-task-item__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.home-task-item__title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-task-item__subtitle {
+  font-size: 0.82rem;
+}
+
+/* ── New chip variants ───────────────────────────────────── */
+
+.chip.overdue {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.chip.soon {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.chip.shared {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* ── Calendar events ─────────────────────────────────────── */
+
+.calendar-events-scroll {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.25rem;
+}
+
+.calendar-events-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.calendar-event-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  min-width: 8.5rem;
+  flex-shrink: 0;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow-md);
+}
+
+.calendar-date-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
+
+.calendar-date-day {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+
+.calendar-date-month {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-orchid);
+}
+
+.calendar-event-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.calendar-event-title {
+  font-weight: 600;
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.calendar-event-meta {
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+/* ── Icon nav overrides ──────────────────────────────────── */
+
+.app-nav a {
+  flex-direction: column;
+  gap: 0.22rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.01em;
+}
+
+.app-nav a svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex-shrink: 0;
 }

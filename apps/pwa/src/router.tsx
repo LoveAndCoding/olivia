@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
 import { AppLayout } from './components/layout';
 import { AddPage } from './routes/add-page';
+import { HomePage } from './routes/home-page';
 import { ItemDetailPage } from './routes/item-detail-page';
 import { ReEntryPage } from './routes/re-entry-page';
 import { ReviewPage } from './routes/review-page';
@@ -14,6 +15,7 @@ const rootRoute = createRootRoute({
   )
 });
 
+const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/home', component: HomePage });
 const reviewRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: ReviewPage });
 const addRoute = createRoute({ getParentRoute: () => rootRoute, path: '/add', component: AddPage });
 const itemRoute = createRoute({ getParentRoute: () => rootRoute, path: '/items/$itemId', component: ItemDetailPage });
@@ -25,7 +27,7 @@ const reEntryRoute = createRoute({
 });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage });
 
-const routeTree = rootRoute.addChildren([reviewRoute, addRoute, itemRoute, reEntryRoute, settingsRoute]);
+const routeTree = rootRoute.addChildren([homeRoute, reviewRoute, addRoute, itemRoute, reEntryRoute, settingsRoute]);
 
 export const router = createRouter({ routeTree });
 

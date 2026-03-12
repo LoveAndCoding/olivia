@@ -5,6 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { clientDb } from '../lib/client-db';
 import { useRole } from '../lib/role';
 import { flushOutbox } from '../lib/sync';
+import { AvatarGroup } from './avatar-group';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { role, setRole } = useRole();
@@ -45,33 +46,52 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <header className="app-header accent-header">
-        <div className="stack-sm">
-          <p className="eyebrow">Olivia</p>
-          <div className="stack-sm">
-            <h1>Shared household inbox</h1>
-            <p className="muted hero-supporting-text">
-              Calm review, clear ownership, and advisory-only follow-through for household logistics.
-            </p>
-            <div className="hero-tag-row">
-              <span className="hero-tag">Mobile-first review</span>
-              <span className="hero-tag">Quick capture</span>
-              <span className="hero-tag">Shared visibility</span>
-            </div>
-          </div>
+        <span className="olivia-brand">olivia</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <AvatarGroup avatars={[{ initial: 'J', colorIndex: 0 }, { initial: 'A', colorIndex: 1 }]} />
+          <label className="role-switcher stack-sm">
+            <span className="field-label">Role</span>
+            <select value={role} onChange={(event) => setRole(event.target.value as typeof role)} aria-label="Active role">
+              <option value="stakeholder">Stakeholder</option>
+              <option value="spouse">Spouse</option>
+            </select>
+          </label>
         </div>
-        <label className="role-switcher stack-sm">
-          <span className="field-label">Active role</span>
-          <select value={role} onChange={(event) => setRole(event.target.value as typeof role)} aria-label="Active role">
-            <option value="stakeholder">Stakeholder</option>
-            <option value="spouse">Spouse</option>
-          </select>
-        </label>
       </header>
 
       <nav className="app-nav accent-nav">
-        <Link to="/" activeProps={{ className: 'active' }}>Review</Link>
-        {role === 'stakeholder' ? <Link to="/add" activeProps={{ className: 'active' }}>Add item</Link> : null}
-        <Link to="/settings" activeProps={{ className: 'active' }}>Settings</Link>
+        <Link to="/home" activeProps={{ className: 'active' }} aria-label="Home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
+            <path d="M9 21V12h6v9" />
+          </svg>
+          <span>Home</span>
+        </Link>
+        {role === 'stakeholder' ? (
+          <Link to="/add" activeProps={{ className: 'active' }} aria-label="Tasks">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+            <span>Tasks</span>
+          </Link>
+        ) : null}
+        <Link to="/" activeProps={{ className: 'active' }} aria-label="Olivia" title="Review inbox">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z" />
+            <path d="M5 16l.75 2.25L8 19l-2.25.75L5 22l-.75-2.25L2 19l2.25-.75L5 16z" />
+          </svg>
+          <span>Olivia</span>
+        </Link>
+        <Link to="/settings" activeProps={{ className: 'active' }} aria-label="Memory">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="2" y="7" width="20" height="14" rx="2" />
+            <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+            <line x1="12" y1="12" x2="12" y2="16" />
+            <line x1="10" y1="14" x2="14" y2="14" />
+          </svg>
+          <span>Memory</span>
+        </Link>
       </nav>
 
       <section className="status-bar accent-status">
