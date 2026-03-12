@@ -6,6 +6,10 @@ import { ApiError, confirmCreate, confirmUpdate, fetchInboxView, fetchItemDetail
 const isOffline = () => !window.navigator.onLine;
 let inFlightFlush: Promise<void> | null = null;
 
+function shouldUseOfflineFallback(error: unknown) {
+  return !(error instanceof ApiError);
+}
+
 async function persistAndReturnView(role: ActorRole, view: 'active' | 'all'): Promise<InboxViewResponse> {
   const response = await fetchInboxView(role);
   await cacheInboxView(response);
@@ -55,17 +59,31 @@ export async function loadItemDetail(role: ActorRole, itemId: string): Promise<I
 }
 
 export async function previewCreateCommand(role: ActorRole, inputText?: string, structuredInput?: Partial<StructuredInput>): Promise<PreviewCreateResponse> {
-  if (!isOffline()) return previewCreate(role, inputText, structuredInput);
+  if (!isOffline()) {
+    try {
+      return await previewCreate(role, inputText, structuredInput);
+    } catch (error) {
+      if (!shouldUseOfflineFallback(error)) {
+        throw error;
+      }
+    }
+  }
   const parsed = createDraft({ inputText, structuredInput });
   return { draftId: crypto.randomUUID(), parsedItem: parsed.draft, parseConfidence: parsed.parseConfidence, ambiguities: parsed.ambiguities, parserSource: parsed.parserSource, requiresConfirmation: true };
 }
 
 export async function confirmCreateCommand(role: ActorRole, finalItem: DraftItem, draftId?: string): Promise<InboxItem> {
   if (!isOffline()) {
-    const response = await confirmCreate(role, finalItem, draftId);
-    await cacheItem(response.savedItem);
-    await setMeta('last-sync-at', new Date().toISOString());
-    return response.savedItem;
+    try {
+      const response = await confirmCreate(role, finalItem, draftId);
+      await cacheItem(response.savedItem);
+      await setMeta('last-sync-at', new Date().toISOString());
+      return response.savedItem;
+    } catch (error) {
+      if (!shouldUseOfflineFallback(error)) {
+        throw error;
+      }
+    }
   }
   const { item } = createInboxItem(finalItem);
   const pendingItem = { ...item, pendingSync: true };
@@ -76,7 +94,15 @@ export async function confirmCreateCommand(role: ActorRole, finalItem: DraftItem
 }
 
 export async function previewUpdateCommand(role: ActorRole, itemId: string, expectedVersion: number, proposedChange: UpdateChange): Promise<PreviewUpdateResponse> {
-  if (!isOffline()) return previewUpdate(role, itemId, expectedVersion, proposedChange);
+  if (!isOffline()) {
+    try {
+      return await previewUpdate(role, itemId, expectedVersion, proposedChange);
+    } catch (error) {
+      if (!shouldUseOfflineFallback(error)) {
+        throw error;
+      }
+    }
+  }
   const item = await clientDb.items.get(itemId);
   if (!item) throw new Error('Item is not available offline.');
   const { updatedItem } = applyUpdate(item, proposedChange);
@@ -85,10 +111,16 @@ export async function previewUpdateCommand(role: ActorRole, itemId: string, expe
 
 export async function confirmUpdateCommand(role: ActorRole, itemId: string, expectedVersion: number, proposedChange?: UpdateChange, draftId?: string): Promise<InboxItem> {
   if (!isOffline()) {
-    const response = await confirmUpdate(role, itemId, expectedVersion, proposedChange, draftId);
-    await cacheItem(response.savedItem);
-    await setMeta('last-sync-at', new Date().toISOString());
-    return response.savedItem;
+    try {
+      const response = await confirmUpdate(role, itemId, expectedVersion, proposedChange, draftId);
+      await cacheItem(response.savedItem);
+      await setMeta('last-sync-at', new Date().toISOString());
+      return response.savedItem;
+    } catch (error) {
+      if (!shouldUseOfflineFallback(error)) {
+        throw error;
+      }
+    }
   }
   if (!proposedChange) throw new Error('Offline updates must include the proposed change.');
   const item = await clientDb.items.get(itemId);
@@ -124,7 +156,6 @@ async function flushOutboxOnce() {
 }
 
 export async function flushOutbox() {
-  if (isOffline()) return;
   if (!inFlightFlush) {
     // React StrictMode and route reloads can trigger multiple sync attempts at once.
     inFlightFlush = flushOutboxOnce().finally(() => {
