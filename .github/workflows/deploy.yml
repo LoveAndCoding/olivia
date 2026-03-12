@@ -6,8 +6,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  API_IMAGE: ghcr.io/${{ github.repository_owner }}/olivia-api
-  PWA_IMAGE: ghcr.io/${{ github.repository_owner }}/olivia-pwa
 
 jobs:
   test:
@@ -43,6 +41,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set lowercase image names
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "API_IMAGE=ghcr.io/${OWNER}/olivia-api" >> $GITHUB_ENV
+          echo "PWA_IMAGE=ghcr.io/${OWNER}/olivia-pwa" >> $GITHUB_ENV
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -118,6 +122,7 @@ jobs:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           ssh -i /tmp/ec2_key \
             -o StrictHostKeyChecking=no \
             -o ConnectTimeout=30 \
@@ -131,12 +136,12 @@ jobs:
               echo \${GHCR_TOKEN} | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
 
               # Pull SHA-tagged images so the deploy is reproducible.
-              docker pull ghcr.io/${GITHUB_REPOSITORY_OWNER}/olivia-api:${IMAGE_TAG}
-              docker pull ghcr.io/${GITHUB_REPOSITORY_OWNER}/olivia-pwa:${IMAGE_TAG}
+              docker pull ghcr.io/${OWNER_LC}/olivia-api:${IMAGE_TAG}
+              docker pull ghcr.io/${OWNER_LC}/olivia-pwa:${IMAGE_TAG}
 
               # Re-tag as latest so docker-compose.yml :latest reference picks them up.
-              docker tag ghcr.io/${GITHUB_REPOSITORY_OWNER}/olivia-api:${IMAGE_TAG} ghcr.io/${GITHUB_REPOSITORY_OWNER}/olivia-api:latest
-              docker tag ghcr.io/${GITHUB_REPOSITORY_OWNER}/olivia-pwa:${IMAGE_TAG} ghcr.io/${GITHUB_REPOSITORY_OWNER}/olivia-pwa:latest
+              docker tag ghcr.io/${OWNER_LC}/olivia-api:${IMAGE_TAG} ghcr.io/${OWNER_LC}/olivia-api:latest
+              docker tag ghcr.io/${OWNER_LC}/olivia-pwa:${IMAGE_TAG} ghcr.io/${OWNER_LC}/olivia-pwa:latest
 
               docker compose up -d --no-build --remove-orphans
 
