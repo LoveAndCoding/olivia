@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 4173",
     "build": "vite build",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "storybook": "storybook dev --port 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@olivia/contracts": "0.1.0",
@@ -19,5 +21,9 @@
     "react": "latest",
     "react-dom": "latest",
     "vite-plugin-pwa": "latest"
+  },
+  "devDependencies": {
+    "@storybook/react-vite": "^10.2.17",
+    "storybook": "^10.2.17"
   }
 }
