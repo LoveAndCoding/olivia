@@ -1,0 +1,5 @@
+{
+  "baseImage": "ghcr.io/cursor-images/node-22:latest",
+  "install": "npm ci",
+  "start": "npm run build -w @olivia/contracts && npm run build -w @olivia/domain"
+}
