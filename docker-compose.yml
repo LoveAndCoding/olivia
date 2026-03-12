@@ -1,0 +1,51 @@
+services:
+  api:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/olivia-api:latest
+    restart: unless-stopped
+    environment:
+      PORT: "3001"
+      OLIVIA_DB_PATH: /data/olivia.sqlite
+      OLIVIA_PWA_ORIGIN: "http://${EC2_TAILSCALE_HOST}"
+      OLIVIA_NOTIFICATIONS_ENABLED: "${OLIVIA_NOTIFICATIONS_ENABLED:-false}"
+      OLIVIA_VAPID_PUBLIC_KEY: "${OLIVIA_VAPID_PUBLIC_KEY:-}"
+      OLIVIA_VAPID_PRIVATE_KEY: "${OLIVIA_VAPID_PRIVATE_KEY:-}"
+      OLIVIA_VAPID_CONTACT: "${OLIVIA_VAPID_CONTACT:-mailto:admin@localhost}"
+      OLIVIA_STALE_THRESHOLD_DAYS: "${OLIVIA_STALE_THRESHOLD_DAYS:-14}"
+      OLIVIA_DUE_SOON_DAYS: "${OLIVIA_DUE_SOON_DAYS:-7}"
+      OLIVIA_NOTIFY_DUE_SOON: "${OLIVIA_NOTIFY_DUE_SOON:-false}"
+      OLIVIA_NOTIFY_STALE_ITEM: "${OLIVIA_NOTIFY_STALE_ITEM:-false}"
+      OLIVIA_NOTIFY_DIGEST: "${OLIVIA_NOTIFY_DIGEST:-false}"
+      OLIVIA_NOTIFICATION_INTERVAL_MS: "${OLIVIA_NOTIFICATION_INTERVAL_MS:-3600000}"
+    volumes:
+      # SQLite database persisted on the host across deploys and restarts.
+      - olivia-data:/data
+    networks:
+      - olivia-internal
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  pwa:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/olivia-pwa:latest
+    restart: unless-stopped
+    ports:
+      # Expose only on the Tailscale interface.
+      # The EC2 security group should NOT open port 80 to 0.0.0.0/0 —
+      # access is controlled entirely by Tailscale.
+      - "80:80"
+    networks:
+      - olivia-internal
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  olivia-data:
+    driver: local
+
+networks:
+  olivia-internal:
+    driver: bridge
