@@ -1,4 +1,6 @@
-import { generateVAPIDKeys, sendNotification, setVapidDetails, type PushSubscription as WebPushSubscription } from 'web-push';
+import webPush from 'web-push';
+import type { PushSubscription as WebPushSubscription } from 'web-push';
+const { generateVAPIDKeys, sendNotification, setVapidDetails } = webPush;
 
 export type PushSubscriptionPayload = {
   endpoint: string;
