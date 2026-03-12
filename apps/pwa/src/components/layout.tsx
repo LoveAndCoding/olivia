@@ -21,8 +21,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
     };
     void syncNow();
     const handleOnline = () => void syncNow();
+    const retryIntervalId = window.setInterval(() => void syncNow(), 5_000);
     window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.clearInterval(retryIntervalId);
+    };
   }, [queryClient]);
 
   useEffect(() => {
