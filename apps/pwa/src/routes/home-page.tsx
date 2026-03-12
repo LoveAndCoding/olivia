@@ -31,45 +31,50 @@ export function HomePage() {
   }
 
   return (
-    <div className="stack-lg">
-      <Greeting name="Jamie" taskCount={3} />
+    <div className="home-page">
+      <div className="ambient ambient-1" aria-hidden="true" />
+      <div className="ambient ambient-2" aria-hidden="true" />
+      <div className="ambient ambient-3" aria-hidden="true" />
+      <div className="stack-lg">
+        <Greeting name="Jamie" taskCount={3} />
 
-      {!dismissed && (
-        <OliviaNoticedCard
-          message="The plumber hasn't replied in 3 days. Want me to draft a follow-up for you?"
-          onAccept={() => setDismissed(true)}
-          onDismiss={() => setDismissed(true)}
-        />
-      )}
+        {!dismissed && (
+          <OliviaNoticedCard
+            message="The plumber hasn't replied in 3 days. Want me to draft a follow-up for you?"
+            onAccept={() => setDismissed(true)}
+            onDismiss={() => setDismissed(true)}
+          />
+        )}
 
-      <div className="stack-md">
-        <SectionHeader title="Needs doing" linkLabel="All tasks →" href="/" />
-        <div role="list" className="stack-sm">
-          {DEMO_TASKS.map((task) => (
-            <HomeTaskItem
-              key={task.id}
-              title={task.title}
-              subtitle={task.subtitle}
-              status={task.status}
-              checked={checkedIds.has(task.id)}
-              onToggle={() => toggleCheck(task.id)}
-            />
-          ))}
+        <div className="stack-md">
+          <SectionHeader title="Needs doing" linkLabel="All tasks →" href="/" />
+          <div role="list" className="stack-sm">
+            {DEMO_TASKS.map((task) => (
+              <HomeTaskItem
+                key={task.id}
+                title={task.title}
+                subtitle={task.subtitle}
+                status={task.status}
+                checked={checkedIds.has(task.id)}
+                onToggle={() => toggleCheck(task.id)}
+              />
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="stack-md">
-        <SectionHeader title="Coming up" />
-        <div className="calendar-events-scroll" role="list" aria-label="Upcoming events">
-          {DEMO_EVENTS.map((event, i) => (
-            <CalendarEventCard
-              key={i}
-              date={event.date}
-              title={event.title}
-              time={event.time}
-              location={event.location}
-            />
-          ))}
+        <div className="stack-md">
+          <SectionHeader title="Coming up" />
+          <div className="calendar-events-scroll" role="list" aria-label="Upcoming events">
+            {DEMO_EVENTS.map((event, i) => (
+              <CalendarEventCard
+                key={i}
+                date={event.date}
+                title={event.title}
+                time={event.time}
+                location={event.location}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>
