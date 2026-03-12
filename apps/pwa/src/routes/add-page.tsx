@@ -57,7 +57,7 @@ export function AddPage() {
 
   return (
     <div className="stack-lg">
-      <section className="card hero-card stack-md">
+      <section className="card hero-card accent-capture stack-md">
         <div className="section-header">
           <div className="stack-sm">
             <p className="eyebrow">Capture</p>
@@ -107,7 +107,7 @@ export function AddPage() {
         {error ? <p className="error-text">{error}</p> : null}
       </section>
 
-      <section className="card stack-md">
+      <section className="card accent-guidance stack-md">
         <div className="section-header">
           <div className="stack-sm">
             <p className="eyebrow">Guidance</p>
@@ -123,7 +123,7 @@ export function AddPage() {
       </section>
 
       {preview ? (
-        <section className="card stack-md">
+        <section className="card accent-confirm stack-md">
           <div className="section-header">
             <div className="stack-sm">
               <p className="eyebrow">Review</p>

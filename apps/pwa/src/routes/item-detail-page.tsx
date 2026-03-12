@@ -64,7 +64,7 @@ export function ItemDetailPage() {
 
   return (
     <div className="stack-lg">
-      <section className="card hero-card stack-md">
+      <section className="card hero-card accent-detail stack-md">
         <div className="section-header">
           <div className="stack-sm">
             <p className="eyebrow">Item detail</p>
@@ -84,7 +84,7 @@ export function ItemDetailPage() {
       </section>
 
       {role === 'stakeholder' ? (
-        <section className="card stack-md">
+        <section className="card accent-update stack-md">
           <div className="section-header">
             <div className="stack-sm">
               <p className="eyebrow">Update</p>
@@ -129,7 +129,7 @@ export function ItemDetailPage() {
         </section>
       ) : <section className="card">Spouse mode reuses the same detail view but intentionally hides write controls.</section>}
 
-      <section className="card stack-md">
+      <section className="card accent-history stack-md">
         <div className="section-header">
           <div className="stack-sm">
             <p className="eyebrow">History</p>

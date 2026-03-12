@@ -44,7 +44,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
+      <header className="app-header accent-header">
         <div className="stack-sm">
           <p className="eyebrow">Olivia</p>
           <div className="stack-sm">
@@ -52,6 +52,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <p className="muted hero-supporting-text">
               Calm review, clear ownership, and advisory-only follow-through for household logistics.
             </p>
+            <div className="hero-tag-row">
+              <span className="hero-tag">Mobile-first review</span>
+              <span className="hero-tag">Quick capture</span>
+              <span className="hero-tag">Shared visibility</span>
+            </div>
           </div>
         </div>
         <label className="role-switcher stack-sm">
@@ -63,13 +68,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </label>
       </header>
 
-      <nav className="app-nav">
+      <nav className="app-nav accent-nav">
         <Link to="/" activeProps={{ className: 'active' }}>Review</Link>
         {role === 'stakeholder' ? <Link to="/add" activeProps={{ className: 'active' }}>Add item</Link> : null}
         <Link to="/settings" activeProps={{ className: 'active' }}>Settings</Link>
       </nav>
 
-      <section className="status-bar">
+      <section className="status-bar accent-status">
         {statusItems.map((item) => (
           <div key={item.label} className="status-pill">
             <span className="status-label">{item.label}</span>

@@ -53,7 +53,7 @@ export function ReviewPage() {
 
   return (
     <div className="stack-lg">
-      <section className="card hero-card stack-md">
+      <section className="card hero-card accent-review stack-md">
         <div className="section-header">
           <div className="stack-sm">
             <p className="eyebrow">Review</p>
@@ -75,6 +75,13 @@ export function ReviewPage() {
             ))}
           </div>
         ) : null}
+
+        <div className="quick-actions">
+          {role === 'stakeholder' ? <Link to="/add" className="primary-button quick-action-primary">Quick capture</Link> : null}
+          <button type="button" className="secondary-button quick-action-secondary" onClick={() => setView((current) => current === 'active' ? 'all' : 'active')}>
+            {view === 'active' ? 'Show all items' : 'Return to active'}
+          </button>
+        </div>
 
         <div className="toolbar-row">
           <label className="stack-sm">
@@ -100,7 +107,7 @@ export function ReviewPage() {
         <>
           {inboxQuery.data.source === 'cache' ? <section className="card warning-card">Showing last-known cached state while the API is unreachable.</section> : null}
 
-          <section className="card stack-md">
+          <section className="card accent-suggestions stack-md">
             <div className="section-header">
               <div className="stack-sm">
                 <p className="eyebrow">Suggestions</p>
@@ -120,19 +127,19 @@ export function ReviewPage() {
             </div>
           </section>
 
-          <StatusGroup title="Open" items={groups?.open ?? []} />
-          <StatusGroup title="In progress" items={groups?.inProgress ?? []} />
-          {view === 'all' ? <StatusGroup title="Deferred" items={groups?.deferred ?? []} /> : null}
-          {view === 'all' ? <StatusGroup title="Done" items={groups?.done ?? []} /> : null}
+          <StatusGroup title="Open" items={groups?.open ?? []} tone="accent-open" />
+          <StatusGroup title="In progress" items={groups?.inProgress ?? []} tone="accent-progress" />
+          {view === 'all' ? <StatusGroup title="Deferred" items={groups?.deferred ?? []} tone="accent-deferred" /> : null}
+          {view === 'all' ? <StatusGroup title="Done" items={groups?.done ?? []} tone="accent-done" /> : null}
         </>
       ) : null}
     </div>
   );
 }
 
-function StatusGroup({ title, items }: { title: string; items: InboxItem[] }) {
+function StatusGroup({ title, items, tone }: { title: string; items: InboxItem[]; tone: string }) {
   return (
-    <section className="card stack-md">
+    <section className={`card stack-md ${tone}`}>
       <div className="section-header">
         <div className="stack-sm">
           <p className="eyebrow">Status</p>
