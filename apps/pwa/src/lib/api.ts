@@ -15,7 +15,48 @@ import {
   type UpdateChange
 } from '@olivia/contracts';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3001';
+const DEFAULT_API_BASE_URL = 'http://127.0.0.1:3001';
+
+function normalizeBasePath(basePath: string): string {
+  const trimmedBasePath = basePath.trim();
+  if (!trimmedBasePath || trimmedBasePath === '/') {
+    return '';
+  }
+
+  return `/${trimmedBasePath.replace(/^\/+|\/+$/g, '')}`;
+}
+
+function stripDuplicatePrefix(pathname: string, basePath: string): string {
+  if (!basePath) {
+    return pathname;
+  }
+
+  if (pathname === basePath) {
+    return '';
+  }
+
+  if (pathname.startsWith(`${basePath}/`)) {
+    return pathname.slice(basePath.length);
+  }
+
+  return pathname;
+}
+
+export function resolveApiUrl(path: string, baseUrl = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL): string {
+  const requestUrl = new URL(path.startsWith('/') ? path : `/${path}`, 'http://olivia.local');
+
+  if (/^https?:\/\//i.test(baseUrl)) {
+    const resolvedBaseUrl = new URL(baseUrl);
+    const basePath = normalizeBasePath(resolvedBaseUrl.pathname);
+    resolvedBaseUrl.pathname = `${basePath}${stripDuplicatePrefix(requestUrl.pathname, basePath)}` || '/';
+    resolvedBaseUrl.search = requestUrl.search;
+    resolvedBaseUrl.hash = requestUrl.hash;
+    return resolvedBaseUrl.toString();
+  }
+
+  const basePath = normalizeBasePath(baseUrl);
+  return `${basePath}${stripDuplicatePrefix(requestUrl.pathname, basePath)}${requestUrl.search}${requestUrl.hash}` || '/';
+}
 
 export class ApiError extends Error {
   constructor(message: string, public readonly statusCode: number, public readonly payload: unknown) {
@@ -24,7 +65,7 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(resolveApiUrl(path), {
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     ...init
   });
