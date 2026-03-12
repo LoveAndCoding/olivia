@@ -83,20 +83,25 @@ export function ReviewPage() {
           </button>
         </div>
 
-        <div className="toolbar-row">
-          <label className="stack-sm">
-            <span className="field-label">View</span>
-            <select value={view} onChange={(event) => setView(event.target.value as 'active' | 'all')}>
-              <option value="active">Active</option>
-              <option value="all">All items</option>
-            </select>
-          </label>
-          <label className="stack-sm">
-            <span className="field-label">Owner filter</span>
-            <select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value as Owner | 'all')}>
-              {ownerOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </label>
+        <div className="stack-sm">
+          <span className="field-label">View</span>
+          <div className="filter-tabs">
+            {(['active', 'all'] as const).map((v) => (
+              <button key={v} type="button" className={`filter-tab${view === v ? ' active' : ''}`} onClick={() => setView(v)}>
+                {v === 'active' ? 'Active' : 'All items'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="stack-sm">
+          <span className="field-label">Owner</span>
+          <div className="filter-tabs">
+            {ownerOptions.map((option) => (
+              <button key={option} type="button" className={`filter-tab${ownerFilter === option ? ' active' : ''}`} onClick={() => setOwnerFilter(option)}>
+                {option}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -151,8 +156,15 @@ function StatusGroup({ title, items, tone }: { title: string; items: InboxItem[]
       <div className="item-grid">
         {items.map((item) => {
           const flags = computeFlags(item);
+          const flagClass = item.status === 'done'
+            ? 'flag-done'
+            : flags.overdue
+              ? 'flag-overdue'
+              : flags.dueSoon
+                ? 'flag-due-soon'
+                : null;
           return (
-            <Link key={item.id} to="/items/$itemId" params={{ itemId: item.id }} className="item-card">
+            <Link key={item.id} to="/items/$itemId" params={{ itemId: item.id }} className={`item-card${flagClass ? ` ${flagClass}` : ''}`}>
               <div className="item-card-header">
                 <div className="stack-sm">
                   <span className="eyebrow">Inbox item</span>
