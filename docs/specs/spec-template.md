@@ -50,7 +50,9 @@ Keep the spec lean. Use short bullets and plain language. Sections may be omitte
 
 ## Permissions And Trust Model
 - Does this feature remain advisory-only?
-- What explicit approvals are required?
+- Which actions are agentic (Olivia proposes → user confirms before execution)?
+- Which actions are user-initiated (user commands directly → executes immediately for non-destructive changes)?
+- Which actions are destructive (always confirm regardless of initiator)?
 - What should Olivia never do automatically in this workflow?
 
 ## AI Role

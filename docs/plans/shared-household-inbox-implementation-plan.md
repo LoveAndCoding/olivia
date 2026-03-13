@@ -97,7 +97,9 @@ These defaults are intentionally specific so a junior engineer or simple impleme
 ## Do Not Decide In Implementation
 - Do not add spouse write capability, even if it seems simpler than enforcing read-only behavior.
 - Do not introduce a first-class reminder entity, recurring schedule model, or calendar integration.
-- Do not turn preview actions into writes or skip confirmation steps for any consequential change.
+- Do not require a preview → confirm UI for direct user commands; that flow is reserved for agentic suggestion acceptance and destructive actions (D-010).
+- Do not skip confirmation for agentic actions — anything Olivia surfaces as a suggestion must still go through an explicit confirm before writing.
+- Do not skip confirmation for destructive actions (archive, delete) regardless of whether the user or Olivia initiated them.
 - Do not hard-code the stale threshold as an untouchable constant; implement it as a defaulted setting.
 - Do not auto-enable every candidate notification rule; keep rule activation configurable.
 - Do not build generalized auth, role management, or remote-access infrastructure beyond the bounded prototype seam.
@@ -181,6 +183,8 @@ These defaults are intentionally specific so a junior engineer or simple impleme
 **Notes**
 - This step encodes the trust model directly in the server boundary.
 - The spouse read-only path should succeed for queries and fail clearly for writes.
+- The confirm endpoints (`confirm-create`, `confirm-update`) accept `finalItem`/`proposedChange` directly and do not require a prior preview call. The `draftId` field is optional. This means the server already supports direct user-initiated writes without a preview round-trip. No additional endpoints are needed to support D-010.
+- The preview endpoints remain available for agentic suggestion flows, where the client presents the proposed change to the user before confirming.
 
 ### Step 4: Implement explicit versioned sync plus browser-local cache and outbox
 **Outcome:** The PWA remains useful offline and can reconcile with the canonical household store using a legible sync model.
@@ -217,15 +221,18 @@ These defaults are intentionally specific so a junior engineer or simple impleme
   - minimal settings for installability, notifications, and role context
 - Build the stakeholder capture flow:
   - freeform text input
-  - parsed draft preview
-  - quick correction UI
-  - one-tap confirm
+  - parsed draft preview for AI-assisted capture (agentic path — show parsed result and wait for confirm)
+  - structured field entry for direct user input (user action path — submit immediately)
+  - quick correction UI when AI parse confidence is low
 - Build the review flow:
   - grouped sections for open, in-progress, deferred
   - owner filter
   - due-soon and overdue emphasis
   - one or two prioritized suggestions at most
-- Build update flows for status, owner, due date, and notes with explicit confirmation UI before submit.
+- Build update flows for status, owner, due date, and notes per D-010:
+  - user-initiated changes (user taps a control and acts directly) execute immediately without a confirmation step
+  - agentic suggestion acceptance (user taps to accept a suggestion Olivia raised) presents the proposed change and requires one explicit confirm before applying
+  - archive and hard delete always present a confirmation dialog regardless of initiator
 - Build the spouse read-only experience using the same query model but without write controls or write-capable routes.
 - Ensure installability, mobile layout, and offline/open-from-notification behavior are treated as first-class UX requirements.
 - Use `Appendix E: Route And Screen Checklists` as the default definition of what each route must contain before calling the route complete.
@@ -233,6 +240,7 @@ These defaults are intentionally specific so a junior engineer or simple impleme
 **Notes**
 - The PWA should feel like a calm household tool, not a chat transcript or a noisy task manager.
 - Do not surface the entire inbox unprompted on unrelated entry points.
+- The distinction between user actions and agentic actions is a client-side concern. The server does not need to know which path was used; the confirm endpoints work for both. The preview endpoints are still useful for the agentic path to show the parsed or proposed result before confirming.
 
 ### Step 6: Add the narrow AI adapter and non-AI fallback paths
 **Outcome:** AI improves capture and summary readability without becoming required for correctness or the source of truth.

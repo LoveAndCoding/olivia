@@ -85,16 +85,17 @@ If this feature works well:
 3. **Olivia** presents a structured summary grouped by status (open, in-progress, deferred) and optionally filtered by owner or due date proximity.
 4. **Olivia** flags items that appear to need attention (overdue, stale, unassigned) and suggests next steps in advisory language.
 5. **User** optionally acts on a suggestion (e.g., "Mark HVAC service as in-progress", "Assign electrician call to spouse").
-6. **Olivia** presents the proposed change for confirmation.
+6. **Olivia** presents the proposed change for confirmation, since this is an agentic suggestion — Olivia proposed it, not the user.
 7. **User** confirms.
 8. **System** updates the item.
 
 **Secondary workflow: Updating an existing item**
 
 1. **User** references an existing item and states the update (e.g., "Mark the HVAC appointment as done" or "Change the electrician call due date to next Friday").
-2. **Olivia** identifies the item and presents the proposed change.
-3. **User** confirms.
-4. **System** updates the item and confirms.
+2. **Olivia** identifies the item and applies the change immediately, since this is a direct user command.
+3. **System** updates the item and confirms.
+
+Note: no confirmation step is required for non-destructive user-initiated updates. The change is reversible through the normal UI. If the user is acting on an Olivia-proposed suggestion rather than their own direct command, step 2 presents the change for confirmation before applying it.
 
 **Secondary workflow: Spouse read-only view**
 
@@ -122,12 +123,17 @@ If this feature works well:
 - "You have 4 unassigned items. Would you like to assign owners?"
 - "Nothing is marked in-progress. Should any of these open items move forward now?"
 
-### Actions proposed (always require explicit user approval)
-- Saving a new item to the inbox
-- Updating item status
-- Reassigning item ownership
-- Marking an item as deferred or done
-- Archiving or removing an item
+### Actions and approval requirements
+
+| Action | Initiated by user directly | Initiated by Olivia (agentic) |
+|---|---|---|
+| Adding a new item | Execute immediately | Confirm before save |
+| Updating item status | Execute immediately | Confirm before apply |
+| Reassigning item ownership | Execute immediately | Confirm before apply |
+| Marking an item as deferred or done | Execute immediately | Confirm before apply |
+| Archiving or removing an item | Always confirm — destructive | Always confirm — destructive |
+
+Non-destructive user-initiated actions do not require a confirmation step. All such actions can be reversed through the normal UI (status changed again, owner reassigned, etc.). Agentic actions — anything Olivia proposes on its own judgment — always require explicit user confirmation before execution.
 
 ---
 
@@ -153,20 +159,23 @@ If this feature works well:
 
 This feature remains **advisory-only** throughout.
 
-| Action | Requires Approval? | Notes |
+| Action | User-initiated | Agentic (Olivia-proposed) |
 |---|---|---|
-| Adding a new item | Yes — user must confirm parsed item before save | Olivia presents the item; user approves |
-| Updating item status | Yes — user must confirm each change | No automatic status transitions |
-| Reassigning ownership | Yes — user must confirm | Olivia may suggest but never reassigns automatically |
-| Marking items done | Yes — user must confirm | Even if Olivia detects an item may be stale |
-| Displaying inbox summary | No — read-only retrieval | Olivia may show the inbox on request without approval |
-| Archiving or removing items | Yes — user must confirm | Hard to reverse; always requires explicit approval |
+| Adding a new item | Execute immediately | Confirm before save |
+| Updating item status | Execute immediately | Confirm before apply |
+| Reassigning ownership | Execute immediately | Confirm before apply |
+| Marking items done | Execute immediately | Confirm before apply |
+| Displaying inbox summary | No approval needed — read-only | No approval needed — read-only |
+| Archiving or removing items | Always confirm — destructive | Always confirm — destructive |
 | Sending notifications to spouse | Not in scope for this spec | Deferred; would require approval when introduced |
 
+Non-destructive user-initiated actions execute immediately. All such changes can be reversed through the normal UI. Agentic actions — anything Olivia proposes on its own judgment — require explicit user confirmation before execution. Destructive actions always require confirmation regardless of who initiated them.
+
 Olivia must never:
-- Automatically update any item without explicit user confirmation.
+- Execute an agentic action (Olivia-proposed) without explicit user confirmation.
 - Infer that a task is "done" and update its status based on a user comment without explicit confirmation.
 - Send any household data to an external channel or service automatically.
+- Treat a destructive action as immediate regardless of whether the user or Olivia initiated it.
 
 No advisory exceptions apply to this spec.
 
@@ -244,7 +253,7 @@ No advisory exceptions apply to this spec.
 
 3. **Given** a user asks for the current inbox (e.g., "what's open?"), **when** Olivia responds, **then** all open and in-progress items are listed with title, owner, and due date if present, grouped by status.
 
-4. **Given** a user requests a status update on an item (e.g., "mark HVAC as done"), **when** Olivia processes the request, **then** the proposed update is presented for confirmation before the item is modified.
+4. **Given** a user directly commands a status update on an item (e.g., "mark HVAC as done"), **when** Olivia processes the request, **then** the item is updated immediately without a confirmation step. **Given** Olivia proposes a status update on its own initiative, **when** the user acts on that suggestion, **then** the proposed change is presented for confirmation before the item is modified.
 
 5. **Given** an item has a due date that has passed and its status is still open, **when** Olivia generates an inbox summary, **then** that item is flagged as overdue in the summary output.
 
@@ -271,7 +280,9 @@ No advisory exceptions apply to this spec.
 **Integration-level (system behavior):**
 - Verify that an item added in one session is retrievable in a new session.
 - Verify that all item updates are persisted durably and reflected in the next summary view.
-- Verify that Olivia's advisory confirmation step is always presented before any write operation.
+- Verify that agentic actions (Olivia-proposed) always present a confirmation step before any write.
+- Verify that non-destructive user-initiated writes execute immediately without a confirmation step.
+- Verify that destructive actions (archive, delete) always present a confirmation step regardless of initiator.
 - Verify that the spouse read-only path cannot trigger write operations.
 
 **Household validation (manual observation required):**
@@ -283,7 +294,8 @@ No advisory exceptions apply to this spec.
 
 ## Dependencies And Related Learnings
 
-- **D-002**: Advisory-only trust model — all actions in this spec require user confirmation. This constraint shapes the full permissions section.
+- **D-002**: Advisory-only trust model — agentic actions and destructive actions require user confirmation. Non-destructive user-initiated actions execute immediately. This constraint shapes the full permissions section.
+- **D-010**: Non-destructive user-initiated actions execute immediately; agentic actions still require confirmation. This decision refines D-002 by distinguishing action source.
 - **D-004**: Primary-operator model — the stakeholder is the primary user; spouse is read-only in this spec. This shapes the target user and workflow sections.
 - **D-007**: MVP interface direction — implementation planning should target an installable mobile-first PWA as the canonical surface for this workflow, with notifications primarily serving the stakeholder.
 - **D-008**: Near-term system architecture direction — `docs/strategy/system-architecture.md` defines the current recommended runtime shape, persistence model, sync direction, and library-versus-custom boundary for implementing this workflow.

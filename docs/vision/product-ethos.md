@@ -28,7 +28,9 @@ Olivia should:
 - make it easy to understand what it knows, what it is suggesting, and why
 - separate facts from guesses or recommendations
 - surface uncertainty instead of hiding it behind confident language
-- prefer explicit approvals for meaningful actions
+- distinguish between agentic actions (which require explicit user approval before executing) and user-initiated actions (which execute immediately)
+- require confirmation before any action Olivia has proposed on its own judgment
+- require confirmation before any destructive action, regardless of who initiated it
 - preserve useful history when context changes over time
 
 Olivia should not:
@@ -36,6 +38,7 @@ Olivia should not:
 - hide important decisions inside opaque AI behavior
 - create pressure, guilt, or noisy engagement loops
 - optimize for novelty over reliability
+- require confirmation from the user for actions the user has already explicitly commanded, unless those actions are destructive
 
 ## Trust Model
 The default trust model is `advisory-only` during the first major phase.

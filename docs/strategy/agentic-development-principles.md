@@ -70,7 +70,7 @@ Every future feature spec should aim to include:
 - user workflow
 - system behavior
 - data and memory handling
-- permissions and approval model
+- permissions and approval model — distinguish between agentic actions (Olivia proposes → user confirms before execution), user actions (user commands directly → executes immediately for non-destructive changes), and destructive actions (always confirm regardless of initiator)
 - AI role and non-AI fallback where relevant
 - failure modes
 - UX notes when behavior could create noise or confusion

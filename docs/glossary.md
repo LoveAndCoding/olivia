@@ -6,7 +6,10 @@ This glossary defines stable project and product language so future docs, specs,
 ## Terms
 
 ### Action
-An operation Olivia could potentially take or propose within a workflow. In the current trust model, actions should usually be proposed or drafted rather than executed automatically.
+An operation Olivia could potentially take or propose within a workflow. Actions are classified as either agentic (Olivia-proposed) or user-initiated, and the trust model treats them differently.
+
+### Agentic Action
+An action Olivia proposes or suggests based on its own inference, rule evaluation, or pattern detection, without the user having explicitly commanded it. Agentic actions always require explicit user confirmation before execution.
 
 ### Advisory-Only
 A trust posture where Olivia may organize, suggest, summarize, draft, and highlight, but does not take consequential actions without explicit user approval.
@@ -70,6 +73,9 @@ The person providing product direction and decision authority for Olivia. In the
 
 ### Trust Model
 The set of rules defining what Olivia may do, what requires approval, and what the system must not do automatically.
+
+### User Action
+An action explicitly and directly commanded by the user. Non-destructive user actions execute immediately — no confirmation step is needed, since they can be reversed through the normal UI (e.g., status changed again, ownership reassigned). Destructive user actions (archive, permanent delete) always require explicit confirmation regardless of source.
 
 ### Workflow
 A concrete sequence of user and system interactions that delivers value around a specific household task or need.

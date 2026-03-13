@@ -98,6 +98,16 @@ Use this structure for future entries:
 - Status: active
 - Related docs: `docs/strategy/system-architecture.md`, `docs/strategy/interface-direction.md`, `docs/specs/shared-household-inbox.md`
 
+### D-010: Non-destructive user-initiated actions execute immediately; agentic actions still require confirmation
+- Date: 2026-03-13
+- Area: product behavior / trust model
+- Decision: Differentiate between agentic actions (Olivia-proposed) and user actions (directly commanded by the user). Agentic actions continue to require explicit user confirmation before execution. Non-destructive user actions execute immediately — reversibility is built into the normal UI rather than being a separate undo mechanism. Destructive actions (archive, permanent delete) always require confirmation regardless of whether they were user-initiated or suggested.
+- Rationale: The advisory-only trust model exists to prevent Olivia from acting on its own judgment without human approval. When the human is already expressing their own judgment through a direct command, the preview → confirm dance adds no meaningful protection and increases friction. Non-destructive actions are inherently reversible through normal UI interactions, so no special undo mechanism is needed. Destructive actions remain gated because they cannot be easily reversed.
+- Alternatives considered: Keeping the uniform confirm model for all writes. Removing all confirmation from user actions including destructive ones.
+- Trade-offs: More responsive for direct user commands; slightly more implementation complexity to distinguish action sources in the UI. Advisory protection is unchanged for agentic suggestions.
+- Status: active
+- Related docs: `docs/vision/product-ethos.md`, `docs/specs/shared-household-inbox.md`, `docs/glossary.md`
+
 ### D-009: The shared household inbox spec is approved for implementation planning
 - Date: 2026-03-09
 - Area: delivery planning
