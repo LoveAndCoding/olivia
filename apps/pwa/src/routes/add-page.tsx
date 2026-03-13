@@ -27,11 +27,7 @@ export function AddPage() {
     setBusy(true);
     setError(null);
     try {
-      const response = await previewCreateCommand(
-        role,
-        structuredMode ? undefined : inputText,
-        structuredMode ? { title: structuredTitle, owner: structuredOwner, dueText: structuredDueText || null, description: structuredDescription || null } : undefined
-      );
+      const response = await previewCreateCommand(role, inputText);
       setPreview(response);
     } catch (caughtError) {
       setError((caughtError as Error).message);
@@ -46,6 +42,29 @@ export function AddPage() {
     setError(null);
     try {
       const savedItem = await confirmCreateCommand(role, preview.parsedItem, preview.draftId);
+      await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
+      navigate({ to: '/items/$itemId', params: { itemId: savedItem.id } });
+    } catch (caughtError) {
+      setError((caughtError as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDirectCreate = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const id = crypto.randomUUID();
+      const savedItem = await confirmCreateCommand(role, {
+        id,
+        title: structuredTitle,
+        owner: structuredOwner,
+        status: 'open',
+        dueText: structuredDueText || null,
+        dueAt: null,
+        description: structuredDescription || null,
+      });
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
       navigate({ to: '/items/$itemId', params: { itemId: savedItem.id } });
     } catch (caughtError) {
@@ -101,8 +120,12 @@ export function AddPage() {
           </div>
         )}
         <div className="button-row">
-          <button type="button" className="primary-button" onClick={handlePreview} disabled={busy}>{busy ? 'Previewing…' : 'Preview item'}</button>
-          <span className="field-hint">Nothing is saved until you confirm the parsed item.</span>
+          {structuredMode ? (
+            <button type="button" className="primary-button" onClick={handleDirectCreate} disabled={busy}>{busy ? 'Adding…' : 'Add item'}</button>
+          ) : (
+            <button type="button" className="primary-button" onClick={handlePreview} disabled={busy}>{busy ? 'Previewing…' : 'Preview item'}</button>
+          )}
+          {!structuredMode && <span className="field-hint">Olivia will parse your input — review before saving.</span>}
         </div>
         {error ? <p className="error-text">{error}</p> : null}
       </section>
