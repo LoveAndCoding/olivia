@@ -1,16 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Owner } from '@olivia/contracts';
+import type { Owner, UpdateChange } from '@olivia/contracts';
 import { useRole } from '../lib/role';
-import { confirmUpdateCommand, loadItemDetail, previewUpdateCommand } from '../lib/sync';
+import { confirmUpdateCommand, loadItemDetail } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
-
-type UpdatePreviewState = {
-  draftId: string;
-  proposedChange: Parameters<typeof previewUpdateCommand>[3];
-  summary: string;
-};
 
 export function ItemDetailPage() {
   const params = useParams({ from: '/items/$itemId' });
@@ -23,31 +17,15 @@ export function ItemDetailPage() {
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [pendingPreview, setPendingPreview] = useState<UpdatePreviewState | null>(null);
 
   const itemQuery = useQuery({ queryKey: ['item-detail', role, params.itemId], queryFn: () => loadItemDetail(role, params.itemId) });
 
-  const previewChange = async (proposedChange: UpdatePreviewState['proposedChange'], summary: string) => {
+  const applyChange = async (proposedChange: UpdateChange) => {
     if (!itemQuery.data) return;
     setBusy(true);
     setError(null);
     try {
-      const response = await previewUpdateCommand(role, itemQuery.data.item.id, itemQuery.data.item.version, proposedChange);
-      setPendingPreview({ draftId: response.draftId, proposedChange, summary });
-    } catch (caughtError) {
-      setError((caughtError as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const confirmChange = async () => {
-    if (!itemQuery.data || !pendingPreview) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await confirmUpdateCommand(role, itemQuery.data.item.id, itemQuery.data.item.version, pendingPreview.proposedChange, navigator.onLine ? pendingPreview.draftId : undefined);
-      setPendingPreview(null);
+      await confirmUpdateCommand(role, itemQuery.data.item.id, itemQuery.data.item.version, proposedChange);
       setNote('');
       setDueText('');
       await queryClient.invalidateQueries({ queryKey: ['item-detail', role, params.itemId] });
@@ -122,9 +100,9 @@ export function ItemDetailPage() {
                     <div className="section-header">
                       <div className="stack-sm">
                         <span className="eyebrow">Update</span>
-                        <h3 className="card-title" style={{ fontSize: 18 }}>Preview a change</h3>
+                        <h3 className="card-title" style={{ fontSize: 18 }}>Update item</h3>
                       </div>
-                      <span className="section-note">Advisory-only — confirm before save</span>
+                      <span className="section-note">Changes apply immediately and can be reversed</span>
                     </div>
                     <div className="update-grid">
                       <div className="stack-sm">
@@ -135,8 +113,8 @@ export function ItemDetailPage() {
                           <option value="done">done</option>
                           <option value="deferred">deferred</option>
                         </select>
-                        <button type="button" className="secondary-button" onClick={() => previewChange({ status: statusValue }, `Change status to ${statusValue.replace('_', ' ')}`)}>
-                          Preview status change
+                        <button type="button" className="secondary-button" disabled={busy} onClick={() => void applyChange({ status: statusValue })}>
+                          Set status
                         </button>
                       </div>
                       <div className="stack-sm">
@@ -146,34 +124,25 @@ export function ItemDetailPage() {
                           <option value="spouse">Alexander (spouse)</option>
                           <option value="unassigned">unassigned</option>
                         </select>
-                        <button type="button" className="secondary-button" onClick={() => previewChange({ owner: ownerValue }, `Change owner to ${ownerValue}`)}>
-                          Preview owner change
+                        <button type="button" className="secondary-button" disabled={busy} onClick={() => void applyChange({ owner: ownerValue })}>
+                          Set owner
                         </button>
                       </div>
                       <div className="stack-sm">
                         <span className="field-label">Due text</span>
                         <input value={dueText} onChange={(e) => setDueText(e.target.value)} placeholder="next Friday" />
-                        <button type="button" className="secondary-button" onClick={() => previewChange({ dueText }, `Change due date`)}>
-                          Preview due date
+                        <button type="button" className="secondary-button" disabled={busy} onClick={() => void applyChange({ dueText })}>
+                          Update due date
                         </button>
                       </div>
                       <div className="stack-sm">
                         <span className="field-label">Add note</span>
                         <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Call the preferred vendor first" />
-                        <button type="button" className="secondary-button" onClick={() => previewChange({ note }, 'Append note')}>
-                          Preview note
+                        <button type="button" className="secondary-button" disabled={busy} onClick={() => void applyChange({ note })}>
+                          Save note
                         </button>
                       </div>
                     </div>
-                    {pendingPreview ? (
-                      <div className="confirm-panel stack-sm">
-                        <span className="field-label">Pending change</span>
-                        <p>{pendingPreview.summary}</p>
-                        <button type="button" className="primary-button" onClick={confirmChange} disabled={busy}>
-                          {busy ? 'Confirming…' : 'Confirm change'}
-                        </button>
-                      </div>
-                    ) : null}
                     {error ? <p className="error-text">{error}</p> : null}
                   </div>
                 ) : (
