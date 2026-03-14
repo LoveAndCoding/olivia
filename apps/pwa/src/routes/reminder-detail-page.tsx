@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReminderUpdateChange } from '@olivia/contracts';
-import { computeReminderState } from '@olivia/domain';
+import { computeReminderState, scheduleNextOccurrence } from '@olivia/domain';
 import { format } from 'date-fns';
 import { useRole } from '../lib/role';
 import {
@@ -221,14 +221,18 @@ export function ReminderDetailPage() {
                     </span>
                   </div>
                 )}
-                {isRecurring && !isCompleted && !isCancelled && (
-                  <div className="rem-detail-field">
-                    <span className="rem-detail-field-label">Next after done</span>
-                    <span className="rem-detail-field-value">
-                      {formatScheduledLabel(reminder.scheduledAt)} (auto-scheduled)
-                    </span>
-                  </div>
-                )}
+                {isRecurring && !isCompleted && !isCancelled && (() => {
+                  const next = scheduleNextOccurrence(reminder.scheduledAt, reminder.recurrenceCadence);
+                  if (!next) return null;
+                  return (
+                    <div className="rem-detail-field">
+                      <span className="rem-detail-field-label">Next after done</span>
+                      <span className="rem-detail-field-value">
+                        {formatScheduledLabel(next)} (auto-scheduled)
+                      </span>
+                    </div>
+                  );
+                })()}
                 <div className="rem-detail-field">
                   <span className="rem-detail-field-label">Owner</span>
                   <span className="rem-detail-field-value">
