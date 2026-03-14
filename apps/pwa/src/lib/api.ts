@@ -1,17 +1,41 @@
 import {
+  cancelReminderResponseSchema,
+  completeReminderResponseSchema,
+  confirmCreateReminderResponseSchema,
   itemDetailResponseSchema,
   inboxViewResponseSchema,
   previewCreateResponseSchema,
+  previewCreateReminderResponseSchema,
   previewUpdateResponseSchema,
+  previewUpdateReminderResponseSchema,
+  reminderDetailResponseSchema,
+  reminderSettingsResponseSchema,
+  reminderViewResponseSchema,
+  saveReminderNotificationPreferencesResponseSchema,
+  snoozeReminderResponseSchema,
   type ActorRole,
+  type CancelReminderResponse,
+  type CompleteReminderResponse,
   type ConfirmCreateResponse,
+  type ConfirmCreateReminderResponse,
   type ConfirmUpdateResponse,
+  type ConfirmUpdateReminderResponse,
   type DraftItem,
+  type DraftReminder,
   type ItemDetailResponse,
   type InboxViewResponse,
   type PreviewCreateResponse,
+  type PreviewCreateReminderResponse,
   type PreviewUpdateResponse,
+  type PreviewUpdateReminderResponse,
+  type ReminderDetailResponse,
+  type ReminderNotificationPreferencesInput,
+  type ReminderSettingsResponse,
+  type ReminderUpdateChange,
+  type ReminderViewResponse,
+  type SnoozeReminderResponse,
   type StructuredInput,
+  type StructuredReminderInput,
   type UpdateChange
 } from '@olivia/contracts';
 
@@ -129,4 +153,112 @@ export async function saveNotificationSubscription(role: ActorRole) {
 
 export async function listNotificationSubscriptions(role: ActorRole) {
   return request<{ subscriptions: unknown[] }>(`/api/notifications/subscriptions?actorRole=${role}`);
+}
+
+export async function fetchReminderView(role: ActorRole): Promise<ReminderViewResponse> {
+  return reminderViewResponseSchema.parse(await request<ReminderViewResponse>(`/api/reminders?actorRole=${role}`));
+}
+
+export async function fetchReminderDetail(role: ActorRole, reminderId: string): Promise<ReminderDetailResponse> {
+  return reminderDetailResponseSchema.parse(await request<ReminderDetailResponse>(`/api/reminders/${reminderId}?actorRole=${role}`));
+}
+
+export async function previewCreateReminder(
+  role: ActorRole,
+  inputText?: string,
+  structuredInput?: Partial<StructuredReminderInput>
+): Promise<PreviewCreateReminderResponse> {
+  return previewCreateReminderResponseSchema.parse(
+    await request<PreviewCreateReminderResponse>('/api/reminders/preview-create', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, inputText, structuredInput })
+    })
+  );
+}
+
+export async function confirmCreateReminder(
+  role: ActorRole,
+  finalReminder: DraftReminder,
+  draftId?: string
+): Promise<ConfirmCreateReminderResponse> {
+  return confirmCreateReminderResponseSchema.parse(
+    await request<ConfirmCreateReminderResponse>('/api/reminders/confirm-create', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, draftId, approved: true, finalReminder })
+    })
+  );
+}
+
+export async function previewUpdateReminder(
+  role: ActorRole,
+  reminderId: string,
+  expectedVersion: number,
+  proposedChange: ReminderUpdateChange
+): Promise<PreviewUpdateReminderResponse> {
+  return previewUpdateReminderResponseSchema.parse(
+    await request<PreviewUpdateReminderResponse>('/api/reminders/preview-update', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, reminderId, expectedVersion, proposedChange })
+    })
+  );
+}
+
+export async function confirmUpdateReminder(
+  role: ActorRole,
+  reminderId: string,
+  expectedVersion: number,
+  proposedChange: ReminderUpdateChange
+): Promise<ConfirmUpdateReminderResponse> {
+  return request<ConfirmUpdateReminderResponse>('/api/reminders/confirm-update', {
+    method: 'POST',
+    body: JSON.stringify({ actorRole: role, reminderId, expectedVersion, approved: true, proposedChange })
+  });
+}
+
+export async function completeReminder(role: ActorRole, reminderId: string, expectedVersion: number): Promise<CompleteReminderResponse> {
+  return completeReminderResponseSchema.parse(
+    await request<CompleteReminderResponse>('/api/reminders/complete', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, reminderId, expectedVersion, approved: true })
+    })
+  );
+}
+
+export async function snoozeReminder(
+  role: ActorRole,
+  reminderId: string,
+  expectedVersion: number,
+  snoozedUntil: string
+): Promise<SnoozeReminderResponse> {
+  return snoozeReminderResponseSchema.parse(
+    await request<SnoozeReminderResponse>('/api/reminders/snooze', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, reminderId, expectedVersion, approved: true, snoozedUntil })
+    })
+  );
+}
+
+export async function cancelReminder(role: ActorRole, reminderId: string, expectedVersion: number): Promise<CancelReminderResponse> {
+  return cancelReminderResponseSchema.parse(
+    await request<CancelReminderResponse>('/api/reminders/cancel', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, reminderId, expectedVersion, approved: true })
+    })
+  );
+}
+
+export async function fetchReminderSettings(role: ActorRole): Promise<ReminderSettingsResponse> {
+  return reminderSettingsResponseSchema.parse(await request<ReminderSettingsResponse>(`/api/reminders/settings?actorRole=${role}`));
+}
+
+export async function saveReminderSettings(
+  role: ActorRole,
+  preferences: ReminderNotificationPreferencesInput
+): Promise<ReminderSettingsResponse> {
+  return saveReminderNotificationPreferencesResponseSchema.parse(
+    await request<ReminderSettingsResponse>('/api/reminders/settings', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, preferences })
+    })
+  );
 }

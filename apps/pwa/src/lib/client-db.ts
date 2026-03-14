@@ -1,6 +1,19 @@
 import Dexie, { type Table } from 'dexie';
-import { buildSuggestions, groupItems } from '@olivia/domain';
-import type { HistoryEntry, InboxItem, InboxViewResponse, ItemDetailResponse, OutboxCommand } from '@olivia/contracts';
+import { buildSuggestions, groupItems, groupReminders } from '@olivia/domain';
+import type {
+  ActorRole,
+  HistoryEntry,
+  InboxItem,
+  InboxViewResponse,
+  ItemDetailResponse,
+  OutboxCommand,
+  Reminder,
+  ReminderDetailResponse,
+  ReminderNotificationPreferences,
+  ReminderSettingsResponse,
+  ReminderTimelineEntry,
+  ReminderViewResponse
+} from '@olivia/contracts';
 
 type MetaRecord = { key: string; value: string };
 
@@ -13,6 +26,9 @@ type StoredOutboxCommand = OutboxCommand & {
 class OliviaClientDb extends Dexie {
   items!: Table<InboxItem, string>;
   historyCache!: Table<{ itemId: string; history: HistoryEntry[] }, string>;
+  reminders!: Table<Reminder, string>;
+  reminderTimelineCache!: Table<{ reminderId: string; timeline: ReminderTimelineEntry[] }, string>;
+  reminderSettingsCache!: Table<{ actorRole: ActorRole; preferences: ReminderNotificationPreferences }, ActorRole>;
   outbox!: Table<StoredOutboxCommand, string>;
   meta!: Table<MetaRecord, string>;
 
@@ -21,6 +37,15 @@ class OliviaClientDb extends Dexie {
     this.version(1).stores({
       items: 'id, status, owner, updatedAt, pendingSync',
       historyCache: 'itemId',
+      outbox: 'commandId, kind, state, createdAt',
+      meta: 'key'
+    });
+    this.version(2).stores({
+      items: 'id, status, owner, updatedAt, pendingSync',
+      historyCache: 'itemId',
+      reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',
+      reminderTimelineCache: 'reminderId',
+      reminderSettingsCache: 'actorRole',
       outbox: 'commandId, kind, state, createdAt',
       meta: 'key'
     });
@@ -87,6 +112,89 @@ export async function getCachedItemDetail(itemId: string): Promise<ItemDetailRes
 
 export async function cacheItem(item: InboxItem) {
   await clientDb.items.put(item);
+}
+
+export async function cacheReminderView(response: ReminderViewResponse) {
+  const reminders = [
+    ...response.remindersByState.upcoming,
+    ...response.remindersByState.due,
+    ...response.remindersByState.overdue,
+    ...response.remindersByState.snoozed,
+    ...response.remindersByState.completed,
+    ...response.remindersByState.cancelled
+  ];
+
+  await clientDb.transaction('rw', clientDb.reminders, clientDb.meta, async () => {
+    await clientDb.reminders.bulkPut(reminders);
+    await setMeta('last-reminder-sync-at', response.generatedAt);
+  });
+}
+
+export async function buildCachedReminderView(): Promise<ReminderViewResponse> {
+  const reminders = await clientDb.reminders.toArray();
+  const remindersByState = groupReminders(reminders);
+  const lastSyncAt = (await getMeta<string>('last-reminder-sync-at')) ?? new Date(0).toISOString();
+
+  return {
+    remindersByState,
+    generatedAt: lastSyncAt,
+    source: 'cache'
+  };
+}
+
+export async function cacheReminderDetail(detail: ReminderDetailResponse) {
+  await clientDb.transaction('rw', clientDb.reminders, clientDb.reminderTimelineCache, async () => {
+    await clientDb.reminders.put(detail.reminder);
+    await clientDb.reminderTimelineCache.put({ reminderId: detail.reminder.id, timeline: detail.timeline });
+  });
+}
+
+export async function getCachedReminderDetail(reminderId: string): Promise<ReminderDetailResponse | null> {
+  const reminder = await clientDb.reminders.get(reminderId);
+  if (!reminder) {
+    return null;
+  }
+
+  const timeline = (await clientDb.reminderTimelineCache.get(reminderId))?.timeline ?? [];
+  return { reminder, timeline };
+}
+
+export async function cacheReminder(reminder: Reminder) {
+  await clientDb.reminders.put(reminder);
+}
+
+export async function getCachedReminder(reminderId: string) {
+  return clientDb.reminders.get(reminderId);
+}
+
+export async function getCachedReminderTimeline(reminderId: string): Promise<ReminderTimelineEntry[]> {
+  return (await clientDb.reminderTimelineCache.get(reminderId))?.timeline ?? [];
+}
+
+export async function appendCachedReminderTimelineEntries(reminderId: string, entries: ReminderTimelineEntry[]) {
+  if (entries.length === 0) {
+    return;
+  }
+
+  const existing = await getCachedReminderTimeline(reminderId);
+  const merged = new Map(existing.map((entry) => [entry.id, entry]));
+  for (const entry of entries) {
+    merged.set(entry.id, entry);
+  }
+
+  const timeline = [...merged.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  await clientDb.reminderTimelineCache.put({ reminderId, timeline });
+}
+
+export async function cacheReminderSettings(response: ReminderSettingsResponse) {
+  await clientDb.reminderSettingsCache.put({
+    actorRole: response.preferences.actorRole,
+    preferences: response.preferences
+  });
+}
+
+export async function getCachedReminderSettings(actorRole: ActorRole): Promise<ReminderNotificationPreferences | null> {
+  return (await clientDb.reminderSettingsCache.get(actorRole))?.preferences ?? null;
 }
 
 export async function enqueueCommand(command: OutboxCommand, state: 'pending' | 'conflict' = 'pending', lastError?: string) {
