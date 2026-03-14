@@ -544,6 +544,17 @@ describe('reminder migrations and api', () => {
     expect(validSubscription.statusCode).toBe(200);
     expect(validSubscription.json().subscription.endpoint).toBe(validPushPayload.endpoint);
 
+    const removedSubscription = await app.inject({
+      method: 'DELETE',
+      url: '/api/notifications/subscriptions',
+      payload: {
+        actorRole: 'stakeholder',
+        endpoint: validPushPayload.endpoint
+      }
+    });
+    expect(removedSubscription.statusCode).toBe(200);
+    expect(removedSubscription.json()).toEqual({ removed: true });
+
     await app.close();
     rmSync(directory, { recursive: true, force: true });
   });

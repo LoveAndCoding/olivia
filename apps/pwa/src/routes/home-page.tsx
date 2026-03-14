@@ -4,11 +4,12 @@ import { useMemo } from 'react';
 import { computeFlags } from '@olivia/domain';
 import type { InboxItem } from '@olivia/contracts';
 import { useRole } from '../lib/role';
-import { loadInboxView } from '../lib/sync';
+import { flattenReminderGroups, reminderToEventItem } from '../lib/reminders';
+import { loadInboxView, loadReminderView } from '../lib/sync';
 import { getDisplayName, ownerToDisplay } from '../lib/demo-data';
 import { BottomNav } from '../components/bottom-nav';
 import { HomeView } from '../components/screens/HomeView';
-import type { SummaryTask } from '../types/display';
+import type { EventItem, SummaryTask } from '../types/display';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -64,6 +65,10 @@ export function HomePage() {
     queryKey: ['inbox-view', role, 'active'],
     queryFn: () => loadInboxView(role, 'active'),
   });
+  const reminderQuery = useQuery({
+    queryKey: ['reminders-view', role],
+    queryFn: () => loadReminderView(role),
+  });
 
   const { summaryTasks, needsCount } = useMemo(() => {
     const allOpen = inboxQuery.data
@@ -93,6 +98,17 @@ export function HomePage() {
     return { summaryTasks: top3, needsCount: count };
   }, [inboxQuery.data, role]);
 
+  const events = useMemo<EventItem[]>(() => {
+    if (!reminderQuery.data) {
+      return [];
+    }
+
+    return flattenReminderGroups(reminderQuery.data)
+      .filter((reminder) => reminder.state !== 'completed' && reminder.state !== 'cancelled')
+      .slice(0, 4)
+      .map(reminderToEventItem);
+  }, [reminderQuery.data]);
+
   return (
     <div className="screen">
       <HomeView
@@ -101,11 +117,12 @@ export function HomePage() {
         subtitle={getDateSubtitle(needsCount)}
         nudge={null}
         tasks={summaryTasks}
-        events={[]}
-        isLoading={inboxQuery.isLoading}
-        error={inboxQuery.isError ? (inboxQuery.error as Error).message : null}
+        events={events}
+        isLoading={inboxQuery.isLoading || reminderQuery.isLoading}
+        error={inboxQuery.isError ? (inboxQuery.error as Error).message : reminderQuery.isError ? (reminderQuery.error as Error).message : null}
         onNudgePrimary={() => void navigate({ to: '/olivia' })}
         onAllTasksClick={() => void navigate({ to: '/tasks' })}
+        onAllEventsClick={() => void navigate({ to: '/reminders' })}
       />
       <BottomNav activeTab="home" />
     </div>

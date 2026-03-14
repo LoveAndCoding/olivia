@@ -1566,7 +1566,7 @@ p { margin: 0; }
 .secondary-button:active { transform: scale(0.98); }
 .secondary-button:disabled { opacity: 0.7; cursor: not-allowed; }
 
-textarea, input[type="text"], input[type="search"], select {
+textarea, input[type="text"], input[type="search"], input[type="datetime-local"], select {
   width: 100%;
   border: 1.5px solid var(--lavender-mid);
   border-radius: 14px;
@@ -1641,6 +1641,9 @@ textarea:focus, input:focus, select:focus {
   border-left: 3px solid var(--lavender-mid);
   animation: taskIn 0.35s cubic-bezier(0.22,1,0.36,1) both;
   cursor: pointer;
+  color: inherit;
+  text-align: left;
+  width: 100%;
 }
 
 .item-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }

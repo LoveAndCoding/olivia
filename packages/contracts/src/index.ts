@@ -381,6 +381,15 @@ export const saveNotificationSubscriptionResponseSchema = z.object({
   subscription: notificationSubscriptionSchema
 });
 
+export const deleteNotificationSubscriptionRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  endpoint: z.string().url()
+});
+
+export const deleteNotificationSubscriptionResponseSchema = z.object({
+  removed: z.boolean()
+});
+
 export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('create'),
@@ -500,4 +509,6 @@ export type SaveReminderNotificationPreferencesResponse = z.infer<typeof saveRem
 export type NotificationSubscription = z.infer<typeof notificationSubscriptionSchema>;
 export type SaveNotificationSubscriptionRequest = z.infer<typeof saveNotificationSubscriptionRequestSchema>;
 export type SaveNotificationSubscriptionResponse = z.infer<typeof saveNotificationSubscriptionResponseSchema>;
+export type DeleteNotificationSubscriptionRequest = z.infer<typeof deleteNotificationSubscriptionRequestSchema>;
+export type DeleteNotificationSubscriptionResponse = z.infer<typeof deleteNotificationSubscriptionResponseSchema>;
 export type OutboxCommand = z.infer<typeof outboxCommandSchema>;

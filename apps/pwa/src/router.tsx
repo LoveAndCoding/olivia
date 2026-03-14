@@ -5,6 +5,8 @@ import { TasksPage } from './routes/tasks-page';
 import { OliviaPage } from './routes/olivia-page';
 import { MemoryPage } from './routes/memory-page';
 import { ItemDetailPage } from './routes/item-detail-page';
+import { ReminderDetailPage } from './routes/reminder-detail-page';
+import { RemindersPage } from './routes/reminders-page';
 import { ReEntryPage } from './routes/re-entry-page';
 import { SettingsPage } from './routes/settings-page';
 
@@ -24,10 +26,16 @@ const memoryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/memor
 
 // ── Supporting routes (token-compliant, hidden from primary nav) ─────────────
 const itemRoute = createRoute({ getParentRoute: () => rootRoute, path: '/items/$itemId', component: ItemDetailPage });
+const remindersRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reminders', component: RemindersPage });
+const reminderRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reminders/$reminderId', component: ReminderDetailPage });
 const reEntryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/re-entry',
-  validateSearch: (search: Record<string, unknown>) => ({ reason: typeof search.reason === 'string' ? search.reason : 'review' }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    reason: typeof search.reason === 'string' ? search.reason : 'review',
+    itemId: typeof search.itemId === 'string' ? search.itemId : undefined,
+    reminderId: typeof search.reminderId === 'string' ? search.reminderId : undefined
+  }),
   component: ReEntryPage
 });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage });
@@ -47,6 +55,8 @@ const routeTree = rootRoute.addChildren([
   oliviaRoute,
   memoryRoute,
   itemRoute,
+  remindersRoute,
+  reminderRoute,
   reEntryRoute,
   settingsRoute,
   addRedirectRoute,

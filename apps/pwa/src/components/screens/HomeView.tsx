@@ -12,6 +12,7 @@ export type HomeViewProps = {
   error?: string | null;
   onNudgePrimary?: () => void;
   onAllTasksClick?: () => void;
+  onAllEventsClick?: () => void;
 };
 
 export function HomeView({
@@ -25,6 +26,7 @@ export function HomeView({
   error,
   onNudgePrimary,
   onAllTasksClick,
+  onAllEventsClick,
 }: HomeViewProps) {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
@@ -145,6 +147,9 @@ export function HomeView({
       {/* Coming up */}
       <div className="section-head">
         <div className="section-title">Coming up</div>
+        <button type="button" className="section-link" onClick={onAllEventsClick}>
+          Reminders →
+        </button>
       </div>
 
       {events.length === 0 ? (
@@ -154,7 +159,14 @@ export function HomeView({
       ) : (
         <div className="upcoming-strip" role="list" aria-label="Upcoming events">
           {events.map((event) => (
-            <div key={`${event.dateNum}-${event.name}`} className="event-tile" role="listitem">
+            <div
+              key={`${event.dateNum}-${event.name}`}
+              className="event-tile"
+              role="button"
+              tabIndex={0}
+              onClick={onAllEventsClick}
+              onKeyDown={(eventKey) => eventKey.key === 'Enter' && onAllEventsClick?.()}
+            >
               <div className="event-date-pill">
                 <div className="event-date-num">{event.dateNum}</div>
                 <div className="event-date-mo">{event.dateMon}</div>

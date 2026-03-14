@@ -20,12 +20,15 @@ export type OliviaViewProps = {
   chips?: QuickChip[];
   /** Rotational reply pool; defaults to built-in list. */
   replies?: string[];
+  /** Quick route into the reminder workflow. */
+  onOpenReminders?: () => void;
 };
 
 export function OliviaView({
   initialMessages = [],
   chips = [],
   replies = DEFAULT_REPLIES,
+  onOpenReminders,
 }: OliviaViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
@@ -106,6 +109,11 @@ export function OliviaView({
             <div className="ai-sub">Your household assistant · always here</div>
           </div>
         </div>
+        {onOpenReminders ? (
+          <button type="button" className="secondary-button" style={{ marginTop: 12, width: '100%' }} onClick={onOpenReminders}>
+            Review reminders
+          </button>
+        ) : null}
       </div>
 
       {/* Chat */}

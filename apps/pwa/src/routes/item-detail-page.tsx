@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Owner, UpdateChange } from '@olivia/contracts';
+import type { Owner, RecurrenceCadence, UpdateChange } from '@olivia/contracts';
 import { useRole } from '../lib/role';
-import { confirmUpdateCommand, loadItemDetail } from '../lib/sync';
+import { dateTimeLocalToIso, describeReminderWhen, flattenReminderGroups, formatReminderOwner, reminderStateLabel, reminderToDateTimeLocal } from '../lib/reminders';
+import { confirmCreateReminderCommand, confirmUpdateCommand, loadItemDetail, loadReminderView, previewCreateReminderCommand } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
 
 export function ItemDetailPage() {
@@ -15,10 +16,36 @@ export function ItemDetailPage() {
   const [ownerValue, setOwnerValue] = useState<Owner>('stakeholder');
   const [dueText, setDueText] = useState('');
   const [note, setNote] = useState('');
+  const [linkedReminderTitle, setLinkedReminderTitle] = useState('');
+  const [linkedReminderNote, setLinkedReminderNote] = useState('');
+  const [linkedReminderOwner, setLinkedReminderOwner] = useState<Owner>('stakeholder');
+  const [linkedReminderScheduledAt, setLinkedReminderScheduledAt] = useState(reminderToDateTimeLocal(new Date(Date.now() + 60 * 60 * 1000).toISOString()));
+  const [linkedReminderCadence, setLinkedReminderCadence] = useState<RecurrenceCadence>('none');
+  const [linkedReminderDraftId, setLinkedReminderDraftId] = useState<string | null>(null);
+  const [linkedReminderDraftRecordId, setLinkedReminderDraftRecordId] = useState<string | null>(null);
+  const [showLinkedReminderForm, setShowLinkedReminderForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const itemQuery = useQuery({ queryKey: ['item-detail', role, params.itemId], queryFn: () => loadItemDetail(role, params.itemId) });
+  const linkedReminderQuery = useQuery({ queryKey: ['reminders-view', role], queryFn: () => loadReminderView(role) });
+
+  useEffect(() => {
+    if (!itemQuery.data) {
+      return;
+    }
+
+    setLinkedReminderTitle(itemQuery.data.item.title);
+    setLinkedReminderOwner(itemQuery.data.item.owner === 'unassigned' ? 'stakeholder' : itemQuery.data.item.owner);
+  }, [itemQuery.data]);
+
+  const linkedReminders = useMemo(() => {
+    if (!linkedReminderQuery.data || !itemQuery.data) {
+      return [];
+    }
+
+    return flattenReminderGroups(linkedReminderQuery.data).filter((reminder) => reminder.linkedInboxItemId === itemQuery.data?.item.id);
+  }, [itemQuery.data, linkedReminderQuery.data]);
 
   const applyChange = async (proposedChange: UpdateChange) => {
     if (!itemQuery.data) return;
@@ -30,6 +57,77 @@ export function ItemDetailPage() {
       setDueText('');
       await queryClient.invalidateQueries({ queryKey: ['item-detail', role, params.itemId] });
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
+    } catch (caughtError) {
+      setError((caughtError as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resetLinkedReminderDraft = () => {
+    setShowLinkedReminderForm(false);
+    setLinkedReminderDraftId(null);
+    setLinkedReminderDraftRecordId(null);
+    setLinkedReminderNote('');
+    if (itemQuery.data) {
+      setLinkedReminderTitle(itemQuery.data.item.title);
+      setLinkedReminderOwner(itemQuery.data.item.owner === 'unassigned' ? 'stakeholder' : itemQuery.data.item.owner);
+    }
+    setLinkedReminderCadence('none');
+    setLinkedReminderScheduledAt(reminderToDateTimeLocal(new Date(Date.now() + 60 * 60 * 1000).toISOString()));
+  };
+
+  const handlePreviewLinkedReminder = async () => {
+    if (!itemQuery.data) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      const preview = await previewCreateReminderCommand(role, undefined, {
+        title: linkedReminderTitle,
+        note: linkedReminderNote.trim() || null,
+        owner: linkedReminderOwner,
+        scheduledAt: dateTimeLocalToIso(linkedReminderScheduledAt),
+        recurrenceCadence: linkedReminderCadence,
+        linkedInboxItemId: itemQuery.data.item.id
+      });
+      setLinkedReminderDraftId(preview.draftId);
+      setLinkedReminderDraftRecordId(preview.parsedReminder.id);
+      setLinkedReminderTitle(preview.parsedReminder.title);
+      setLinkedReminderNote(preview.parsedReminder.note ?? '');
+      setLinkedReminderOwner(preview.parsedReminder.owner);
+      setLinkedReminderScheduledAt(reminderToDateTimeLocal(preview.parsedReminder.scheduledAt));
+      setLinkedReminderCadence(preview.parsedReminder.recurrenceCadence);
+    } catch (caughtError) {
+      setError((caughtError as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleConfirmLinkedReminder = async () => {
+    if (!itemQuery.data || !linkedReminderDraftRecordId) {
+      setError('Preview the linked reminder before saving it.');
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      await confirmCreateReminderCommand(role, {
+        id: linkedReminderDraftRecordId,
+        title: linkedReminderTitle.trim(),
+        note: linkedReminderNote.trim() || null,
+        owner: linkedReminderOwner,
+        scheduledAt: dateTimeLocalToIso(linkedReminderScheduledAt),
+        recurrenceCadence: linkedReminderCadence,
+        linkedInboxItemId: itemQuery.data.item.id
+      }, linkedReminderDraftId ?? undefined);
+      await queryClient.invalidateQueries({ queryKey: ['reminders-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['item-detail', role, params.itemId] });
+      resetLinkedReminderDraft();
     } catch (caughtError) {
       setError((caughtError as Error).message);
     } finally {
@@ -150,6 +248,112 @@ export function ItemDetailPage() {
                     <p className="muted">You're viewing as Alexander. Updates are made by Lexi.</p>
                   </div>
                 )}
+
+                <div className="card stack-md">
+                  <div className="section-header">
+                    <div className="stack-sm">
+                      <span className="eyebrow">Linked reminders</span>
+                      <h3 className="card-title" style={{ fontSize: 18 }}>Reminder follow-through</h3>
+                    </div>
+                    <span className="section-note">{linkedReminders.length} linked reminders</span>
+                  </div>
+                  <p className="muted">Linked reminders surface this work later without changing the inbox item's status or owner automatically.</p>
+
+                  {linkedReminderQuery.isLoading ? <p className="muted">Loading reminders…</p> : null}
+                  {linkedReminderQuery.isError ? <p className="error-text">{(linkedReminderQuery.error as Error).message}</p> : null}
+                  {linkedReminders.length === 0 && !linkedReminderQuery.isLoading ? <p className="muted">No reminders are linked to this item yet.</p> : null}
+
+                  <div className="item-grid">
+                    {linkedReminders.map((reminder) => (
+                      <button
+                        key={reminder.id}
+                        type="button"
+                        className="item-card"
+                        onClick={() => void navigate({ to: '/reminders/$reminderId', params: { reminderId: reminder.id } })}
+                      >
+                        <div className="item-card-header">
+                          <div className="stack-sm">
+                            <span className="eyebrow">Reminder</span>
+                            <strong>{reminder.title}</strong>
+                          </div>
+                          {reminder.pendingSync ? <span className="chip pending">Pending sync</span> : null}
+                        </div>
+                        <p className="muted">{describeReminderWhen(reminder)}</p>
+                        <p className="muted">Owner: {formatReminderOwner(reminder.owner)}</p>
+                        <div className="chip-row">
+                          <span className={`chip ${reminder.state === 'overdue' ? 'danger' : reminder.state === 'due' ? 'warning' : 'info'}`}>{reminderStateLabel(reminder.state)}</span>
+                          {reminder.recurrenceCadence !== 'none' ? <span className="chip neutral">{reminder.recurrenceCadence}</span> : null}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {role === 'stakeholder' ? (
+                    <>
+                      {!showLinkedReminderForm ? (
+                        <button type="button" className="primary-button" disabled={busy} onClick={() => setShowLinkedReminderForm(true)}>
+                          Add reminder from this item
+                        </button>
+                      ) : (
+                        <div className="stack-md">
+                          <div className="update-grid">
+                            <div className="stack-sm">
+                              <span className="field-label">Reminder title</span>
+                              <input value={linkedReminderTitle} onChange={(event) => setLinkedReminderTitle(event.target.value)} />
+                            </div>
+                            <div className="stack-sm">
+                              <span className="field-label">Owner</span>
+                              <select value={linkedReminderOwner} onChange={(event) => setLinkedReminderOwner(event.target.value as Owner)}>
+                                <option value="stakeholder">Lexi</option>
+                                <option value="spouse">Alexander</option>
+                                <option value="unassigned">Unassigned</option>
+                              </select>
+                            </div>
+                            <div className="stack-sm">
+                              <span className="field-label">Surface at</span>
+                              <input type="datetime-local" value={linkedReminderScheduledAt} onChange={(event) => setLinkedReminderScheduledAt(event.target.value)} />
+                            </div>
+                            <div className="stack-sm">
+                              <span className="field-label">Recurrence</span>
+                              <select value={linkedReminderCadence} onChange={(event) => setLinkedReminderCadence(event.target.value as RecurrenceCadence)}>
+                                <option value="none">One time</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                              </select>
+                            </div>
+                            <div className="stack-sm" style={{ gridColumn: '1 / -1' }}>
+                              <span className="field-label">Note</span>
+                              <textarea value={linkedReminderNote} onChange={(event) => setLinkedReminderNote(event.target.value)} rows={3} placeholder="Optional reminder context" />
+                            </div>
+                          </div>
+                          <p className="muted">{linkedReminderDraftId ? 'Review the linked reminder draft, make corrections if needed, then save it.' : 'Preview the linked reminder before saving it.'}</p>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {!linkedReminderDraftId ? (
+                              <button
+                                type="button"
+                                className="primary-button"
+                                disabled={busy || !linkedReminderTitle.trim() || !linkedReminderScheduledAt}
+                                onClick={() => void handlePreviewLinkedReminder()}
+                              >
+                                Preview linked reminder
+                              </button>
+                            ) : (
+                              <button type="button" className="primary-button" disabled={busy} onClick={() => void handleConfirmLinkedReminder()}>
+                                Confirm linked reminder
+                              </button>
+                            )}
+                            <button type="button" className="secondary-button" disabled={busy} onClick={resetLinkedReminderDraft}>
+                              {linkedReminderDraftId ? 'Start over' : 'Cancel'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="muted">Alexander can see linked reminder context here, but only Lexi can create or change reminder records in this first slice.</p>
+                  )}
+                </div>
 
                 <div className="card stack-md">
                   <div className="section-header">

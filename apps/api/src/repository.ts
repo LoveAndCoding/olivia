@@ -456,6 +456,14 @@ export class InboxRepository {
     );
   }
 
+  deleteNotificationSubscription(actorRole: NotificationSubscription['actorRole'], endpoint: string): boolean {
+    const result = this.db
+      .prepare('DELETE FROM notification_subscriptions WHERE actor_role = ? AND endpoint = ?')
+      .run(actorRole, endpoint);
+
+    return result.changes > 0;
+  }
+
   hasNotificationDelivery(
     notificationType: NotificationDeliveryRecord['notificationType'],
     actorRole: ActorRole,

@@ -4,6 +4,8 @@ import cors from '@fastify/cors';
 import {
   cancelReminderRequestSchema,
   cancelReminderResponseSchema,
+  deleteNotificationSubscriptionRequestSchema,
+  deleteNotificationSubscriptionResponseSchema,
   completeReminderRequestSchema,
   completeReminderResponseSchema,
   confirmCreateReminderRequestSchema,
@@ -638,6 +640,12 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
 
     return reply.send({ subscriptions: repository.listNotificationSubscriptions(query.actorRole) });
+  });
+
+  app.delete('/api/notifications/subscriptions', async (request, reply) => {
+    const body = deleteNotificationSubscriptionRequestSchema.parse(request.body);
+    const removed = repository.deleteNotificationSubscription(body.actorRole, body.endpoint);
+    return reply.send(deleteNotificationSubscriptionResponseSchema.parse({ removed }));
   });
 
   app.get('/api/admin/export', async () => repository.exportSnapshot());
