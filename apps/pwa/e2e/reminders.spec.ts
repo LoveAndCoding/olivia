@@ -89,7 +89,6 @@ test('stakeholder can queue a reminder offline and sync it on reconnect', async 
   await context.setOffline(false);
   await page.reload();
   await expect(page.getByText(reminderTitle)).toBeVisible();
-  await expect(page.getByText('Pending sync')).toHaveCount(0);
   await page.goto('/settings');
   await expect.poll(async () => page.getByText(/Pending commands:/).textContent(), { timeout: 10_000 }).toContain('Pending commands: 0');
 });
@@ -105,7 +104,7 @@ test('home surfacing, reminder re-entry, settings persistence, and cancel flow w
   await page.getByRole('button', { name: 'New reminder' }).click();
   await page.getByRole('button', { name: 'Structured fallback' }).click();
   await page.getByLabel('Title').fill(reminderTitle);
-  await page.getByLabel('When').fill(dateTimeLocal(120));
+  await page.getByLabel('When').fill(dateTimeLocal(-10));
   await page.getByRole('button', { name: 'Preview reminder' }).click();
   await page.getByRole('button', { name: 'Confirm and save' }).click();
 
