@@ -45,6 +45,7 @@ import {
   applyUpdate,
   buildSuggestions,
   cancelReminder,
+  collectMissedRecurringReminderEntries,
   completeReminderOccurrence,
   computeFlags,
   createDraft,
@@ -567,6 +568,17 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
 
     const now = new Date();
+    for (const reminder of repository.listReminders(now)) {
+      const timelineEntries = collectMissedRecurringReminderEntries(
+        reminder,
+        repository.listReminderTimeline(reminder.id),
+        now
+      );
+      if (timelineEntries.length > 0) {
+        repository.appendReminderTimelineEntries(timelineEntries);
+      }
+    }
+
     const response = reminderViewResponseSchema.parse({
       remindersByState: groupReminders(repository.listReminders(now), now),
       generatedAt: now.toISOString(),
@@ -586,6 +598,15 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     const reminder = repository.getReminder(params.reminderId);
     if (!reminder) {
       return reply.status(404).send({ code: 'NOT_FOUND', message: 'Reminder not found.' });
+    }
+
+    const timelineEntries = collectMissedRecurringReminderEntries(
+      reminder,
+      repository.listReminderTimeline(reminder.id),
+      new Date()
+    );
+    if (timelineEntries.length > 0) {
+      repository.appendReminderTimelineEntries(timelineEntries);
     }
 
     const response = reminderDetailResponseSchema.parse({

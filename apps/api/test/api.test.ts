@@ -405,6 +405,43 @@ describe('reminder migrations and api', () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
+  it('materializes missed recurring history on reminder review without creating extra reminder records', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'olivia-reminders-'));
+    const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
+
+    const created = await createReminderViaApi(app, {
+      title: 'Timeline-only missed reminder',
+      recurrenceCadence: 'daily',
+      scheduledAt: new Date('2026-03-10T09:00:00.000Z').toISOString()
+    });
+
+    const beforeDetail = await app.inject({
+      method: 'GET',
+      url: '/api/reminders?actorRole=stakeholder'
+    });
+    expect(beforeDetail.statusCode).toBe(200);
+    expect(beforeDetail.json().remindersByState.overdue).toHaveLength(1);
+
+    const detail = await app.inject({
+      method: 'GET',
+      url: `/api/reminders/${created.savedReminder.id}?actorRole=stakeholder`
+    });
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json().timeline.map((entry: { eventType: string }) => entry.eventType)).toEqual(
+      expect.arrayContaining(['created', 'missed_occurrence_logged'])
+    );
+
+    const afterDetail = await app.inject({
+      method: 'GET',
+      url: '/api/reminders?actorRole=stakeholder'
+    });
+    expect(afterDetail.statusCode).toBe(200);
+    expect(afterDetail.json().remindersByState.overdue).toHaveLength(1);
+
+    await app.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
   it('keeps spouse reminder access read-only and rejects stale reminder writes', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'olivia-reminders-'));
     const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });

@@ -601,6 +601,14 @@ export function rankRemindersForSurfacing(reminders: Reminder[], now: Date = new
     .slice(0, limit);
 }
 
+export function collectMissedRecurringReminderEntries(
+  reminder: Reminder,
+  existingTimeline: ReminderTimelineEntry[] = [],
+  now: Date = new Date()
+): ReminderTimelineEntry[] {
+  return materializeMissedRecurringOccurrences(reminder, existingTimeline, now).timelineEntries;
+}
+
 export function applyUpdate(item: InboxItem, change: UpdateChange, now: Date = new Date()): ApplyUpdateResult {
   const nextTimestamp = now.toISOString();
   const requestedKeys = Object.entries(change).filter(([, value]) => value !== undefined);
