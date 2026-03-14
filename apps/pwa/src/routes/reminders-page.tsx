@@ -131,6 +131,7 @@ export function RemindersPage() {
       }, draftId ?? undefined);
       await queryClient.invalidateQueries({ queryKey: ['reminders-view'] });
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
+      await queryClient.refetchQueries({ queryKey: ['reminders-view', role], type: 'active' });
       resetCreateState();
     } catch (caughtError) {
       setError((caughtError as Error).message);

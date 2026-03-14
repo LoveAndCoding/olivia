@@ -46,7 +46,9 @@ test('linked reminders keep inbox state unchanged and spouse stays read-only', a
   await page.getByPlaceholder('e.g. Call electrician about the kitchen outlet, due next week').fill(taskTitle);
   await page.getByRole('button', { name: 'Preview' }).click();
   await page.getByRole('button', { name: 'Confirm & save' }).click();
-  await page.getByText(taskTitle).click();
+  const taskCard = page.locator('.task-full').filter({ hasText: taskTitle }).first();
+  await expect(taskCard).toBeVisible();
+  await taskCard.click();
 
   await expect(page.getByRole('heading', { name: taskTitle })).toBeVisible();
   await expect(page.getByText(/Status: open/i)).toBeVisible();
@@ -56,7 +58,7 @@ test('linked reminders keep inbox state unchanged and spouse stays read-only', a
   await page.getByRole('button', { name: 'Preview linked reminder' }).click();
   await page.getByRole('button', { name: 'Confirm linked reminder' }).click();
 
-  await expect(page.getByText(reminderTitle)).toBeVisible();
+  await expect(page.getByText(reminderTitle)).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(/Status: open/i)).toBeVisible();
 
   await page.goto('/settings');

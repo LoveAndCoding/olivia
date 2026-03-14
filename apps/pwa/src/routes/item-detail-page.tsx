@@ -127,6 +127,7 @@ export function ItemDetailPage() {
       }, linkedReminderDraftId ?? undefined);
       await queryClient.invalidateQueries({ queryKey: ['reminders-view'] });
       await queryClient.invalidateQueries({ queryKey: ['item-detail', role, params.itemId] });
+      await queryClient.refetchQueries({ queryKey: ['reminders-view', role], type: 'active' });
       resetLinkedReminderDraft();
     } catch (caughtError) {
       setError((caughtError as Error).message);

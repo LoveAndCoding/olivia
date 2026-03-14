@@ -89,6 +89,8 @@ export function ReminderDetailPage() {
     await queryClient.invalidateQueries({ queryKey: ['reminders-view'] });
     await queryClient.invalidateQueries({ queryKey: ['reminder-detail'] });
     await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
+    await queryClient.refetchQueries({ queryKey: ['reminders-view', role], type: 'active' });
+    await queryClient.refetchQueries({ queryKey: ['reminder-detail', role, params.reminderId], type: 'active' });
   };
 
   const handleSaveEdits = async () => {
