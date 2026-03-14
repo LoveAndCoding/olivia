@@ -108,9 +108,11 @@ async function flushOutboxOnce() {
       if (command.kind === 'create') {
         const response = await confirmCreate(command.actorRole, command.finalItem);
         await cacheItem({ ...response.savedItem, pendingSync: false });
-      } else {
+      } else if (command.kind === 'update') {
         const response = await confirmUpdate(command.actorRole, command.itemId, command.expectedVersion, command.proposedChange);
         await cacheItem({ ...response.savedItem, pendingSync: false });
+      } else {
+        throw new Error(`Unsupported outbox command kind: ${command.kind}`);
       }
       await removeOutboxCommand(command.commandId);
       await setMeta('last-sync-at', new Date().toISOString());
