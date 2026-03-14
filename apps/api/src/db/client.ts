@@ -22,11 +22,10 @@ export function createDatabase(dbPath: string): Database.Database {
     );
   `);
 
-  const appliedMigrations = new Set(
-    (db.prepare('SELECT filename FROM schema_migrations ORDER BY filename').all() as Array<{ filename: string }>()).map(
-      (row) => row.filename
-    )
-  );
+  const appliedMigrationRows = db
+    .prepare('SELECT filename FROM schema_migrations ORDER BY filename')
+    .all() as Array<{ filename: string }>;
+  const appliedMigrations = new Set(appliedMigrationRows.map((row) => row.filename));
   const markMigrationApplied = db.prepare(
     'INSERT INTO schema_migrations (filename, applied_at) VALUES (?, ?)'
   );
