@@ -1,8 +1,9 @@
 import type { FastifyBaseLogger } from 'fastify';
-import { buildSuggestions } from '@olivia/domain';
+import { buildSuggestions, groupReminders, rankRemindersForSurfacing } from '@olivia/domain';
+import type { Reminder } from '@olivia/contracts';
 import type { AppConfig } from './config';
 import type { PushProvider, PushSubscriptionPayload } from './push';
-import type { InboxRepository } from './repository';
+import type { InboxRepository, NotificationDeliveryRecord } from './repository';
 
 type NotificationRecord = {
   rule: 'due_soon' | 'stale_item' | 'digest';
@@ -12,6 +13,8 @@ type NotificationRecord = {
   error?: string;
   timestamp: string;
 };
+
+const DAILY_SUMMARY_SEND_WINDOW_UTC_HOUR = 8;
 
 function isPushSubscriptionPayload(payload: Record<string, unknown>): payload is PushSubscriptionPayload {
   return (
@@ -59,6 +62,139 @@ async function deliverToStakeholderSubscriptions(
   }
 
   return results;
+}
+
+function hasEnabledReminderNotificationPreference(
+  repository: InboxRepository,
+  notificationType: NotificationDeliveryRecord['notificationType']
+): boolean {
+  const preferences = repository.getReminderNotificationPreferences('stakeholder');
+  if (!preferences.enabled) {
+    return false;
+  }
+
+  return notificationType === 'due_reminder' ? preferences.dueRemindersEnabled : preferences.dailySummaryEnabled;
+}
+
+function reminderDeliveryBucket(reminder: Reminder): string {
+  return `${reminder.id}:${reminder.snoozedUntil ?? reminder.scheduledAt}`;
+}
+
+function isDailySummaryWindow(now: Date): boolean {
+  return now.getUTCHours() === DAILY_SUMMARY_SEND_WINDOW_UTC_HOUR;
+}
+
+function buildDailySummaryBody(grouped: ReturnType<typeof groupReminders>): string {
+  const activeCount = grouped.upcoming.length + grouped.due.length + grouped.overdue.length + grouped.snoozed.length;
+  const segments = [
+    grouped.overdue.length ? `${grouped.overdue.length} overdue` : null,
+    grouped.due.length ? `${grouped.due.length} due now` : null,
+    grouped.upcoming.length ? `${grouped.upcoming.length} upcoming` : null,
+    grouped.snoozed.length ? `${grouped.snoozed.length} snoozed` : null
+  ].filter(Boolean);
+
+  return `You have ${activeCount} active reminder${activeCount === 1 ? '' : 's'}${segments.length ? `: ${segments.join(', ')}.` : '.'}`;
+}
+
+export async function evaluateDueReminderRule(
+  repository: InboxRepository,
+  push: PushProvider,
+  config: AppConfig,
+  logger: FastifyBaseLogger,
+  now: Date = new Date()
+): Promise<void> {
+  if (!config.notificationsEnabled) return;
+  if (!hasEnabledReminderNotificationPreference(repository, 'due_reminder')) {
+    logger.debug('due-reminder rule: disabled by saved reminder preferences');
+    return;
+  }
+
+  const reminders = rankRemindersForSurfacing(repository.listReminders(now), now, Number.MAX_SAFE_INTEGER).filter(
+    (reminder) => reminder.state === 'due' || reminder.state === 'overdue'
+  );
+
+  if (reminders.length === 0) {
+    logger.debug('due-reminder rule: no reminders eligible');
+    return;
+  }
+
+  for (const reminder of reminders) {
+    const deliveryBucket = reminderDeliveryBucket(reminder);
+    if (repository.hasNotificationDelivery('due_reminder', 'stakeholder', deliveryBucket)) {
+      logger.debug({ reminderId: reminder.id, deliveryBucket }, 'due-reminder rule: already delivered for this occurrence');
+      continue;
+    }
+
+    const title = reminder.state === 'overdue' ? 'Reminder overdue — Olivia' : 'Reminder due — Olivia';
+    const body = reminder.linkedInboxItem
+      ? `${reminder.title} — linked to "${reminder.linkedInboxItem.title}".`
+      : reminder.title;
+    const url = `${config.pwaOrigin}/re-entry?reason=reminder-review&reminderId=${reminder.id}`;
+    const results = await deliverToStakeholderSubscriptions(
+      repository,
+      push,
+      {
+        title,
+        body,
+        url,
+        tag: `due-reminder-${deliveryBucket}`
+      },
+      logger
+    );
+
+    if (results.some((result) => result.delivered)) {
+      repository.recordNotificationDelivery('due_reminder', 'stakeholder', reminder.id, deliveryBucket, now.toISOString());
+      logger.info({ reminderId: reminder.id, deliveryBucket }, 'due-reminder rule: delivered');
+    }
+  }
+}
+
+export async function evaluateDailySummaryRule(
+  repository: InboxRepository,
+  push: PushProvider,
+  config: AppConfig,
+  logger: FastifyBaseLogger,
+  now: Date = new Date()
+): Promise<void> {
+  if (!config.notificationsEnabled) return;
+  if (!isDailySummaryWindow(now)) {
+    logger.debug({ hourUtc: now.getUTCHours() }, 'daily-summary rule: outside send window');
+    return;
+  }
+  if (!hasEnabledReminderNotificationPreference(repository, 'daily_summary')) {
+    logger.debug('daily-summary rule: disabled by saved reminder preferences');
+    return;
+  }
+
+  const grouped = groupReminders(repository.listReminders(now), now);
+  const activeCount = grouped.upcoming.length + grouped.due.length + grouped.overdue.length + grouped.snoozed.length;
+  if (activeCount === 0) {
+    logger.debug('daily-summary rule: no active reminders');
+    return;
+  }
+
+  const deliveryBucket = now.toISOString().slice(0, 10);
+  if (repository.hasNotificationDelivery('daily_summary', 'stakeholder', deliveryBucket)) {
+    logger.debug({ deliveryBucket }, 'daily-summary rule: already delivered today');
+    return;
+  }
+
+  const results = await deliverToStakeholderSubscriptions(
+    repository,
+    push,
+    {
+      title: 'Daily reminder summary — Olivia',
+      body: buildDailySummaryBody(grouped),
+      url: `${config.pwaOrigin}/re-entry?reason=reminders-daily-summary`,
+      tag: `daily-summary-${deliveryBucket}`
+    },
+    logger
+  );
+
+  if (results.some((result) => result.delivered)) {
+    repository.recordNotificationDelivery('daily_summary', 'stakeholder', null, deliveryBucket, now.toISOString());
+    logger.info({ deliveryBucket }, 'daily-summary rule: delivered');
+  }
 }
 
 export async function evaluateDueSoonRule(
@@ -188,6 +324,8 @@ export function startBackgroundJobs(
       await evaluateDueSoonRule(repository, push, config, logger);
       await evaluateStaleItemRule(repository, push, config, logger);
       await evaluateDigestRule(repository, push, config, logger);
+      await evaluateDueReminderRule(repository, push, config, logger);
+      await evaluateDailySummaryRule(repository, push, config, logger);
     } catch (error) {
       logger.error({ error }, 'notification job run failed');
     }

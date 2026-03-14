@@ -234,6 +234,10 @@ Use these existing modules as the extension points for the first implementation:
 ### Phase 3: Add persistence schema and repository support
 **Outcome:** SQLite can durably store reminders, reminder timeline history, and reminder notification preferences alongside existing inbox data.
 
+**Status:** complete
+
+**Validation note:** Ordered reminder migrations, additive reminder tables, schema-migration tracking, repository-backed reminder persistence, linked inbox joins, notification preference storage, and notification delivery dedupe storage are implemented and validated with fresh-database API coverage, inbox-only upgrade coverage, and direct SQLite row inspection. Later reminder UI and sync phases remain incomplete.
+
 **Primary files**
 - Create: `apps/api/drizzle/0001_first_class_reminders.sql`
 - Modify: `apps/api/src/db/schema.ts`
@@ -302,6 +306,10 @@ Use these existing modules as the extension points for the first implementation:
 
 ### Phase 4: Extend API routes, AI boundary, and jobs
 **Outcome:** The server exposes reminder queries and commands, preserves trust-model rules, and evaluates reminder notifications deterministically.
+
+**Status:** complete
+
+**Validation note:** Reminder create/update/complete/snooze/cancel routes, reminder queries and settings routes, reminder draft storage, AI-disabled reminder parsing fallback, stakeholder-write versus spouse-read-only enforcement, real Web Push payload validation, and deterministic due-reminder plus daily-summary job behavior are implemented and validated by targeted API and job tests against the approved reminder spec boundaries. Later PWA sync and interface phases remain incomplete.
 
 **Primary files**
 - Modify: `apps/api/src/app.ts`

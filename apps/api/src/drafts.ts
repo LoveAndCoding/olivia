@@ -1,4 +1,4 @@
-import type { DraftItem, InboxItem, UpdateChange } from '@olivia/contracts';
+import type { DraftItem, DraftReminder, InboxItem, Reminder, ReminderUpdateChange, UpdateChange } from '@olivia/contracts';
 
 type CreateDraftRecord = {
   kind: 'create';
@@ -13,7 +13,20 @@ type UpdateDraftRecord = {
   proposedItem: InboxItem;
 };
 
-export type DraftRecord = CreateDraftRecord | UpdateDraftRecord;
+type CreateReminderDraftRecord = {
+  kind: 'reminder_create';
+  finalReminder: DraftReminder;
+};
+
+type UpdateReminderDraftRecord = {
+  kind: 'reminder_update';
+  reminderId: string;
+  expectedVersion: number;
+  proposedChange: ReminderUpdateChange;
+  proposedReminder: Reminder;
+};
+
+export type DraftRecord = CreateDraftRecord | UpdateDraftRecord | CreateReminderDraftRecord | UpdateReminderDraftRecord;
 
 export class DraftStore {
   private readonly drafts = new Map<string, DraftRecord>();

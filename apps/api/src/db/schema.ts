@@ -39,3 +39,52 @@ export const notificationSubscriptionsTable = sqliteTable('notification_subscrip
   payload: text('payload').notNull(),
   createdAt: text('created_at').notNull()
 });
+
+export const remindersTable = sqliteTable('reminders', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  note: text('note'),
+  owner: text('owner').notNull(),
+  linkedInboxItemId: text('linked_inbox_item_id'),
+  recurrenceCadence: text('recurrence_cadence').notNull(),
+  scheduledAt: text('scheduled_at').notNull(),
+  snoozedUntil: text('snoozed_until'),
+  completedAt: text('completed_at'),
+  cancelledAt: text('cancelled_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  version: integer('version').notNull()
+});
+
+export const reminderTimelineTable = sqliteTable('reminder_timeline', {
+  id: text('id').primaryKey(),
+  reminderId: text('reminder_id').notNull(),
+  actorRole: text('actor_role').notNull(),
+  eventType: text('event_type').notNull(),
+  fromValue: text('from_value'),
+  toValue: text('to_value'),
+  metadata: text('metadata'),
+  createdAt: text('created_at').notNull()
+});
+
+export const reminderNotificationPreferencesTable = sqliteTable('reminder_notification_preferences', {
+  actorRole: text('actor_role').primaryKey(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull(),
+  dueRemindersEnabled: integer('due_reminders_enabled', { mode: 'boolean' }).notNull(),
+  dailySummaryEnabled: integer('daily_summary_enabled', { mode: 'boolean' }).notNull(),
+  updatedAt: text('updated_at').notNull()
+});
+
+export const notificationDeliveryLogTable = sqliteTable('notification_delivery_log', {
+  id: text('id').primaryKey(),
+  notificationType: text('notification_type').notNull(),
+  actorRole: text('actor_role').notNull(),
+  reminderId: text('reminder_id'),
+  deliveryBucket: text('delivery_bucket').notNull(),
+  deliveredAt: text('delivered_at').notNull()
+});
+
+export const schemaMigrationsTable = sqliteTable('schema_migrations', {
+  filename: text('filename').primaryKey(),
+  appliedAt: text('applied_at').notNull()
+});
