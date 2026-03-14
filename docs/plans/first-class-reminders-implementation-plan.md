@@ -385,6 +385,10 @@ Use these existing modules as the extension points for the first implementation:
 ### Phase 5: Extend PWA API, sync, and offline cache
 **Outcome:** Reminder data participates in the same offline-tolerant client architecture as inbox data.
 
+**Status:** complete
+
+**Validation note:** Typed reminder client wrappers, Dexie reminder caches, cached reminder view/detail fallback, reminder outbox flushing for create/update/complete/snooze/cancel, and reminder settings cache support are implemented and covered by focused PWA sync tests plus workspace typecheck. Visual-design review found no new route, component, or styling changes in this infra-only phase, so design-foundation risk is unchanged and reminder-facing UI remains correctly deferred to Phase 6. Product review confirms the delivered work matches the approved phase scope by enabling offline-tolerant reminder data handling without quietly adding reminder surfaces, conversion flows, advanced recurrence, spouse write paths, or richer notification policy.
+
 **Primary files**
 - Modify: `apps/pwa/src/lib/api.ts`
 - Modify: `apps/pwa/src/lib/sync.ts`

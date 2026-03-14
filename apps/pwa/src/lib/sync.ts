@@ -459,7 +459,7 @@ async function flushOutboxOnce() {
         const response = await cancelReminderApi(command.actorRole, command.reminderId, command.expectedVersion);
         await cacheReminderMutation(response.savedReminder, response.timelineEntry);
       } else {
-        throw new Error(`Unsupported outbox command kind: ${command.kind}`);
+        throw new Error('Unsupported outbox command kind.');
       }
       await removeOutboxCommand(command.commandId);
       await setMeta('last-sync-at', new Date().toISOString());
