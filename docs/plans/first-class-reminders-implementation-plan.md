@@ -125,6 +125,10 @@ Use these existing modules as the extension points for the first implementation:
 ### Phase 1: Expand shared contracts for reminders
 **Outcome:** Client, server, and domain share a stable reminder vocabulary and API contract before implementation logic spreads across layers.
 
+**Status:** complete
+
+**Validation note:** Shared reminder schemas, direct-action command contracts, reminder outbox variants, and representative parsing tests are implemented and validated against the approved reminder spec. Later phases remain incomplete.
+
 **Primary files**
 - Modify: `packages/contracts/src/index.ts`
 
