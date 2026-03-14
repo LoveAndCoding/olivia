@@ -131,6 +131,7 @@ export function SettingsPage() {
                   <span>Enable reminder notifications</span>
                   <input
                     type="checkbox"
+                    aria-label="Enable reminder notifications"
                     checked={notificationPrefs.enabled}
                     onChange={(event) => setNotificationPrefs((current) => ({ ...current, enabled: event.target.checked }))}
                   />
@@ -139,6 +140,7 @@ export function SettingsPage() {
                   <span>Due reminders</span>
                   <input
                     type="checkbox"
+                    aria-label="Due reminders"
                     checked={notificationPrefs.dueRemindersEnabled}
                     onChange={(event) => setNotificationPrefs((current) => ({ ...current, dueRemindersEnabled: event.target.checked }))}
                   />
@@ -147,6 +149,7 @@ export function SettingsPage() {
                   <span>Daily summary</span>
                   <input
                     type="checkbox"
+                    aria-label="Daily summary"
                     checked={notificationPrefs.dailySummaryEnabled}
                     onChange={(event) => setNotificationPrefs((current) => ({ ...current, dailySummaryEnabled: event.target.checked }))}
                   />

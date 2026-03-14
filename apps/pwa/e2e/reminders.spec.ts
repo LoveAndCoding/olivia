@@ -93,3 +93,50 @@ test('stakeholder can queue a reminder offline and sync it on reconnect', async 
   await page.goto('/settings');
   await expect.poll(async () => page.getByText(/Pending commands:/).textContent(), { timeout: 10_000 }).toContain('Pending commands: 0');
 });
+
+test('home surfacing, reminder re-entry, settings persistence, and cancel flow work', async ({ page }) => {
+  const suffix = Date.now().toString();
+  const reminderTitle = `Home reminder ${suffix}`;
+
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Lexi' }).click();
+
+  await page.goto('/reminders');
+  await page.getByRole('button', { name: 'New reminder' }).click();
+  await page.getByRole('button', { name: 'Structured fallback' }).click();
+  await page.getByLabel('Title').fill(reminderTitle);
+  await page.getByLabel('When').fill(dateTimeLocal(120));
+  await page.getByRole('button', { name: 'Preview reminder' }).click();
+  await page.getByRole('button', { name: 'Confirm and save' }).click();
+
+  await page.goto('/');
+  await expect(page.getByText(reminderTitle)).toBeVisible();
+
+  await page.goto('/reminders');
+  await page.getByText(reminderTitle).click();
+  await page.getByLabel('Reminder note').fill('Bring the folder from the pantry shelf.');
+  await page.getByRole('button', { name: 'Save reminder edits' }).click();
+  await page.getByLabel('Snooze until').fill(dateTimeLocal(240));
+  await page.getByRole('button', { name: 'Snooze reminder' }).click();
+  await expect(page.getByText(/Snoozed until/i)).toBeVisible();
+
+  const reminderId = page.url().split('/reminders/')[1];
+  await page.goto(`/re-entry?reason=reminder-review&reminderId=${reminderId}`);
+  await page.getByRole('button', { name: 'Open reminder' }).click();
+  await expect(page.getByRole('heading', { name: reminderTitle })).toBeVisible();
+
+  await page.goto('/settings');
+  await page.getByLabel('Enable reminder notifications').check();
+  await page.getByLabel('Due reminders').check();
+  await page.getByLabel('Daily summary').check();
+  await page.getByRole('button', { name: 'Save reminder settings' }).click();
+  await page.reload();
+  await expect(page.getByLabel('Enable reminder notifications')).toBeChecked();
+  await expect(page.getByLabel('Due reminders')).toBeChecked();
+  await expect(page.getByLabel('Daily summary')).toBeChecked();
+
+  await page.goto(`/reminders/${reminderId}`);
+  await page.getByLabel('Confirm cancel reminder').check();
+  await page.getByRole('button', { name: 'Cancel reminder' }).click();
+  await expect(page.getByText(/State: cancelled/i)).toBeVisible();
+});

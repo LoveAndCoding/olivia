@@ -245,7 +245,7 @@ export function ReminderDetailPage() {
                   </div>
                   <div className="stack-sm">
                     <span className="field-label">Snooze until</span>
-                    <input type="datetime-local" value={snoozeUntil} onChange={(event) => setSnoozeUntil(event.target.value)} />
+                    <input aria-label="Snooze until" type="datetime-local" value={snoozeUntil} onChange={(event) => setSnoozeUntil(event.target.value)} />
                     <button type="button" className="secondary-button" disabled={busy} onClick={() => void handleSnooze()}>
                       Snooze reminder
                     </button>
@@ -265,11 +265,11 @@ export function ReminderDetailPage() {
                   <div className="update-grid">
                     <div className="stack-sm">
                       <span className="field-label">Title</span>
-                      <input value={form.title} onChange={(event) => setForm((current) => current ? { ...current, title: event.target.value } : current)} />
+                      <input aria-label="Reminder title" value={form.title} onChange={(event) => setForm((current) => current ? { ...current, title: event.target.value } : current)} />
                     </div>
                     <div className="stack-sm">
                       <span className="field-label">Owner</span>
-                      <select value={form.owner} onChange={(event) => setForm((current) => current ? { ...current, owner: event.target.value as Owner } : current)}>
+                      <select aria-label="Reminder owner" value={form.owner} onChange={(event) => setForm((current) => current ? { ...current, owner: event.target.value as Owner } : current)}>
                         <option value="stakeholder">Lexi</option>
                         <option value="spouse">Alexander</option>
                         <option value="unassigned">Unassigned</option>
@@ -279,6 +279,7 @@ export function ReminderDetailPage() {
                       <span className="field-label">When</span>
                       <input
                         type="datetime-local"
+                        aria-label="Reminder when"
                         value={form.scheduledAt}
                         onChange={(event) => setForm((current) => current ? { ...current, scheduledAt: event.target.value } : current)}
                       />
@@ -286,6 +287,7 @@ export function ReminderDetailPage() {
                     <div className="stack-sm">
                       <span className="field-label">Recurrence</span>
                       <select
+                        aria-label="Reminder recurrence"
                         value={form.recurrenceCadence}
                         onChange={(event) => setForm((current) => current ? { ...current, recurrenceCadence: event.target.value as RecurrenceCadence } : current)}
                       >
@@ -297,7 +299,7 @@ export function ReminderDetailPage() {
                     </div>
                     <div className="stack-sm" style={{ gridColumn: '1 / -1' }}>
                       <span className="field-label">Note</span>
-                      <textarea value={form.note} onChange={(event) => setForm((current) => current ? { ...current, note: event.target.value } : current)} rows={3} />
+                      <textarea aria-label="Reminder note" value={form.note} onChange={(event) => setForm((current) => current ? { ...current, note: event.target.value } : current)} rows={3} />
                     </div>
                   </div>
                   <button type="button" className="secondary-button" disabled={busy || !proposedChange || Boolean(isTerminal)} onClick={() => void handleSaveEdits()}>
@@ -316,7 +318,7 @@ export function ReminderDetailPage() {
                     <span className="section-note">Cancellation always needs confirmation</span>
                   </div>
                   <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input type="checkbox" checked={confirmCancel} onChange={(event) => setConfirmCancel(event.target.checked)} />
+                    <input aria-label="Confirm cancel reminder" type="checkbox" checked={confirmCancel} onChange={(event) => setConfirmCancel(event.target.checked)} />
                     <span className="muted">I want to cancel this reminder.</span>
                   </label>
                   <button type="button" className="secondary-button" disabled={busy || !confirmCancel} onClick={() => void handleCancelReminder()}>
