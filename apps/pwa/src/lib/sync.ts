@@ -473,7 +473,7 @@ async function flushOutboxOnce() {
         await cacheReminder({ ...response.savedReminder, pendingSync: false });
         await clearCachedReminderTimeline(response.savedReminder.id);
       } else {
-        throw new Error(`Unsupported outbox command kind: ${command.kind}`);
+        throw new Error('Unsupported outbox command kind.');
       }
       await removeOutboxCommand(command.commandId);
       await setMeta('last-sync-at', new Date().toISOString());
@@ -613,7 +613,7 @@ export async function registerPushSubscription(role: ActorRole) {
   if (!subscription) {
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(capabilities.vapidPublicKey)
+      applicationServerKey: urlBase64ToUint8Array(capabilities.vapidPublicKey) as unknown as BufferSource
     });
   }
 

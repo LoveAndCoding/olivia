@@ -55,6 +55,7 @@ export function ReminderDetailPage() {
   }, [reminderQuery.data]);
 
   const reminder = reminderQuery.data?.reminder;
+  const timeline = reminderQuery.data?.timeline ?? [];
   const isReadOnly = role !== 'stakeholder';
   const isTerminal = reminder?.state === 'completed' || reminder?.state === 'cancelled';
 
@@ -331,9 +332,9 @@ export function ReminderDetailPage() {
                   </div>
                   <span className="section-note">Newest first</span>
                 </div>
-                {reminderQuery.data.timeline.length === 0 ? <p className="muted">No timeline yet.</p> : null}
+                {timeline.length === 0 ? <p className="muted">No timeline yet.</p> : null}
                 <ul className="history-list">
-                  {reminderQuery.data.timeline.map((entry) => (
+                  {timeline.map((entry) => (
                     <li key={entry.id}>
                       <strong>{entry.eventType.replace(/_/g, ' ')}</strong>
                       <span className="muted"> · {new Date(entry.createdAt).toLocaleString()}</span>
