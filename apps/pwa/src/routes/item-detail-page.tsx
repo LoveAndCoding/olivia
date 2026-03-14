@@ -299,11 +299,11 @@ export function ItemDetailPage() {
                           <div className="update-grid">
                             <div className="stack-sm">
                               <span className="field-label">Reminder title</span>
-                              <input value={linkedReminderTitle} onChange={(event) => setLinkedReminderTitle(event.target.value)} />
+                              <input aria-label="Reminder title" value={linkedReminderTitle} onChange={(event) => setLinkedReminderTitle(event.target.value)} />
                             </div>
                             <div className="stack-sm">
                               <span className="field-label">Owner</span>
-                              <select value={linkedReminderOwner} onChange={(event) => setLinkedReminderOwner(event.target.value as Owner)}>
+                              <select aria-label="Reminder owner" value={linkedReminderOwner} onChange={(event) => setLinkedReminderOwner(event.target.value as Owner)}>
                                 <option value="stakeholder">Lexi</option>
                                 <option value="spouse">Alexander</option>
                                 <option value="unassigned">Unassigned</option>
@@ -311,11 +311,11 @@ export function ItemDetailPage() {
                             </div>
                             <div className="stack-sm">
                               <span className="field-label">Surface at</span>
-                              <input type="datetime-local" value={linkedReminderScheduledAt} onChange={(event) => setLinkedReminderScheduledAt(event.target.value)} />
+                              <input aria-label="Surface at" type="datetime-local" value={linkedReminderScheduledAt} onChange={(event) => setLinkedReminderScheduledAt(event.target.value)} />
                             </div>
                             <div className="stack-sm">
                               <span className="field-label">Recurrence</span>
-                              <select value={linkedReminderCadence} onChange={(event) => setLinkedReminderCadence(event.target.value as RecurrenceCadence)}>
+                              <select aria-label="Reminder recurrence" value={linkedReminderCadence} onChange={(event) => setLinkedReminderCadence(event.target.value as RecurrenceCadence)}>
                                 <option value="none">One time</option>
                                 <option value="daily">Daily</option>
                                 <option value="weekly">Weekly</option>
@@ -324,7 +324,7 @@ export function ItemDetailPage() {
                             </div>
                             <div className="stack-sm" style={{ gridColumn: '1 / -1' }}>
                               <span className="field-label">Note</span>
-                              <textarea value={linkedReminderNote} onChange={(event) => setLinkedReminderNote(event.target.value)} rows={3} placeholder="Optional reminder context" />
+                              <textarea aria-label="Reminder note" value={linkedReminderNote} onChange={(event) => setLinkedReminderNote(event.target.value)} rows={3} placeholder="Optional reminder context" />
                             </div>
                           </div>
                           <p className="muted">{linkedReminderDraftId ? 'Review the linked reminder draft, make corrections if needed, then save it.' : 'Preview the linked reminder before saving it.'}</p>

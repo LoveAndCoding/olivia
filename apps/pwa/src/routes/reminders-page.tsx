@@ -204,6 +204,7 @@ export function RemindersPage() {
                         onChange={(event) => setInputText(event.target.value)}
                         rows={3}
                         placeholder="Remind me next Thursday to bring the vet records."
+                        aria-label="Reminder request"
                       />
                     </div>
                   ) : null}
@@ -212,11 +213,11 @@ export function RemindersPage() {
                     <div className="update-grid">
                       <div className="stack-sm">
                         <span className="field-label">Title</span>
-                        <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} />
+                        <input aria-label="Title" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} />
                       </div>
                       <div className="stack-sm">
                         <span className="field-label">Owner</span>
-                        <select value={form.owner} onChange={(event) => setForm((current) => ({ ...current, owner: event.target.value as Owner }))}>
+                        <select aria-label="Owner" value={form.owner} onChange={(event) => setForm((current) => ({ ...current, owner: event.target.value as Owner }))}>
                           <option value="stakeholder">Lexi</option>
                           <option value="spouse">Alexander</option>
                           <option value="unassigned">Unassigned</option>
@@ -226,6 +227,7 @@ export function RemindersPage() {
                         <span className="field-label">When</span>
                         <input
                           type="datetime-local"
+                          aria-label="When"
                           value={form.scheduledAt}
                           onChange={(event) => setForm((current) => ({ ...current, scheduledAt: event.target.value }))}
                         />
@@ -233,6 +235,7 @@ export function RemindersPage() {
                       <div className="stack-sm">
                         <span className="field-label">Recurrence</span>
                         <select
+                          aria-label="Recurrence"
                           value={form.recurrenceCadence}
                           onChange={(event) => setForm((current) => ({ ...current, recurrenceCadence: event.target.value as RecurrenceCadence }))}
                         >
@@ -245,6 +248,7 @@ export function RemindersPage() {
                       <div className="stack-sm" style={{ gridColumn: '1 / -1' }}>
                         <span className="field-label">Note</span>
                         <textarea
+                          aria-label="Note"
                           value={form.note}
                           onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
                           rows={3}
