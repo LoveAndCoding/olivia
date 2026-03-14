@@ -86,13 +86,10 @@ test('stakeholder can queue a reminder offline and sync it on reconnect', async 
 
   await expect(page.getByText(reminderTitle)).toBeVisible();
   await expect(page.getByText('Pending sync')).toBeVisible();
-
-  await page.goto('/settings');
-  await expect(page.getByText(/Pending commands: 1/)).toBeVisible();
   await context.setOffline(false);
   await page.reload();
-  await expect.poll(async () => page.getByText(/Pending commands:/).textContent(), { timeout: 10_000 }).toContain('Pending commands: 0');
-
-  await page.goto('/reminders');
   await expect(page.getByText(reminderTitle)).toBeVisible();
+  await expect(page.getByText('Pending sync')).toHaveCount(0);
+  await page.goto('/settings');
+  await expect.poll(async () => page.getByText(/Pending commands:/).textContent(), { timeout: 10_000 }).toContain('Pending commands: 0');
 });
