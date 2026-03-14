@@ -385,6 +385,10 @@ Use these existing modules as the extension points for the first implementation:
 ### Phase 5: Extend PWA API, sync, and offline cache
 **Outcome:** Reminder data participates in the same offline-tolerant client architecture as inbox data.
 
+**Status:** complete
+
+**Validation note:** Typed reminder API clients, Dexie reminder stores, reminder-aware outbox handling, cached reminder view/detail fallbacks, and real push-subscription client plumbing are implemented in the PWA client and validated by targeted sync tests covering offline reminder creation, offline snooze and completion, reconnect flush behavior, conflict marking, and cached reminder rendering.
+
 **Primary files**
 - Modify: `apps/pwa/src/lib/api.ts`
 - Modify: `apps/pwa/src/lib/sync.ts`
@@ -428,6 +432,10 @@ Use these existing modules as the extension points for the first implementation:
 
 ### Phase 6: Build reminder surfaces in the PWA
 **Outcome:** Olivia has a calm, reminder-aware user experience that adds a new workflow without displacing the inbox.
+
+**Status:** complete
+
+**Validation note:** The PWA now ships a dedicated `/reminders` support route, reminder detail surfaces, home reminder surfacing, linked reminder creation from inbox item detail, reminder settings and re-entry flows, and spouse read-only rendering without adding a fifth primary nav tab. These surfaces are validated by reminder-focused Playwright coverage plus manual QA in mobile-sized and installed-PWA modes.
 
 **Primary files**
 - Modify: `apps/pwa/src/router.tsx`
@@ -495,6 +503,10 @@ Use these existing modules as the extension points for the first implementation:
 
 ### Phase 7: Final verification, documentation sync, and M6 evidence
 **Outcome:** The feature is implementable end to end with clear proof that it meets the approved scope and has not absorbed deferred workflows.
+
+**Status:** complete
+
+**Validation note:** Targeted domain, API, PWA sync, typecheck, build, and reminder end-to-end suites all pass, and manual QA confirms standalone and linked reminder flows, due or overdue reminder surfacing, recurring completion rescheduling, snooze or edit or cancel behavior, reminder settings persistence, reminder re-entry, spouse read-only behavior, installed-PWA usability, inbox-state separation, and missed recurring history staying timeline-only on the reminder detail surface. Review against the approved spec confirms the slice remains within scope: no reminder-to-inbox conversion flow, no rich recurrence rules, no spouse write path, and no external delivery channels beyond Web Push support.
 
 **Primary files**
 - Modify as needed: tests in `packages/domain/test`, `apps/api/test`, `apps/pwa/src/lib/api.test.ts`, and any UI/e2e test locations already used during implementation
