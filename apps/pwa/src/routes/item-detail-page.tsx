@@ -125,9 +125,9 @@ export function ItemDetailPage() {
         recurrenceCadence: linkedReminderCadence,
         linkedInboxItemId: itemQuery.data.item.id
       }, linkedReminderDraftId ?? undefined);
-      await queryClient.invalidateQueries({ queryKey: ['reminders-view'] });
+      const latestReminderView = await loadReminderView(role);
+      queryClient.setQueryData(['reminders-view', role], latestReminderView);
       await queryClient.invalidateQueries({ queryKey: ['item-detail', role, params.itemId] });
-      await queryClient.refetchQueries({ queryKey: ['reminders-view', role], type: 'active' });
       resetLinkedReminderDraft();
     } catch (caughtError) {
       setError((caughtError as Error).message);

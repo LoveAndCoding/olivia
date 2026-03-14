@@ -9,6 +9,7 @@ import {
   completeReminderCommand,
   confirmUpdateReminderCommand,
   loadReminderDetail,
+  loadReminderView,
   snoozeReminderCommand
 } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
@@ -86,11 +87,11 @@ export function ReminderDetailPage() {
   }, [form, reminder]);
 
   const refreshReminderQueries = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['reminders-view'] });
-    await queryClient.invalidateQueries({ queryKey: ['reminder-detail'] });
+    const latestReminderView = await loadReminderView(role);
+    queryClient.setQueryData(['reminders-view', role], latestReminderView);
+    const latestReminderDetail = await loadReminderDetail(role, params.reminderId);
+    queryClient.setQueryData(['reminder-detail', role, params.reminderId], latestReminderDetail);
     await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
-    await queryClient.refetchQueries({ queryKey: ['reminders-view', role], type: 'active' });
-    await queryClient.refetchQueries({ queryKey: ['reminder-detail', role, params.reminderId], type: 'active' });
   };
 
   const handleSaveEdits = async () => {

@@ -129,9 +129,9 @@ export function RemindersPage() {
         recurrenceCadence: form.recurrenceCadence,
         linkedInboxItemId: null
       }, draftId ?? undefined);
-      await queryClient.invalidateQueries({ queryKey: ['reminders-view'] });
+      const latestReminderView = await loadReminderView(role);
+      queryClient.setQueryData(['reminders-view', role], latestReminderView);
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
-      await queryClient.refetchQueries({ queryKey: ['reminders-view', role], type: 'active' });
       resetCreateState();
     } catch (caughtError) {
       setError((caughtError as Error).message);
