@@ -227,17 +227,17 @@ export const QUICK_CHIPS = [
 
 /** Map internal role to display name. */
 export function getDisplayName(role: 'stakeholder' | 'spouse' | string): string {
-  return role === 'spouse' ? 'Alexander' : 'Lexi';
+  return role === 'spouse' ? 'Alex' : 'Jamie';
 }
 
 /** Map internal role to avatar initial. */
 export function getAvatarInitial(role: 'stakeholder' | 'spouse' | string): string {
-  return role === 'spouse' ? 'A' : 'L';
+  return role === 'spouse' ? 'A' : 'J';
 }
 
 /** Map owner enum to display name. */
 export function ownerToDisplay(owner: string): string {
-  if (owner === 'spouse') return 'Alexander';
-  if (owner === 'stakeholder') return 'Lexi';
+  if (owner === 'spouse') return 'Alex';
+  if (owner === 'stakeholder') return 'Jamie';
   return 'Unassigned';
 }

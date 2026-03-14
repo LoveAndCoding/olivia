@@ -195,15 +195,21 @@ export function ReminderDetailPage() {
                   <span className="rem-detail-field-label">Status</span>
                   <span className={`rem-badge ${display.badgeClass}`}>{display.badgeText}</span>
                 </div>
-                {!isCompleted && !isCancelled && (
+                {!isCompleted && !isCancelled && !isSnoozed && (
                   <div className="rem-detail-field">
                     <span className="rem-detail-field-label">
-                      {isSnoozed ? 'Resurfaces' : 'Scheduled'}
+                      {state === 'overdue' ? 'Was due' : 'Scheduled'}
                     </span>
+                    <span className="rem-detail-field-value" style={state === 'overdue' ? { color: 'var(--rose)' } : undefined}>
+                      {formatScheduledLabel(reminder.scheduledAt)}
+                    </span>
+                  </div>
+                )}
+                {isSnoozed && reminder.snoozedUntil && (
+                  <div className="rem-detail-field">
+                    <span className="rem-detail-field-label">Resurfaces</span>
                     <span className="rem-detail-field-value">
-                      {isSnoozed && reminder.snoozedUntil
-                        ? formatScheduledLabel(reminder.snoozedUntil)
-                        : formatScheduledLabel(reminder.scheduledAt)}
+                      {formatScheduledLabel(reminder.snoozedUntil)}
                     </span>
                   </div>
                 )}
@@ -212,6 +218,14 @@ export function ReminderDetailPage() {
                     <span className="rem-detail-field-label">Was scheduled</span>
                     <span className="rem-detail-field-value">
                       {formatScheduledLabel(reminder.scheduledAt)}
+                    </span>
+                  </div>
+                )}
+                {isRecurring && !isCompleted && !isCancelled && (
+                  <div className="rem-detail-field">
+                    <span className="rem-detail-field-label">Next after done</span>
+                    <span className="rem-detail-field-value">
+                      {formatScheduledLabel(reminder.scheduledAt)} (auto-scheduled)
                     </span>
                   </div>
                 )}
@@ -239,70 +253,71 @@ export function ReminderDetailPage() {
                 )}
               </div>
 
-              {/* Actions */}
-              {!isCompleted && !isCancelled && (
+              {/* Actions — DET-1: upcoming => Edit, Snooze, Cancel */}
+              {state === 'upcoming' && (
                 <div className="rem-actions-row" style={{ marginBottom: 20 }}>
-                  {isDueOrOverdue && (
-                    <>
-                      <button type="button" className="rem-btn rem-btn-done" style={{ flex: 1 }} disabled={busy} onClick={handleComplete}>
-                        ✓ Done
-                      </button>
-                      <button type="button" className="rem-btn rem-btn-secondary" disabled={busy} onClick={() => setShowSnoozeSheet(true)}>
-                        😴 Snooze
-                      </button>
-                    </>
-                  )}
-                  {!isDueOrOverdue && isSnoozed && (
-                    <>
-                      <button type="button" className="rem-btn rem-btn-secondary" disabled={busy} onClick={() => setShowSnoozeSheet(true)}>
-                        Change snooze
-                      </button>
-                      <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => {
-                        void handleSnoozeSelect(new Date().toISOString());
-                      }}>
-                        Un-snooze
-                      </button>
-                    </>
-                  )}
+                  <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => setShowEditSheet(true)}>
+                    ✏️ Edit
+                  </button>
+                  <button type="button" className="rem-btn rem-btn-secondary" disabled={busy} onClick={() => setShowSnoozeSheet(true)}>
+                    😴 Snooze
+                  </button>
+                  <button type="button" className="rem-btn rem-btn-danger-text" disabled={busy} onClick={() => setShowCancelSheet(true)}>
+                    ✕ Cancel
+                  </button>
                 </div>
               )}
 
-              {!isCompleted && !isCancelled && (
-                <div className="rem-actions-row" style={{ marginBottom: 20 }}>
-                  {!isSnoozed && (
-                    <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => setShowEditSheet(true)}>
-                      ✏️ Edit
+              {/* Actions — DET-2/DET-3: due or overdue => Done, Snooze, Edit, Cancel */}
+              {isDueOrOverdue && (
+                <div style={{ marginBottom: 20 }}>
+                  <div className="rem-actions-row" style={{ marginBottom: 10 }}>
+                    <button type="button" className="rem-btn rem-btn-done" style={{ flex: 1 }} disabled={busy} onClick={handleComplete}>
+                      ✓ Done
                     </button>
-                  )}
-                  {isSnoozed && (
-                    <>
-                      <button type="button" className="rem-btn rem-btn-done" style={{ flex: 1 }} disabled={busy} onClick={handleComplete}>
-                        ✓ Mark done now
-                      </button>
-                      <button type="button" className="rem-btn rem-btn-danger-text" disabled={busy} onClick={() => setShowCancelSheet(true)}>
-                        ✕ Cancel
-                      </button>
-                    </>
-                  )}
-                  {!isSnoozed && (
-                    <>
-                      {isDueOrOverdue && (
-                        <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => setShowEditSheet(true)}>
-                          {isRecurring ? '✏️ Edit cadence' : '✏️ Edit'}
-                        </button>
-                      )}
-                      <button type="button" className="rem-btn rem-btn-danger-text" disabled={busy} onClick={() => setShowCancelSheet(true)}>
-                        {isRecurring ? '✕ Cancel series' : '✕ Cancel'}
-                      </button>
-                    </>
-                  )}
+                    <button type="button" className="rem-btn rem-btn-secondary" disabled={busy} onClick={() => setShowSnoozeSheet(true)}>
+                      😴 Snooze
+                    </button>
+                  </div>
+                  <div className="rem-actions-row">
+                    <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => setShowEditSheet(true)}>
+                      {isRecurring ? '✏️ Edit cadence' : '✏️ Edit'}
+                    </button>
+                    <button type="button" className="rem-btn rem-btn-danger-text" disabled={busy} onClick={() => setShowCancelSheet(true)}>
+                      {isRecurring ? '✕ Cancel series' : '✕ Cancel'}
+                    </button>
+                  </div>
                 </div>
               )}
 
+              {/* Actions — ACTION-4: snoozed => Change snooze, Un-snooze, Mark done now, Cancel */}
+              {isSnoozed && (
+                <div style={{ marginBottom: 20 }}>
+                  <div className="rem-actions-row" style={{ marginBottom: 10 }}>
+                    <button type="button" className="rem-btn rem-btn-secondary" disabled={busy} onClick={() => setShowSnoozeSheet(true)}>
+                      🔄 Change snooze
+                    </button>
+                    <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => {
+                      void handleSnoozeSelect(new Date().toISOString());
+                    }}>
+                      ↩ Un-snooze
+                    </button>
+                  </div>
+                  <div className="rem-actions-row">
+                    <button type="button" className="rem-btn rem-btn-done" style={{ flex: 1 }} disabled={busy} onClick={handleComplete}>
+                      ✓ Mark done now
+                    </button>
+                    <button type="button" className="rem-btn rem-btn-danger-text" disabled={busy} onClick={() => setShowCancelSheet(true)}>
+                      ✕ Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions — DET-4: completed => Undo completion */}
               {isCompleted && (
                 <div className="rem-actions-row" style={{ marginBottom: 20 }}>
                   <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => {
-                    /* Undo completion would need a reverse operation — for now, navigate back */
                     void navigate({ to: '/reminders' });
                   }}>
                     ↩ Undo completion
