@@ -198,6 +198,16 @@ Use this structure for future entries:
 - Status: active
 - Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/assumptions-log.md` (A-009), `docs/roadmap/milestones.md`
 
+### D-021: Meal planning spec approved by CEO
+- Date: 2026-03-15
+- Area: delivery planning
+- Decision: Approve `docs/specs/meal-planning.md` for implementation planning. The spec is complete, correctly scoped, and properly integrated with the Shared Lists primitive. The VP of Product should proceed with creating a Designer task for the visual spec to begin the standard H3 implementation cycle.
+- Rationale: the spec meets all quality gates — full template coverage, correct trust model application (D-002, D-010), 13 concrete acceptance criteria, clean integration with the proven Shared Lists primitive, and appropriate scope boundaries. No open questions block Phase 1. One architectural ambiguity (shopping item storage granularity for the FE) is correctly deferred to the implementation planning stage.
+- Alternatives considered: requesting changes to scope or workflow. No changes warranted — the spec follows D-019 guidance exactly and is execution-ready.
+- Trade-offs: approving now maintains product momentum; the two FE architecture decisions and three designer decisions are appropriately deferred to implementation planning and the visual spec.
+- Status: active
+- Related docs: `docs/specs/meal-planning.md`, `docs/learnings/decision-history.md` (D-019, D-020)
+
 ### D-020: Meal planning spec drafted and submitted for CEO approval
 - Date: 2026-03-15
 - Area: delivery planning

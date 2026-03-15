@@ -1,7 +1,7 @@
 # Feature Spec: Meal Planning
 
 ## Status
-- Draft
+- Approved (CEO, 2026-03-15)
 
 ## Summary
 Olivia supports shared lists for lightweight household coordination and recurring routines for repeating obligations, but neither workflow helps the household answer the weekly question: what are we eating this week, and what do we need to buy? This spec defines weekly meal planning as a focused Horizon 3 workflow. A meal plan is a titled weekly grid where the household can assign meals to days, note the shopping items needed for each meal, and generate a grocery shopping list via the existing Shared Lists workflow. The goal is not a recipe database or nutrition tracker — it is a lightweight weekly planning surface that reduces the overhead of figuring out dinner every night and eliminates the separate "remember to buy ingredients" step by connecting directly to shared lists. If this workflow works well, the household gains a place to think through the week's meals once and turn that plan into a grocery list without any extra coordination.
