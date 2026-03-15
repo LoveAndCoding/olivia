@@ -6,6 +6,8 @@ import {
   inboxItemSchema,
   listItemHistoryEntrySchema,
   listItemSchema,
+  mealEntrySchema,
+  mealPlanSchema,
   notificationSubscriptionSchema,
   reminderNotificationPreferencesSchema,
   reminderSchema,
@@ -14,10 +16,13 @@ import {
   routineSchema,
   sharedListSchema,
   type ActorRole,
+  type GeneratedListRef,
   type HistoryEntry,
   type InboxItem,
   type ListItem,
   type ListItemHistoryEntry,
+  type MealEntry,
+  type MealPlan,
   type NotificationSubscription,
   type Reminder,
   type ReminderNotificationPreferences,
@@ -892,6 +897,174 @@ export class InboxRepository {
       );
       return true;
     })();
+  }
+
+  // ─── Meal Plan repository ─────────────────────────────────────────────────
+
+  private mapMealPlanRow(row: Record<string, unknown>): MealPlan {
+    return mealPlanSchema.parse({
+      id: row.id,
+      title: row.title,
+      weekStartDate: row.week_start_date,
+      status: row.status,
+      generatedListRefs: JSON.parse(String(row.generated_list_refs || '[]')),
+      mealCount: 0,
+      shoppingItemCount: 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      archivedAt: row.archived_at ?? null,
+      version: row.version
+    });
+  }
+
+  private mapMealEntryRow(row: Record<string, unknown>): MealEntry {
+    return mealEntrySchema.parse({
+      id: row.id,
+      planId: row.plan_id,
+      dayOfWeek: row.day_of_week,
+      name: row.name,
+      shoppingItems: JSON.parse(String(row.shopping_items || '[]')),
+      position: row.position,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      version: row.version
+    });
+  }
+
+  listMealPlans(status: 'active' | 'archived' = 'active'): MealPlan[] {
+    const rows = this.db
+      .prepare('SELECT * FROM meal_plans WHERE status = ? ORDER BY updated_at DESC')
+      .all(status) as Record<string, unknown>[];
+    return rows.map((row) => {
+      const plan = this.mapMealPlanRow(row);
+      const entries = this.getMealEntries(plan.id);
+      const mealCount = entries.length;
+      const shoppingItemCount = entries.reduce((sum, e) => sum + e.shoppingItems.length, 0);
+      return { ...plan, mealCount, shoppingItemCount };
+    });
+  }
+
+  getMealPlan(planId: string): MealPlan | null {
+    const row = this.db
+      .prepare('SELECT * FROM meal_plans WHERE id = ?')
+      .get(planId) as Record<string, unknown> | undefined;
+    if (!row) return null;
+    const plan = this.mapMealPlanRow(row);
+    const entries = this.getMealEntries(planId);
+    const mealCount = entries.length;
+    const shoppingItemCount = entries.reduce((sum, e) => sum + e.shoppingItems.length, 0);
+    return { ...plan, mealCount, shoppingItemCount };
+  }
+
+  getMealEntries(planId: string): MealEntry[] {
+    const rows = this.db
+      .prepare('SELECT * FROM meal_entries WHERE plan_id = ? ORDER BY day_of_week ASC, position ASC')
+      .all(planId) as Record<string, unknown>[];
+    return rows.map((row) => this.mapMealEntryRow(row));
+  }
+
+  getNextMealEntryPosition(planId: string, dayOfWeek: number): number {
+    const row = this.db
+      .prepare('SELECT COALESCE(MAX(position) + 1, 0) AS next_position FROM meal_entries WHERE plan_id = ? AND day_of_week = ?')
+      .get(planId, dayOfWeek) as { next_position: number };
+    return row.next_position;
+  }
+
+  createMealPlan(plan: MealPlan): void {
+    this.db.prepare(`
+      INSERT INTO meal_plans (id, title, week_start_date, status, generated_list_refs, created_at, updated_at, archived_at, version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      plan.id, plan.title, plan.weekStartDate, plan.status,
+      JSON.stringify(plan.generatedListRefs),
+      plan.createdAt, plan.updatedAt, plan.archivedAt, plan.version
+    );
+  }
+
+  updateMealPlan(id: string, changes: Partial<Pick<MealPlan, 'title' | 'status' | 'archivedAt' | 'updatedAt' | 'version' | 'generatedListRefs'>>, expectedVersion: number): boolean {
+    const current = this.db.prepare('SELECT * FROM meal_plans WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    if (!current) return false;
+    if (Number(current.version) !== expectedVersion) {
+      throw new Error(`Version conflict: expected version ${expectedVersion} but found ${current.version}.`);
+    }
+    const merged = {
+      title: changes.title ?? String(current.title),
+      status: changes.status ?? String(current.status),
+      archivedAt: 'archivedAt' in changes ? (changes.archivedAt ?? null) : (current.archived_at ? String(current.archived_at) : null),
+      updatedAt: changes.updatedAt ?? new Date().toISOString(),
+      version: changes.version ?? (Number(current.version) + 1),
+      generatedListRefs: changes.generatedListRefs !== undefined ? JSON.stringify(changes.generatedListRefs) : String(current.generated_list_refs)
+    };
+    const result = this.db.prepare(`
+      UPDATE meal_plans
+      SET title = ?, status = ?, archived_at = ?, updated_at = ?, version = ?, generated_list_refs = ?
+      WHERE id = ? AND version = ?
+    `).run(
+      merged.title, merged.status, merged.archivedAt, merged.updatedAt, merged.version, merged.generatedListRefs,
+      id, expectedVersion
+    );
+    return result.changes > 0;
+  }
+
+  deleteMealPlan(planId: string): void {
+    this.db.prepare('DELETE FROM meal_plans WHERE id = ?').run(planId);
+  }
+
+  addMealEntry(entry: MealEntry): void {
+    this.db.prepare(`
+      INSERT INTO meal_entries (id, plan_id, day_of_week, name, shopping_items, position, created_at, updated_at, version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      entry.id, entry.planId, entry.dayOfWeek, entry.name,
+      JSON.stringify(entry.shoppingItems),
+      entry.position, entry.createdAt, entry.updatedAt, entry.version
+    );
+  }
+
+  updateMealEntry(id: string, changes: Partial<Pick<MealEntry, 'name' | 'shoppingItems' | 'updatedAt' | 'version'>>, expectedVersion: number): boolean {
+    const current = this.db.prepare('SELECT * FROM meal_entries WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    if (!current) return false;
+    if (Number(current.version) !== expectedVersion) {
+      throw new Error(`Version conflict: expected version ${expectedVersion} but found ${current.version}.`);
+    }
+    const merged = {
+      name: changes.name ?? String(current.name),
+      shoppingItems: changes.shoppingItems !== undefined ? JSON.stringify(changes.shoppingItems) : String(current.shopping_items),
+      updatedAt: changes.updatedAt ?? new Date().toISOString(),
+      version: changes.version ?? (Number(current.version) + 1)
+    };
+    const result = this.db.prepare(`
+      UPDATE meal_entries
+      SET name = ?, shopping_items = ?, updated_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `).run(
+      merged.name, merged.shoppingItems, merged.updatedAt, merged.version,
+      id, expectedVersion
+    );
+    return result.changes > 0;
+  }
+
+  deleteMealEntry(entryId: string): void {
+    this.db.prepare('DELETE FROM meal_entries WHERE id = ?').run(entryId);
+  }
+
+  addGeneratedListRef(planId: string, ref: GeneratedListRef, expectedVersion: number): boolean {
+    const current = this.db.prepare('SELECT * FROM meal_plans WHERE id = ?').get(planId) as Record<string, unknown> | undefined;
+    if (!current) return false;
+    if (Number(current.version) !== expectedVersion) {
+      throw new Error(`Version conflict: expected version ${expectedVersion} but found ${current.version}.`);
+    }
+    const existingRefs: GeneratedListRef[] = JSON.parse(String(current.generated_list_refs || '[]'));
+    const newRefs = [...existingRefs, ref];
+    const result = this.db.prepare(`
+      UPDATE meal_plans
+      SET generated_list_refs = ?, version = ?, updated_at = ?
+      WHERE id = ? AND version = ?
+    `).run(
+      JSON.stringify(newRefs), Number(current.version) + 1, new Date().toISOString(),
+      planId, expectedVersion
+    );
+    return result.changes > 0;
   }
 
   exportSnapshot(): {

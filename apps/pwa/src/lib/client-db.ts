@@ -12,6 +12,10 @@ import type {
   ItemDetailResponse,
   ListDetailResponse,
   ListItem,
+  MealEntry,
+  MealPlan,
+  MealPlanDetailResponse,
+  MealPlanIndexResponse,
   OutboxCommand,
   Reminder,
   ReminderDetailResponse,
@@ -43,6 +47,8 @@ class OliviaClientDb extends Dexie {
   listItems!: Table<ListItem, string>;
   routines!: Table<Routine, string>;
   routineOccurrences!: Table<RoutineOccurrence, string>;
+  mealPlans!: Table<MealPlan, string>;
+  mealEntries!: Table<MealEntry, string>;
   outbox!: Table<StoredOutboxCommand, string>;
   meta!: Table<MetaRecord, string>;
 
@@ -84,6 +90,21 @@ class OliviaClientDb extends Dexie {
       listItems: 'id, listId, position, pendingSync',
       routines: 'id, status, owner, currentDueDate, updatedAt, pendingSync',
       routineOccurrences: 'id, routineId, dueDate',
+      outbox: 'commandId, kind, state, createdAt',
+      meta: 'key'
+    });
+    this.version(5).stores({
+      items: 'id, status, owner, updatedAt, pendingSync',
+      historyCache: 'itemId',
+      reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',
+      reminderTimelineCache: 'reminderId',
+      reminderSettingsCache: 'actorRole',
+      sharedLists: 'id, status, updatedAt, pendingSync',
+      listItems: 'id, listId, position, pendingSync',
+      routines: 'id, status, owner, currentDueDate, updatedAt, pendingSync',
+      routineOccurrences: 'id, routineId, dueDate',
+      mealPlans: 'id, status, weekStartDate, updatedAt, pendingSync',
+      mealEntries: 'id, planId, dayOfWeek, position',
       outbox: 'commandId, kind, state, createdAt',
       meta: 'key'
     });
@@ -351,4 +372,56 @@ export async function removeRoutineFromCache(routineId: string) {
     await clientDb.routines.delete(routineId);
     await clientDb.routineOccurrences.where('routineId').equals(routineId).delete();
   });
+}
+
+// ─── Meal Plan cache helpers ──────────────────────────────────────────────────
+
+export async function cacheMealPlanIndex(response: MealPlanIndexResponse) {
+  await clientDb.mealPlans.bulkPut(response.plans);
+}
+
+export async function cacheMealPlanDetail(response: MealPlanDetailResponse) {
+  await clientDb.transaction('rw', clientDb.mealPlans, clientDb.mealEntries, async () => {
+    await clientDb.mealPlans.put(response.plan);
+    await clientDb.mealEntries.where('planId').equals(response.plan.id).delete();
+    await clientDb.mealEntries.bulkPut(response.entries);
+  });
+}
+
+export async function getCachedActiveMealPlanIndex(): Promise<MealPlanIndexResponse> {
+  const plans = await clientDb.mealPlans.where('status').equals('active').sortBy('updatedAt');
+  const reversed = plans.reverse();
+  return { plans: reversed, totalCount: reversed.length };
+}
+
+export async function getCachedArchivedMealPlanIndex(): Promise<MealPlanIndexResponse> {
+  const plans = await clientDb.mealPlans.where('status').equals('archived').sortBy('updatedAt');
+  const reversed = plans.reverse();
+  return { plans: reversed, totalCount: reversed.length };
+}
+
+export async function getCachedMealPlanDetail(planId: string): Promise<MealPlanDetailResponse | null> {
+  const plan = await clientDb.mealPlans.get(planId);
+  if (!plan) return null;
+  const entries = await clientDb.mealEntries.where('planId').equals(planId).sortBy('dayOfWeek');
+  return { plan, entries };
+}
+
+export async function cacheMealPlan(plan: MealPlan) {
+  await clientDb.mealPlans.put(plan);
+}
+
+export async function cacheMealEntry(entry: MealEntry) {
+  await clientDb.mealEntries.put(entry);
+}
+
+export async function removeMealPlanFromCache(planId: string) {
+  await clientDb.transaction('rw', clientDb.mealPlans, clientDb.mealEntries, async () => {
+    await clientDb.mealPlans.delete(planId);
+    await clientDb.mealEntries.where('planId').equals(planId).delete();
+  });
+}
+
+export async function removeMealEntryFromCache(entryId: string) {
+  await clientDb.mealEntries.delete(entryId);
 }

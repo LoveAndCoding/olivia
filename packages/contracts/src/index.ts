@@ -676,6 +676,112 @@ export const deleteRoutineResponseSchema = z.object({
 
 // ─── Outbox commands ─────────────────────────────────────────────────────────
 
+// ─── Meal Planning ────────────────────────────────────────────────────────────
+
+export const mealPlanStatusSchema = z.enum(['active', 'archived']);
+export const dayOfWeekSchema = z.number().int().min(0).max(6); // 0=Monday, 6=Sunday
+
+export const mealPlanEventTypeSchema = z.enum([
+  'meal_plan_created', 'meal_plan_title_updated', 'meal_plan_archived',
+  'meal_plan_restored', 'meal_plan_deleted', 'meal_entry_added',
+  'meal_entry_name_updated', 'meal_entry_items_updated', 'meal_entry_deleted',
+  'grocery_list_generated'
+]);
+
+export const generatedListRefSchema = z.object({
+  listId: z.string().uuid(),
+  generatedAt: z.string().datetime()
+});
+
+export const mealPlanSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().trim().min(1),
+  weekStartDate: z.string(),
+  status: mealPlanStatusSchema,
+  generatedListRefs: z.array(generatedListRefSchema),
+  mealCount: z.number().int().nonnegative(),
+  shoppingItemCount: z.number().int().nonnegative(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  archivedAt: z.string().datetime().nullable(),
+  version: z.number().int().positive(),
+  pendingSync: z.boolean().optional()
+});
+
+export const mealEntrySchema = z.object({
+  id: z.string().uuid(),
+  planId: z.string().uuid(),
+  dayOfWeek: dayOfWeekSchema,
+  name: z.string().trim().min(1),
+  shoppingItems: z.array(z.string()),
+  position: z.number().int().nonnegative(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  version: z.number().int().positive(),
+  pendingSync: z.boolean().optional()
+});
+
+export const mealPlanIndexResponseSchema = z.object({
+  plans: z.array(mealPlanSchema),
+  totalCount: z.number().int().nonnegative()
+});
+
+export const mealPlanDetailResponseSchema = z.object({
+  plan: mealPlanSchema,
+  entries: z.array(mealEntrySchema)
+});
+
+export const createMealPlanRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  title: z.string().trim().min(1),
+  weekStartDate: z.string()
+});
+
+export const updateMealPlanTitleRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  title: z.string().trim().min(1),
+  expectedVersion: z.number().int().positive()
+});
+
+export const archiveMealPlanRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  confirmed: z.literal(true),
+  expectedVersion: z.number().int().positive()
+});
+
+export const restoreMealPlanRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  expectedVersion: z.number().int().positive()
+});
+
+export const deleteMealPlanRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  confirmed: z.literal(true)
+});
+
+export const addMealEntryRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  dayOfWeek: dayOfWeekSchema,
+  name: z.string().trim().min(1)
+});
+
+export const updateMealEntryRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  name: z.string().trim().min(1).optional(),
+  shoppingItems: z.array(z.string()).optional(),
+  expectedVersion: z.number().int().positive()
+});
+
+export const deleteMealEntryRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  confirmed: z.literal(true)
+});
+
+export const generateGroceryListResponseSchema = z.object({
+  list: sharedListSchema,
+  generatedListRef: generatedListRefSchema
+});
+
 export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('create'),
@@ -875,7 +981,16 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
     actorRole: actorRoleSchema,
     routineId: z.string().uuid(),
     confirmed: z.literal(true)
-  })
+  }),
+  z.object({ kind: z.literal('meal_plan_create'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), title: z.string().trim().min(1), weekStartDate: z.string() }),
+  z.object({ kind: z.literal('meal_plan_title_update'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), expectedVersion: z.number().int().positive(), title: z.string().trim().min(1) }),
+  z.object({ kind: z.literal('meal_plan_archive'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), expectedVersion: z.number().int().positive(), confirmed: z.literal(true) }),
+  z.object({ kind: z.literal('meal_plan_restore'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), expectedVersion: z.number().int().positive() }),
+  z.object({ kind: z.literal('meal_plan_delete'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), confirmed: z.literal(true) }),
+  z.object({ kind: z.literal('meal_entry_add'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), entryId: z.string().uuid(), dayOfWeek: dayOfWeekSchema, name: z.string().trim().min(1) }),
+  z.object({ kind: z.literal('meal_entry_name_update'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), entryId: z.string().uuid(), expectedVersion: z.number().int().positive(), name: z.string().trim().min(1) }),
+  z.object({ kind: z.literal('meal_entry_items_update'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), entryId: z.string().uuid(), expectedVersion: z.number().int().positive(), shoppingItems: z.array(z.string()) }),
+  z.object({ kind: z.literal('meal_entry_delete'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), entryId: z.string().uuid(), confirmed: z.literal(true) })
 ]);
 
 export type ActorRole = z.infer<typeof actorRoleSchema>;
@@ -982,3 +1097,22 @@ export type DeleteRoutineRequest = z.infer<typeof deleteRoutineRequestSchema>;
 export type RoutineMutationResponse = z.infer<typeof routineMutationResponseSchema>;
 export type CompleteRoutineOccurrenceResponse = z.infer<typeof completeRoutineOccurrenceResponseSchema>;
 export type DeleteRoutineResponse = z.infer<typeof deleteRoutineResponseSchema>;
+
+// Meal Planning types
+export type MealPlanStatus = z.infer<typeof mealPlanStatusSchema>;
+export type DayOfWeek = z.infer<typeof dayOfWeekSchema>;
+export type MealPlanEventType = z.infer<typeof mealPlanEventTypeSchema>;
+export type GeneratedListRef = z.infer<typeof generatedListRefSchema>;
+export type MealPlan = z.infer<typeof mealPlanSchema>;
+export type MealEntry = z.infer<typeof mealEntrySchema>;
+export type MealPlanIndexResponse = z.infer<typeof mealPlanIndexResponseSchema>;
+export type MealPlanDetailResponse = z.infer<typeof mealPlanDetailResponseSchema>;
+export type CreateMealPlanRequest = z.infer<typeof createMealPlanRequestSchema>;
+export type UpdateMealPlanTitleRequest = z.infer<typeof updateMealPlanTitleRequestSchema>;
+export type ArchiveMealPlanRequest = z.infer<typeof archiveMealPlanRequestSchema>;
+export type RestoreMealPlanRequest = z.infer<typeof restoreMealPlanRequestSchema>;
+export type DeleteMealPlanRequest = z.infer<typeof deleteMealPlanRequestSchema>;
+export type AddMealEntryRequest = z.infer<typeof addMealEntryRequestSchema>;
+export type UpdateMealEntryRequest = z.infer<typeof updateMealEntryRequestSchema>;
+export type DeleteMealEntryRequest = z.infer<typeof deleteMealEntryRequestSchema>;
+export type GenerateGroceryListResponse = z.infer<typeof generateGroceryListResponseSchema>;

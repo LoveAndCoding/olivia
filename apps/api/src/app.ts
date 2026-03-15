@@ -5,7 +5,9 @@ import {
   activeListIndexResponseSchema,
   activeRoutineIndexResponseSchema,
   addListItemRequestSchema,
+  addMealEntryRequestSchema,
   archiveListRequestSchema,
+  archiveMealPlanRequestSchema,
   archiveRoutineRequestSchema,
   archivedListIndexResponseSchema,
   archivedRoutineIndexResponseSchema,
@@ -23,15 +25,21 @@ import {
   confirmUpdateReminderResponseSchema,
   confirmUpdateRequestSchema,
   createListRequestSchema,
+  createMealPlanRequestSchema,
   createRoutineRequestSchema,
+  deleteMealEntryRequestSchema,
+  deleteMealPlanRequestSchema,
   deleteListRequestSchema,
   deleteRoutineRequestSchema,
   deleteRoutineResponseSchema,
+  generateGroceryListResponseSchema,
   inboxViewResponseSchema,
   itemDetailResponseSchema,
   listDetailResponseSchema,
   listItemMutationResponseSchema,
   listMutationResponseSchema,
+  mealPlanDetailResponseSchema,
+  mealPlanIndexResponseSchema,
   pauseRoutineRequestSchema,
   previewCreateReminderRequestSchema,
   previewCreateReminderResponseSchema,
@@ -46,6 +54,7 @@ import {
   reminderViewResponseSchema,
   removeListItemRequestSchema,
   restoreListRequestSchema,
+  restoreMealPlanRequestSchema,
   restoreRoutineRequestSchema,
   resumeRoutineRequestSchema,
   routineDetailResponseSchema,
@@ -59,6 +68,8 @@ import {
   uncheckListItemRequestSchema,
   updateListItemBodyRequestSchema,
   updateListTitleRequestSchema,
+  updateMealEntryRequestSchema,
+  updateMealPlanTitleRequestSchema,
   updateRoutineRequestSchema,
   type ActorRole,
   type DraftItem,
@@ -70,13 +81,16 @@ import {
   DEFAULT_DUE_SOON_DAYS,
   DEFAULT_STALE_THRESHOLD_DAYS,
   addListItem,
+  addMealEntry,
   applyUpdate,
   archiveList,
+  archiveMealPlan,
   archiveRoutine,
   assertStakeholderWrite,
   buildSuggestions,
   cancelReminder,
   checkItem,
+  collectGroceryItems,
   completeReminderOccurrence,
   completeRoutineOccurrence,
   computeFlags,
@@ -92,21 +106,27 @@ import {
   createListCreatedHistoryEntry,
   createListRestoredHistoryEntry,
   createListTitleUpdatedHistoryEntry,
+  createMealPlan,
   createReminder,
   createReminderDraft,
   createRoutine,
   createSharedList,
+  deriveMealPlanSummary,
   deriveListSummary,
   groupItems,
   groupReminders,
   pauseRoutine,
   restoreList,
+  restoreMealPlan,
   restoreRoutine,
   resumeRoutine,
   snoozeReminder,
   uncheckItem,
   updateItemBody,
   updateListTitle,
+  updateMealEntryItems,
+  updateMealEntryName,
+  updateMealPlanTitle,
   updateReminder,
   updateRoutine
 } from '@olivia/domain';
@@ -1165,6 +1185,261 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     repository.deleteRoutine(params.routineId);
     request.log.info({ routineId: params.routineId }, 'accepted routine delete command');
     return reply.send(deleteRoutineResponseSchema.parse({ deleted: true }));
+  });
+
+  // ─── Meal Planning routes ──────────────────────────────────────────────────
+
+  app.get('/api/meal-plans', async (request, reply) => {
+    const query = request.query as { actorRole?: ActorRole };
+    if (!isReadableActorRole(query.actorRole)) {
+      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
+    }
+    const plans = repository.listMealPlans('active');
+    return reply.send(mealPlanIndexResponseSchema.parse({ plans, totalCount: plans.length }));
+  });
+
+  app.get('/api/meal-plans/archived', async (request, reply) => {
+    const query = request.query as { actorRole?: ActorRole };
+    if (!isReadableActorRole(query.actorRole)) {
+      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
+    }
+    const plans = repository.listMealPlans('archived');
+    return reply.send(mealPlanIndexResponseSchema.parse({ plans, totalCount: plans.length }));
+  });
+
+  app.get('/api/meal-plans/:planId', async (request, reply) => {
+    const params = request.params as { planId: string };
+    const query = request.query as { actorRole?: ActorRole };
+    if (!isReadableActorRole(query.actorRole)) {
+      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
+    }
+    const plan = repository.getMealPlan(params.planId);
+    if (!plan) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal plan not found.' });
+    }
+    const entries = repository.getMealEntries(params.planId);
+    return reply.send(mealPlanDetailResponseSchema.parse({ plan, entries }));
+  });
+
+  app.post('/api/meal-plans', async (request, reply) => {
+    const body = createMealPlanRequestSchema.parse(request.body);
+    if (body.actorRole !== 'stakeholder') {
+      const error = new Error('Spouse may view meal plans but may not create, edit, or remove them in this phase');
+      (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
+      (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
+      throw error;
+    }
+    const plan = createMealPlan(body.title, body.weekStartDate);
+    repository.createMealPlan(plan);
+    request.log.info({ planId: plan.id }, 'accepted meal plan create command');
+    return reply.status(201).send(mealPlanDetailResponseSchema.parse({ plan, entries: [] }));
+  });
+
+  app.patch('/api/meal-plans/:planId', async (request, reply) => {
+    const params = request.params as { planId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = updateMealPlanTitleRequestSchema.parse(rawBody);
+    if (body.actorRole !== 'stakeholder') {
+      const error = new Error('Spouse may view meal plans but may not create, edit, or remove them in this phase');
+      (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
+      (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
+      throw error;
+    }
+    const currentPlan = repository.getMealPlan(params.planId);
+    if (!currentPlan) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal plan not found.' });
+    }
+    const updatedPlan = updateMealPlanTitle(currentPlan, body.title);
+    const saved = repository.updateMealPlan(params.planId, { title: updatedPlan.title, updatedAt: updatedPlan.updatedAt, version: updatedPlan.version }, body.expectedVersion);
+    if (!saved) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+    const entries = repository.getMealEntries(params.planId);
+    return reply.send(mealPlanDetailResponseSchema.parse({ plan: updatedPlan, entries }));
+  });
+
+  app.post('/api/meal-plans/:planId/archive', async (request, reply) => {
+    const params = request.params as { planId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = archiveMealPlanRequestSchema.parse(rawBody);
+    if (body.actorRole !== 'stakeholder') {
+      const error = new Error('Spouse may view meal plans but may not create, edit, or remove them in this phase');
+      (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
+      (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
+      throw error;
+    }
+    const currentPlan = repository.getMealPlan(params.planId);
+    if (!currentPlan) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal plan not found.' });
+    }
+    const archivedPlan = archiveMealPlan(currentPlan);
+    const saved = repository.updateMealPlan(params.planId, { status: archivedPlan.status, archivedAt: archivedPlan.archivedAt, updatedAt: archivedPlan.updatedAt, version: archivedPlan.version }, body.expectedVersion);
+    if (!saved) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+    const entries = repository.getMealEntries(params.planId);
+    return reply.send(mealPlanDetailResponseSchema.parse({ plan: archivedPlan, entries }));
+  });
+
+  app.post('/api/meal-plans/:planId/restore', async (request, reply) => {
+    const params = request.params as { planId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = restoreMealPlanRequestSchema.parse(rawBody);
+    if (body.actorRole !== 'stakeholder') {
+      const error = new Error('Spouse may view meal plans but may not create, edit, or remove them in this phase');
+      (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
+      (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
+      throw error;
+    }
+    const currentPlan = repository.getMealPlan(params.planId);
+    if (!currentPlan) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal plan not found.' });
+    }
+    const restoredPlan = restoreMealPlan(currentPlan);
+    const saved = repository.updateMealPlan(params.planId, { status: restoredPlan.status, archivedAt: restoredPlan.archivedAt, updatedAt: restoredPlan.updatedAt, version: restoredPlan.version }, body.expectedVersion);
+    if (!saved) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+    const entries = repository.getMealEntries(params.planId);
+    return reply.send(mealPlanDetailResponseSchema.parse({ plan: restoredPlan, entries }));
+  });
+
+  app.delete('/api/meal-plans/:planId', async (request, reply) => {
+    const params = request.params as { planId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = deleteMealPlanRequestSchema.parse(rawBody);
+    if (body.actorRole !== 'stakeholder') {
+      const error = new Error('Spouse may view meal plans but may not create, edit, or remove them in this phase');
+      (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
+      (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
+      throw error;
+    }
+    const currentPlan = repository.getMealPlan(params.planId);
+    if (!currentPlan) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal plan not found.' });
+    }
+    repository.deleteMealPlan(params.planId);
+    request.log.info({ planId: params.planId }, 'accepted meal plan delete command');
+    return reply.status(204).send();
+  });
+
+  app.post('/api/meal-plans/:planId/entries', async (request, reply) => {
+    const params = request.params as { planId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = addMealEntryRequestSchema.parse(rawBody);
+    if (body.actorRole !== 'stakeholder') {
+      const error = new Error('Spouse may view meal plans but may not create, edit, or remove them in this phase');
+      (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
+      (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
+      throw error;
+    }
+    const currentPlan = repository.getMealPlan(params.planId);
+    if (!currentPlan) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal plan not found.' });
+    }
+    const position = repository.getNextMealEntryPosition(params.planId, body.dayOfWeek);
+    const entry = addMealEntry(params.planId, body.dayOfWeek, body.name, position);
+    repository.addMealEntry(entry);
+    const entries = repository.getMealEntries(params.planId);
+    const summary = deriveMealPlanSummary(entries);
+    const updatedPlan = { ...currentPlan, ...summary };
+    request.log.info({ planId: params.planId, entryId: entry.id }, 'accepted meal entry add command');
+    return reply.status(201).send(mealPlanDetailResponseSchema.parse({ plan: updatedPlan, entries }));
+  });
+
+  app.patch('/api/meal-plans/:planId/entries/:entryId', async (request, reply) => {
+    const params = request.params as { planId: string; entryId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = updateMealEntryRequestSchema.parse(rawBody);
+    if (body.actorRole !== 'stakeholder') {
+      const error = new Error('Spouse may view meal plans but may not create, edit, or remove them in this phase');
+      (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
+      (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
+      throw error;
+    }
+    const currentPlan = repository.getMealPlan(params.planId);
+    if (!currentPlan) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal plan not found.' });
+    }
+    const entries = repository.getMealEntries(params.planId);
+    const currentEntry = entries.find((e) => e.id === params.entryId);
+    if (!currentEntry) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal entry not found.' });
+    }
+    let updatedEntry = currentEntry;
+    if (body.name !== undefined) {
+      updatedEntry = updateMealEntryName(updatedEntry, body.name);
+    }
+    if (body.shoppingItems !== undefined) {
+      updatedEntry = updateMealEntryItems(updatedEntry, body.shoppingItems);
+    }
+    const saved = repository.updateMealEntry(params.entryId, { name: updatedEntry.name, shoppingItems: updatedEntry.shoppingItems, updatedAt: updatedEntry.updatedAt, version: updatedEntry.version }, body.expectedVersion);
+    if (!saved) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+    const freshEntries = repository.getMealEntries(params.planId);
+    const summary = deriveMealPlanSummary(freshEntries);
+    const updatedPlan = { ...currentPlan, ...summary };
+    return reply.send(mealPlanDetailResponseSchema.parse({ plan: updatedPlan, entries: freshEntries }));
+  });
+
+  app.delete('/api/meal-plans/:planId/entries/:entryId', async (request, reply) => {
+    const params = request.params as { planId: string; entryId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = deleteMealEntryRequestSchema.parse(rawBody);
+    if (body.actorRole !== 'stakeholder') {
+      const error = new Error('Spouse may view meal plans but may not create, edit, or remove them in this phase');
+      (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
+      (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
+      throw error;
+    }
+    const currentPlan = repository.getMealPlan(params.planId);
+    if (!currentPlan) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal plan not found.' });
+    }
+    repository.deleteMealEntry(params.entryId);
+    request.log.info({ planId: params.planId, entryId: params.entryId }, 'accepted meal entry delete command');
+    return reply.status(204).send();
+  });
+
+  app.post('/api/meal-plans/:planId/generate-grocery-list', async (request, reply) => {
+    const params = request.params as { planId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const actorRole = rawBody.actorRole as ActorRole;
+    if (!isReadableActorRole(actorRole)) {
+      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole is required.' });
+    }
+    if (actorRole !== 'stakeholder') {
+      const error = new Error('Spouse may view meal plans but may not create, edit, or remove them in this phase');
+      (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
+      (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
+      throw error;
+    }
+    const currentPlan = repository.getMealPlan(params.planId);
+    if (!currentPlan) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal plan not found.' });
+    }
+    const entries = repository.getMealEntries(params.planId);
+    const groceryItems = collectGroceryItems(entries);
+    if (groceryItems.length === 0) {
+      return reply.status(400).send({ code: 'NO_ITEMS', message: 'No shopping items found in this plan.' });
+    }
+    const listTitle = `Grocery \u2014 ${currentPlan.title}`;
+    const list = createSharedList(listTitle, actorRole);
+    const listHistoryEntry = createListCreatedHistoryEntry(list, actorRole);
+    repository.createSharedList(list, listHistoryEntry);
+    for (let i = 0; i < groceryItems.length; i++) {
+      const item = addListItem(list.id, groceryItems[i], i);
+      const itemHistoryEntry = createItemAddedHistoryEntry(item, actorRole);
+      repository.addListItem(item, itemHistoryEntry);
+    }
+    const ref = { listId: list.id, generatedAt: new Date().toISOString() };
+    repository.addGeneratedListRef(params.planId, ref, currentPlan.version);
+    const items = repository.getListItems(list.id);
+    const summary = deriveListSummary(items);
+    const savedList = { ...list, ...summary };
+    request.log.info({ planId: params.planId, listId: list.id }, 'grocery list generated');
+    return reply.status(201).send(generateGroceryListResponseSchema.parse({ list: savedList, generatedListRef: ref }));
   });
 
   app.get('/api/admin/export', async () => repository.exportSnapshot());

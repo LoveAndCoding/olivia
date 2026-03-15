@@ -1,7 +1,9 @@
 import {
   addListItem,
+  addMealEntry as addMealEntryDomain,
   applyUpdate,
   archiveList as archiveListDomain,
+  archiveMealPlan as archiveMealPlanDomain,
   archiveRoutine as archiveRoutineDomain,
   cancelReminder,
   checkItem,
@@ -9,18 +11,23 @@ import {
   completeRoutineOccurrence as completeRoutineOccurrenceDomain,
   createDraft,
   createInboxItem,
+  createMealPlan as createMealPlanDomain,
   createReminder,
   createReminderDraft,
   createRoutine as createRoutineDomain,
   createSharedList,
   pauseRoutine as pauseRoutineDomain,
   restoreList as restoreListDomain,
+  restoreMealPlan as restoreMealPlanDomain,
   restoreRoutine as restoreRoutineDomain,
   resumeRoutine as resumeRoutineDomain,
   snoozeReminder,
   uncheckItem,
   updateItemBody,
   updateListTitle as updateListTitleDomain,
+  updateMealEntryItems as updateMealEntryItemsDomain,
+  updateMealEntryName as updateMealEntryNameDomain,
+  updateMealPlanTitle as updateMealPlanTitleDomain,
   updateReminder,
   updateRoutine as updateRoutineDomain
 } from '@olivia/domain';
@@ -32,11 +39,16 @@ import type {
   ArchivedRoutineIndexResponse,
   DraftItem,
   DraftReminder,
+  GenerateGroceryListResponse,
   InboxItem,
   InboxViewResponse,
   ItemDetailResponse,
   ListDetailResponse,
   ListItem,
+  MealEntry,
+  MealPlan,
+  MealPlanDetailResponse,
+  MealPlanIndexResponse,
   OutboxCommand,
   Owner,
   PreviewCreateReminderResponse,
@@ -68,6 +80,10 @@ import {
   cacheListDetail,
   cacheListIndex,
   cacheListItem,
+  cacheMealEntry,
+  cacheMealPlan,
+  cacheMealPlanDetail,
+  cacheMealPlanIndex,
   cacheReminder,
   cacheReminderDetail,
   cacheReminderSettings,
@@ -81,10 +97,13 @@ import {
   enqueueCommand,
   getCachedActiveListIndex,
   getCachedActiveRoutineIndex,
+  getCachedActiveMealPlanIndex,
   getCachedArchivedListIndex,
   getCachedArchivedRoutineIndex,
+  getCachedArchivedMealPlanIndex,
   getCachedItemDetail,
   getCachedListDetail,
+  getCachedMealPlanDetail,
   getCachedRoutineDetail,
   getCachedReminder,
   getCachedReminderDetail,
@@ -94,6 +113,8 @@ import {
   markOutboxConflict,
   removeListFromCache,
   removeListItemFromCache,
+  removeMealEntryFromCache,
+  removeMealPlanFromCache,
   removeOutboxCommand,
   removeRoutineFromCache,
   setMeta
@@ -101,7 +122,9 @@ import {
 import {
   ApiError,
   addListItem as addListItemApi,
+  addMealEntry as addMealEntryApi,
   archiveList as archiveListApi,
+  archiveMealPlan as archiveMealPlanApi,
   archiveRoutine as archiveRoutineApi,
   cancelReminder as cancelReminderApi,
   checkListItem as checkListItemApi,
@@ -112,20 +135,27 @@ import {
   confirmUpdate,
   confirmUpdateReminder,
   createList as createListApi,
+  createMealPlan as createMealPlanApi,
   createRoutine as createRoutineApi,
+  deleteMealEntry as deleteMealEntryApi,
+  deleteMealPlan as deleteMealPlanApi,
   deleteList as deleteListApi,
   deleteRoutine as deleteRoutineApi,
   fetchActiveListIndex,
+  fetchActiveMealPlanIndex,
   fetchActiveRoutineIndex,
   fetchArchivedListIndex,
+  fetchArchivedMealPlanIndex,
   fetchArchivedRoutineIndex,
   fetchInboxView,
   fetchItemDetail,
   fetchListDetail,
+  fetchMealPlanDetail,
   fetchReminderDetail,
   fetchReminderSettings,
   fetchReminderView,
   fetchRoutineDetail,
+  generateGroceryList as generateGroceryListApi,
   listNotificationSubscriptions,
   pauseRoutine as pauseRoutineApi,
   previewCreate,
@@ -134,6 +164,7 @@ import {
   previewUpdateReminder,
   removeListItem as removeListItemApi,
   restoreList as restoreListApi,
+  restoreMealPlan as restoreMealPlanApi,
   restoreRoutine as restoreRoutineApi,
   resumeRoutine as resumeRoutineApi,
   saveNotificationSubscription,
@@ -142,6 +173,8 @@ import {
   uncheckListItem as uncheckListItemApi,
   updateListItemBody as updateListItemBodyApi,
   updateListTitle as updateListTitleApi,
+  updateMealEntry as updateMealEntryApi,
+  updateMealPlanTitle as updateMealPlanTitleApi,
   updateRoutine as updateRoutineApi
 } from './api';
 
@@ -582,6 +615,33 @@ async function flushOutboxOnce() {
       } else if (command.kind === 'routine_delete') {
         await deleteRoutineApi(command.actorRole, command.routineId);
         await removeRoutineFromCache(command.routineId);
+      } else if (command.kind === 'meal_plan_create') {
+        const response = await createMealPlanApi(command.actorRole, command.title, command.weekStartDate);
+        await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
+      } else if (command.kind === 'meal_plan_title_update') {
+        const response = await updateMealPlanTitleApi(command.actorRole, command.planId, command.expectedVersion, command.title);
+        await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
+      } else if (command.kind === 'meal_plan_archive') {
+        const response = await archiveMealPlanApi(command.actorRole, command.planId, command.expectedVersion);
+        await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
+      } else if (command.kind === 'meal_plan_restore') {
+        const response = await restoreMealPlanApi(command.actorRole, command.planId, command.expectedVersion);
+        await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
+      } else if (command.kind === 'meal_plan_delete') {
+        await deleteMealPlanApi(command.actorRole, command.planId);
+        await removeMealPlanFromCache(command.planId);
+      } else if (command.kind === 'meal_entry_add') {
+        const response = await addMealEntryApi(command.actorRole, command.planId, command.dayOfWeek, command.name);
+        await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
+      } else if (command.kind === 'meal_entry_name_update') {
+        const response = await updateMealEntryApi(command.actorRole, command.planId, command.entryId, command.expectedVersion, { name: command.name });
+        await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
+      } else if (command.kind === 'meal_entry_items_update') {
+        const response = await updateMealEntryApi(command.actorRole, command.planId, command.entryId, command.expectedVersion, { shoppingItems: command.shoppingItems });
+        await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
+      } else if (command.kind === 'meal_entry_delete') {
+        await deleteMealEntryApi(command.actorRole, command.planId, command.entryId);
+        await removeMealEntryFromCache(command.entryId);
       } else {
         throw new Error('Unsupported outbox command kind.');
       }
@@ -589,7 +649,7 @@ async function flushOutboxOnce() {
       await setMeta('last-sync-at', new Date().toISOString());
     } catch (error) {
       if (error instanceof ApiError && error.statusCode === 409) {
-        const entityName = command.kind.startsWith('reminder_') ? 'reminder' : command.kind.startsWith('list_') || command.kind.startsWith('item_') ? 'list' : command.kind.startsWith('routine_') ? 'routine' : 'item';
+        const entityName = command.kind.startsWith('reminder_') ? 'reminder' : command.kind.startsWith('list_') || command.kind.startsWith('item_') ? 'list' : command.kind.startsWith('routine_') ? 'routine' : command.kind.startsWith('meal_') ? 'meal plan' : 'item';
         await markOutboxConflict(command.commandId, `Version conflict: refresh this ${entityName} and retry.`);
       }
       throw error;
@@ -1025,4 +1085,199 @@ export async function deleteRoutineCommand(role: ActorRole, routineId: string): 
   const command: OutboxCommand = { kind: 'routine_delete', commandId: crypto.randomUUID(), actorRole: role, routineId, confirmed: true };
   await enqueueCommand(command);
   await removeRoutineFromCache(routineId);
+}
+
+// ─── Meal Plan sync commands ──────────────────────────────────────────────────
+
+export async function loadActiveMealPlanIndex(role: ActorRole): Promise<MealPlanIndexResponse> {
+  if (!isOffline()) {
+    try {
+      await flushOutbox();
+      const response = await fetchActiveMealPlanIndex(role);
+      await cacheMealPlanIndex(response);
+      return response;
+    } catch {
+      return getCachedActiveMealPlanIndex();
+    }
+  }
+  return getCachedActiveMealPlanIndex();
+}
+
+export async function loadArchivedMealPlanIndex(role: ActorRole): Promise<MealPlanIndexResponse> {
+  if (!isOffline()) {
+    try {
+      await flushOutbox();
+      const response = await fetchArchivedMealPlanIndex(role);
+      await cacheMealPlanIndex(response);
+      return response;
+    } catch {
+      return getCachedArchivedMealPlanIndex();
+    }
+  }
+  return getCachedArchivedMealPlanIndex();
+}
+
+export async function loadMealPlanDetail(role: ActorRole, planId: string): Promise<MealPlanDetailResponse> {
+  if (!isOffline()) {
+    try {
+      await flushOutbox();
+      const detail = await fetchMealPlanDetail(role, planId);
+      await cacheMealPlanDetail(detail);
+      return detail;
+    } catch {
+      const cached = await getCachedMealPlanDetail(planId);
+      if (cached) return cached;
+      throw new Error('Meal plan not available offline yet.');
+    }
+  }
+  const cached = await getCachedMealPlanDetail(planId);
+  if (cached) return cached;
+  throw new Error('Meal plan not available offline yet.');
+}
+
+export async function createMealPlanCommand(role: ActorRole, title: string, weekStartDate: string): Promise<MealPlan> {
+  if (!isOffline()) {
+    const response = await createMealPlanApi(role, title, weekStartDate);
+    await cacheMealPlanDetail(response);
+    return response.plan;
+  }
+  const planId = crypto.randomUUID();
+  const plan = createMealPlanDomain(title, weekStartDate);
+  const pendingPlan = { ...plan, id: planId, pendingSync: true };
+  const command: OutboxCommand = { kind: 'meal_plan_create', commandId: crypto.randomUUID(), actorRole: role, planId, title, weekStartDate };
+  await cacheMealPlan(pendingPlan);
+  await enqueueCommand(command);
+  return pendingPlan;
+}
+
+export async function updateMealPlanTitleCommand(role: ActorRole, planId: string, expectedVersion: number, title: string): Promise<MealPlan> {
+  if (!isOffline()) {
+    const response = await updateMealPlanTitleApi(role, planId, expectedVersion, title);
+    await cacheMealPlanDetail(response);
+    return response.plan;
+  }
+  const cached = await clientDb.mealPlans.get(planId);
+  if (!cached) throw new Error('Meal plan not available offline.');
+  const updated = updateMealPlanTitleDomain(cached, title);
+  const pendingPlan = { ...updated, pendingSync: true };
+  const command: OutboxCommand = { kind: 'meal_plan_title_update', commandId: crypto.randomUUID(), actorRole: role, planId, expectedVersion, title };
+  await cacheMealPlan(pendingPlan);
+  await enqueueCommand(command);
+  return pendingPlan;
+}
+
+export async function archiveMealPlanCommand(role: ActorRole, planId: string, expectedVersion: number): Promise<MealPlan> {
+  if (!isOffline()) {
+    const response = await archiveMealPlanApi(role, planId, expectedVersion);
+    await cacheMealPlanDetail(response);
+    return response.plan;
+  }
+  const cached = await clientDb.mealPlans.get(planId);
+  if (!cached) throw new Error('Meal plan not available offline.');
+  const archived = archiveMealPlanDomain(cached);
+  const pendingPlan = { ...archived, pendingSync: true };
+  const command: OutboxCommand = { kind: 'meal_plan_archive', commandId: crypto.randomUUID(), actorRole: role, planId, expectedVersion, confirmed: true };
+  await cacheMealPlan(pendingPlan);
+  await enqueueCommand(command);
+  return pendingPlan;
+}
+
+export async function restoreMealPlanCommand(role: ActorRole, planId: string, expectedVersion: number): Promise<MealPlan> {
+  if (!isOffline()) {
+    const response = await restoreMealPlanApi(role, planId, expectedVersion);
+    await cacheMealPlanDetail(response);
+    return response.plan;
+  }
+  const cached = await clientDb.mealPlans.get(planId);
+  if (!cached) throw new Error('Meal plan not available offline.');
+  const restored = restoreMealPlanDomain(cached);
+  const pendingPlan = { ...restored, pendingSync: true };
+  const command: OutboxCommand = { kind: 'meal_plan_restore', commandId: crypto.randomUUID(), actorRole: role, planId, expectedVersion };
+  await cacheMealPlan(pendingPlan);
+  await enqueueCommand(command);
+  return pendingPlan;
+}
+
+export async function deleteMealPlanCommand(role: ActorRole, planId: string): Promise<void> {
+  if (!isOffline()) {
+    await deleteMealPlanApi(role, planId);
+    await removeMealPlanFromCache(planId);
+    return;
+  }
+  const command: OutboxCommand = { kind: 'meal_plan_delete', commandId: crypto.randomUUID(), actorRole: role, planId, confirmed: true };
+  await enqueueCommand(command);
+  await removeMealPlanFromCache(planId);
+}
+
+export async function addMealEntryCommand(role: ActorRole, planId: string, dayOfWeek: number, name: string): Promise<MealEntry> {
+  if (!isOffline()) {
+    const response = await addMealEntryApi(role, planId, dayOfWeek, name);
+    await cacheMealPlanDetail(response);
+    const entry = response.entries.find((e) => e.name === name && e.dayOfWeek === dayOfWeek);
+    return entry ?? response.entries[response.entries.length - 1];
+  }
+  const existingEntries = await clientDb.mealEntries.where('planId').equals(planId).toArray();
+  const sameDay = existingEntries.filter((e) => e.dayOfWeek === dayOfWeek);
+  const position = sameDay.length > 0 ? Math.max(...sameDay.map((e) => e.position)) + 1 : 0;
+  const entryId = crypto.randomUUID();
+  const entry = addMealEntryDomain(planId, dayOfWeek, name, position);
+  const pendingEntry = { ...entry, id: entryId, pendingSync: true };
+  const command: OutboxCommand = { kind: 'meal_entry_add', commandId: crypto.randomUUID(), actorRole: role, planId, entryId, dayOfWeek, name };
+  await cacheMealEntry(pendingEntry);
+  await enqueueCommand(command);
+  return pendingEntry;
+}
+
+export async function updateMealEntryNameCommand(role: ActorRole, planId: string, entryId: string, expectedVersion: number, name: string): Promise<MealEntry> {
+  if (!isOffline()) {
+    const response = await updateMealEntryApi(role, planId, entryId, expectedVersion, { name });
+    await cacheMealPlanDetail(response);
+    const entry = response.entries.find((e) => e.id === entryId);
+    return entry ?? response.entries[0];
+  }
+  const cached = await clientDb.mealEntries.get(entryId);
+  if (!cached) throw new Error('Meal entry not available offline.');
+  const updated = updateMealEntryNameDomain(cached, name);
+  const pendingEntry = { ...updated, pendingSync: true };
+  const command: OutboxCommand = { kind: 'meal_entry_name_update', commandId: crypto.randomUUID(), actorRole: role, planId, entryId, expectedVersion, name };
+  await cacheMealEntry(pendingEntry);
+  await enqueueCommand(command);
+  return pendingEntry;
+}
+
+export async function updateMealEntryItemsCommand(role: ActorRole, planId: string, entryId: string, expectedVersion: number, shoppingItems: string[]): Promise<MealEntry> {
+  if (!isOffline()) {
+    const response = await updateMealEntryApi(role, planId, entryId, expectedVersion, { shoppingItems });
+    await cacheMealPlanDetail(response);
+    const entry = response.entries.find((e) => e.id === entryId);
+    return entry ?? response.entries[0];
+  }
+  const cached = await clientDb.mealEntries.get(entryId);
+  if (!cached) throw new Error('Meal entry not available offline.');
+  const updated = updateMealEntryItemsDomain(cached, shoppingItems);
+  const pendingEntry = { ...updated, pendingSync: true };
+  const command: OutboxCommand = { kind: 'meal_entry_items_update', commandId: crypto.randomUUID(), actorRole: role, planId, entryId, expectedVersion, shoppingItems };
+  await cacheMealEntry(pendingEntry);
+  await enqueueCommand(command);
+  return pendingEntry;
+}
+
+export async function deleteMealEntryCommand(role: ActorRole, planId: string, entryId: string): Promise<void> {
+  if (!isOffline()) {
+    await deleteMealEntryApi(role, planId, entryId);
+    await removeMealEntryFromCache(entryId);
+    return;
+  }
+  const command: OutboxCommand = { kind: 'meal_entry_delete', commandId: crypto.randomUUID(), actorRole: role, planId, entryId, confirmed: true };
+  await enqueueCommand(command);
+  await removeMealEntryFromCache(entryId);
+}
+
+export async function generateGroceryListCommand(role: ActorRole, planId: string): Promise<GenerateGroceryListResponse> {
+  if (isOffline()) {
+    throw new Error('Generating a grocery list requires a connection.');
+  }
+  const response = await generateGroceryListApi(role, planId);
+  await cacheSharedList({ ...response.list, pendingSync: false });
+  return response;
 }

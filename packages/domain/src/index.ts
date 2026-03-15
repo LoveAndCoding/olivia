@@ -8,6 +8,8 @@ import {
   itemFlagsSchema,
   listItemHistoryEntrySchema,
   listItemSchema,
+  mealEntrySchema,
+  mealPlanSchema,
   reminderSchema,
   reminderTimelineEntrySchema,
   remindersByStateSchema,
@@ -17,6 +19,7 @@ import {
   type ActorRole,
   type DraftItem,
   type DraftReminder,
+  type GeneratedListRef,
   type HistoryEntry,
   type InboxItem,
   type ItemFlags,
@@ -24,6 +27,8 @@ import {
   type ListEventType,
   type ListItem,
   type ListItemHistoryEntry,
+  type MealEntry,
+  type MealPlan,
   type Owner,
   type ParseConfidence,
   type ParserSource,
@@ -1343,4 +1348,167 @@ export function restoreRoutine(routine: Routine, now: Date = new Date()): Routin
     updatedAt: now.toISOString(),
     version: routine.version + 1
   });
+}
+
+// ─── Meal Planning domain helpers ─────────────────────────────────────────────
+
+const MONTH_ABBREVS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * Returns the Monday of the week containing the given date.
+ * ISO week: Monday = day 1.
+ */
+export function getMondayOfWeek(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const diff = (day === 0 ? -6 : 1 - day); // shift to Monday
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Formats a week range like "Mar 10 – Mar 16".
+ */
+export function formatWeekRange(weekStartDate: string): string {
+  const start = new Date(weekStartDate + 'T00:00:00');
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const fmt = (d: Date) => `${MONTH_ABBREVS[d.getMonth()]} ${d.getDate()}`;
+  return `${fmt(start)} \u2013 ${fmt(end)}`;
+}
+
+/**
+ * Creates a new MealPlan. Validates that weekStartDate is a Monday (day 1).
+ */
+export function createMealPlan(title: string, weekStartDate: string, now: Date = new Date()): MealPlan {
+  const date = new Date(weekStartDate + 'T00:00:00');
+  if (date.getDay() !== 1) {
+    throw new Error(`weekStartDate must be a Monday; got day ${date.getDay()} for "${weekStartDate}"`);
+  }
+  const timestamp = now.toISOString();
+  return mealPlanSchema.parse({
+    id: createId(),
+    title: title.trim(),
+    weekStartDate,
+    status: 'active',
+    generatedListRefs: [],
+    mealCount: 0,
+    shoppingItemCount: 0,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    archivedAt: null,
+    version: 1
+  });
+}
+
+export function updateMealPlanTitle(plan: MealPlan, newTitle: string, now: Date = new Date()): MealPlan {
+  return mealPlanSchema.parse({
+    ...plan,
+    title: newTitle.trim(),
+    updatedAt: now.toISOString(),
+    version: plan.version + 1
+  });
+}
+
+export function archiveMealPlan(plan: MealPlan, now: Date = new Date()): MealPlan {
+  if (plan.status === 'archived') {
+    throw new Error('Meal plan is already archived.');
+  }
+  const timestamp = now.toISOString();
+  return mealPlanSchema.parse({
+    ...plan,
+    status: 'archived',
+    archivedAt: timestamp,
+    updatedAt: timestamp,
+    version: plan.version + 1
+  });
+}
+
+export function restoreMealPlan(plan: MealPlan, now: Date = new Date()): MealPlan {
+  if (plan.status !== 'archived') {
+    throw new Error('Meal plan is not archived.');
+  }
+  return mealPlanSchema.parse({
+    ...plan,
+    status: 'active',
+    archivedAt: null,
+    updatedAt: now.toISOString(),
+    version: plan.version + 1
+  });
+}
+
+export function addGeneratedListRef(plan: MealPlan, ref: GeneratedListRef, now: Date = new Date()): MealPlan {
+  return mealPlanSchema.parse({
+    ...plan,
+    generatedListRefs: [...plan.generatedListRefs, ref],
+    updatedAt: now.toISOString(),
+    version: plan.version + 1
+  });
+}
+
+export function addMealEntry(planId: string, dayOfWeek: number, name: string, position: number, now: Date = new Date()): MealEntry {
+  const timestamp = now.toISOString();
+  return mealEntrySchema.parse({
+    id: createId(),
+    planId,
+    dayOfWeek,
+    name: name.trim(),
+    shoppingItems: [],
+    position,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    version: 1
+  });
+}
+
+export function updateMealEntryName(entry: MealEntry, newName: string, now: Date = new Date()): MealEntry {
+  return mealEntrySchema.parse({
+    ...entry,
+    name: newName.trim(),
+    updatedAt: now.toISOString(),
+    version: entry.version + 1
+  });
+}
+
+export function updateMealEntryItems(entry: MealEntry, shoppingItems: string[], now: Date = new Date()): MealEntry {
+  const cleaned = shoppingItems.map((s) => s.trim()).filter((s) => s.length > 0);
+  return mealEntrySchema.parse({
+    ...entry,
+    shoppingItems: cleaned,
+    updatedAt: now.toISOString(),
+    version: entry.version + 1
+  });
+}
+
+/**
+ * Parses meal entry shopping items from a raw text block.
+ * Splits on newlines or commas, trims each token, and filters empty strings.
+ */
+export function parseMealEntryItemsFromText(rawText: string): string[] {
+  return rawText
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * Collects all grocery items from entries, in day order (0-6) then position then item order.
+ */
+export function collectGroceryItems(entries: MealEntry[]): string[] {
+  const sorted = [...entries].sort((a, b) => {
+    if (a.dayOfWeek !== b.dayOfWeek) return a.dayOfWeek - b.dayOfWeek;
+    return a.position - b.position;
+  });
+  const items: string[] = [];
+  for (const entry of sorted) {
+    items.push(...entry.shoppingItems);
+  }
+  return items;
+}
+
+export function deriveMealPlanSummary(entries: MealEntry[]): { mealCount: number; shoppingItemCount: number } {
+  const mealCount = entries.length;
+  const shoppingItemCount = entries.reduce((sum, e) => sum + e.shoppingItems.length, 0);
+  return { mealCount, shoppingItemCount };
 }

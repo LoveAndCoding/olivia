@@ -13,6 +13,8 @@ import { ListsPage } from './routes/lists-page';
 import { ListDetailPage } from './routes/list-detail-page';
 import { RoutinesPage } from './routes/routines-page';
 import { RoutineDetailPage } from './routes/routine-detail-page';
+import { MealsPage } from './routes/meals-page';
+import { MealDetailPage } from './routes/meal-detail-page';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -36,6 +38,8 @@ const remindersRoute = createRoute({ getParentRoute: () => rootRoute, path: '/re
 const reminderDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reminders/$reminderId', component: ReminderDetailPage });
 const routinesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/routines', component: RoutinesPage });
 const routineDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/routines/$routineId', component: RoutineDetailPage });
+const mealsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/meals', component: MealsPage });
+const mealDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/meals/$planId', component: MealDetailPage });
 const reEntryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/re-entry',
@@ -68,6 +72,8 @@ const routeTree = rootRoute.addChildren([
   reminderDetailRoute,
   routinesRoute,
   routineDetailRoute,
+  mealsRoute,
+  mealDetailRoute,
   reEntryRoute,
   settingsRoute,
   addRedirectRoute,

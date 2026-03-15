@@ -8,11 +8,14 @@ import {
   completeRoutineOccurrenceResponseSchema,
   confirmCreateReminderResponseSchema,
   deleteRoutineResponseSchema,
+  generateGroceryListResponseSchema,
   itemDetailResponseSchema,
   inboxViewResponseSchema,
   listDetailResponseSchema,
   listItemMutationResponseSchema,
   listMutationResponseSchema,
+  mealPlanDetailResponseSchema,
+  mealPlanIndexResponseSchema,
   previewCreateResponseSchema,
   previewCreateReminderResponseSchema,
   previewUpdateResponseSchema,
@@ -39,11 +42,14 @@ import {
   type DeleteRoutineResponse,
   type DraftItem,
   type DraftReminder,
+  type GenerateGroceryListResponse,
   type ItemDetailResponse,
   type InboxViewResponse,
   type ListDetailResponse,
   type ListItemMutationResponse,
   type ListMutationResponse,
+  type MealPlanDetailResponse,
+  type MealPlanIndexResponse,
   type Owner,
   type PreviewCreateResponse,
   type PreviewCreateReminderResponse,
@@ -481,6 +487,97 @@ export async function deleteRoutine(role: ActorRole, routineId: string): Promise
     await request<DeleteRoutineResponse>(`/api/routines/${routineId}`, {
       method: 'DELETE',
       body: JSON.stringify({ actorRole: role, routineId, confirmed: true })
+    })
+  );
+}
+
+// ─── Meal Plan API clients ────────────────────────────────────────────────────
+
+export async function fetchActiveMealPlanIndex(role: ActorRole): Promise<MealPlanIndexResponse> {
+  return mealPlanIndexResponseSchema.parse(await request<MealPlanIndexResponse>(`/api/meal-plans?actorRole=${role}`));
+}
+
+export async function fetchArchivedMealPlanIndex(role: ActorRole): Promise<MealPlanIndexResponse> {
+  return mealPlanIndexResponseSchema.parse(await request<MealPlanIndexResponse>(`/api/meal-plans/archived?actorRole=${role}`));
+}
+
+export async function fetchMealPlanDetail(role: ActorRole, planId: string): Promise<MealPlanDetailResponse> {
+  return mealPlanDetailResponseSchema.parse(await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}?actorRole=${role}`));
+}
+
+export async function createMealPlan(role: ActorRole, title: string, weekStartDate: string): Promise<MealPlanDetailResponse> {
+  return mealPlanDetailResponseSchema.parse(
+    await request<MealPlanDetailResponse>('/api/meal-plans', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, title, weekStartDate })
+    })
+  );
+}
+
+export async function updateMealPlanTitle(role: ActorRole, planId: string, expectedVersion: number, title: string): Promise<MealPlanDetailResponse> {
+  return mealPlanDetailResponseSchema.parse(
+    await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ actorRole: role, title, expectedVersion })
+    })
+  );
+}
+
+export async function archiveMealPlan(role: ActorRole, planId: string, expectedVersion: number): Promise<MealPlanDetailResponse> {
+  return mealPlanDetailResponseSchema.parse(
+    await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}/archive`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, expectedVersion, confirmed: true })
+    })
+  );
+}
+
+export async function restoreMealPlan(role: ActorRole, planId: string, expectedVersion: number): Promise<MealPlanDetailResponse> {
+  return mealPlanDetailResponseSchema.parse(
+    await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}/restore`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, expectedVersion })
+    })
+  );
+}
+
+export async function deleteMealPlan(role: ActorRole, planId: string): Promise<void> {
+  await request<void>(`/api/meal-plans/${planId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ actorRole: role, confirmed: true })
+  });
+}
+
+export async function addMealEntry(role: ActorRole, planId: string, dayOfWeek: number, name: string): Promise<MealPlanDetailResponse> {
+  return mealPlanDetailResponseSchema.parse(
+    await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}/entries`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, dayOfWeek, name })
+    })
+  );
+}
+
+export async function updateMealEntry(role: ActorRole, planId: string, entryId: string, expectedVersion: number, changes: { name?: string; shoppingItems?: string[] }): Promise<MealPlanDetailResponse> {
+  return mealPlanDetailResponseSchema.parse(
+    await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}/entries/${entryId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ actorRole: role, expectedVersion, ...changes })
+    })
+  );
+}
+
+export async function deleteMealEntry(role: ActorRole, planId: string, entryId: string): Promise<void> {
+  await request<void>(`/api/meal-plans/${planId}/entries/${entryId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ actorRole: role, confirmed: true })
+  });
+}
+
+export async function generateGroceryList(role: ActorRole, planId: string): Promise<GenerateGroceryListResponse> {
+  return generateGroceryListResponseSchema.parse(
+    await request<GenerateGroceryListResponse>(`/api/meal-plans/${planId}/generate-grocery-list`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role })
     })
   );
 }

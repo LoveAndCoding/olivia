@@ -146,3 +146,27 @@ export const routineOccurrencesTable = sqliteTable('routine_occurrences', {
   skipped: integer('skipped', { mode: 'boolean' }).notNull(),
   createdAt: text('created_at').notNull()
 });
+
+export const mealPlansTable = sqliteTable('meal_plans', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  weekStartDate: text('week_start_date').notNull(),
+  status: text('status').notNull(),
+  generatedListRefs: text('generated_list_refs').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  archivedAt: text('archived_at'),
+  version: integer('version').notNull()
+});
+
+export const mealEntriesTable = sqliteTable('meal_entries', {
+  id: text('id').primaryKey(),
+  planId: text('plan_id').notNull(),
+  dayOfWeek: integer('day_of_week').notNull(),
+  name: text('name').notNull(),
+  shoppingItems: text('shopping_items').notNull(),
+  position: integer('position').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  version: integer('version').notNull()
+});
