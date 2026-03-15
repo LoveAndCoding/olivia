@@ -178,6 +178,36 @@ Use this structure for future entries:
 - Status: active
 - Related docs: `docs/specs/shared-lists.md`, `docs/plans/shared-lists-visual-implementation-spec.md`, `docs/learnings/assumptions-log.md` (A-007)
 
+### D-018: M6 is complete — all planned Horizon 3 workflows are built
+- Date: 2026-03-15
+- Area: roadmap progression
+- Decision: Treat M6 (Coordination Layer Build Readiness) as complete. All three planned Horizon 3 workflows — first-class reminders, shared lists, and recurring routines — have approved specs, implementation plans, and fully executed implementations.
+- Rationale: all M6 exit criteria are met: specs have acceptance criteria and trust-model documentation, shared infrastructure decisions (recurrence, see A-008) are bounded and reusable, and implementation agents can begin the next build phase from the existing docs without rediscovering the product model.
+- Alternatives considered: waiting for household usage validation before marking M6 complete. Household usage remains M7 territory; M6 is a build-readiness gate, not a usage gate.
+- Trade-offs: advancing M6 to complete clarifies that the next product question is what to spec next rather than what to implement next. The open question (meal planning vs. other priorities) is routed to the CEO via OLI-26.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md`, `docs/roadmap/roadmap.md`
+
+### D-019: Meal planning confirmed as next Horizon 3 spec target
+- Date: 2026-03-15
+- Area: roadmap sequencing
+- Decision: Meal planning is confirmed as the next Horizon 3 spec target. VP of Product should proceed with writing the feature spec. The first slice should be scoped narrowly — weekly meal planning — but explicitly designed to generate a grocery shopping list using the shared lists primitive. The spec should not attempt to solve the full meal planning problem.
+- Rationale: all prerequisite conditions from A-009 are now met (recurring and list primitives built and validated). The roadmap direction to "connect cleanly to shared lists and routine planning rather than becoming a standalone kitchen app" provides clear scope guidance for the first slice. No documented friction in existing workflows has surfaced to suggest a higher-priority gap. M7 household validation notes are not yet collected, but waiting on them before starting spec work would stall product momentum unnecessarily; if real friction emerges during validation, the spec can be adjusted.
+- Alternatives considered: blocking spec work pending M7 household validation; starting with a spouse write-access expansion for existing workflows instead; doing a broader meal planning spec that includes full recipe and nutrition management.
+- Trade-offs: proceeding now keeps product momentum; scoping narrowly avoids over-engineering before household use patterns are understood; connecting to shared lists preserves the product coherence principle from the roadmap rather than creating a disconnected kitchen tool.
+- Status: active
+- Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/assumptions-log.md` (A-009), `docs/roadmap/milestones.md`
+
+### D-020: Meal planning spec drafted and submitted for CEO approval
+- Date: 2026-03-15
+- Area: delivery planning
+- Decision: Treat `docs/specs/meal-planning.md` as drafted and ready for CEO review before implementation planning begins. The spec is scoped narrowly to weekly meal planning (plan meals per day → generate a grocery list via Shared Lists), with recipe management, nutrition tracking, and meal history analytics explicitly deferred.
+- Rationale: the spec follows the scope guidance from D-019 (weekly first slice, shared lists connection required, kitchen-app scope excluded). All prerequisite Horizon 3 primitives are proven. The spec leaves implementation ambiguity bounded to two architecture decisions for the Founding Engineer (bulk vs. individual item commands; grocery-list creation sequencing) and several visual spec decisions for the Designer.
+- Alternatives considered: broader scope including saved recipes or meal favorites; narrower scope limited to only dinner slots per day.
+- Trade-offs: narrow scope reduces Phase 1 value ceiling but maximizes execution clarity and preserves ability to expand based on household usage patterns.
+- Status: active
+- Related docs: `docs/specs/meal-planning.md`, `docs/learnings/decision-history.md` (D-019), `docs/specs/shared-lists.md`
+
 ### D-017: Recurring Routines is the next Horizon 3 spec target
 - Date: 2026-03-15
 - Area: roadmap sequencing

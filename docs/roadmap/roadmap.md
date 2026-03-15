@@ -77,11 +77,11 @@ Product direction:
 Near-term workflow priorities:
 1. ~~first-class reminders~~ — spec approved, implemented (Phase 1 complete)
 2. ~~shared lists~~ — spec approved, implemented (Phase 1 complete)
-3. recurring routines — spec written, pending implementation planning
-4. meal planning — deferred until recurring and list primitives are proven
+3. ~~recurring routines~~ — spec approved, implemented (all 7 phases complete)
+4. meal planning — deferred until recurring and list primitives are proven; those primitives are now built and validated
 
 Active spec target:
-- `docs/specs/recurring-routines.md` — recurring household tasks on a defined schedule (chores, maintenance, bills). Spec written; implementation planning next once CEO approves spec.
+- meal planning — spec drafted (`docs/specs/meal-planning.md`); submitted for CEO approval. Scoped to weekly meal planning with grocery list generation via Shared Lists. See D-019, D-020.
 
 How Horizon 3 builds on the MVP:
 - the inbox remains the capture and follow-through foundation for open household work

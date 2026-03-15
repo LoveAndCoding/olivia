@@ -100,11 +100,11 @@ Use this structure for future entries:
 - Date: 2026-03-13
 - Area: product architecture
 - Statement: A shared recurrence model can support reminders, recurring routines, and later planning workflows without each workflow inventing separate scheduling primitives.
-- Confidence: medium
+- Confidence: high
 - Why it matters: this assumption affects how much shared infrastructure Horizon 3 should plan for before individual specs are written.
-- Evidence so far: the stakeholder prioritized reminders and recurring routines together, and both appear to need schedule-driven behavior.
-- Validation path: compare the first reminders and recurring-routines specs. If they share recurrence, notification, and ownership needs cleanly, treat recurrence as shared infrastructure; otherwise narrow it per workflow.
-- Status: active
+- Evidence so far: both first-class reminders and recurring routines were implemented sharing recurrence, notification, and scheduling primitives. The shared model held cleanly across both workflow types with no per-workflow scheduling re-invention.
+- Validation path: completed. The reminders and recurring-routines implementations confirm shared schedule infrastructure is viable.
+- Status: validated
 - Related docs: `docs/roadmap/roadmap.md`, `docs/strategy/system-architecture.md`
 
 ### A-009: Meal planning should remain a later Horizon 3 workflow
@@ -113,10 +113,10 @@ Use this structure for future entries:
 - Statement: Meal planning is promising, but should follow reminders, shared lists, and recurring routines rather than being one of the first Horizon 3 implementation targets.
 - Confidence: medium
 - Why it matters: this assumption protects Horizon 3 from trying to solve too many household workflow shapes at once.
-- Evidence so far: the stakeholder prioritized meal planning behind reminders and new workflow primitives such as lists and routines.
-- Validation path: revisit after the first shared-list and recurring-workflow specs exist. If meal planning depends heavily on them, keep it later; if it reveals a more urgent pain point, reorder Horizon 3 priorities.
-- Status: active
-- Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/decision-history.md`
+- Evidence so far: all three predecessor workflows (reminders, shared lists, recurring routines) are now built and validated. The deferred condition is now met. CEO confirmed meal planning as the next spec target via D-019 (OLI-26).
+- Validation path: completed. The prerequisite condition is met and the decision is made. See D-019.
+- Status: validated
+- Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/decision-history.md` (D-019)
 
 ### A-010: Lightweight standalone reminders will reduce pressure to misuse the inbox
 - Date: 2026-03-13

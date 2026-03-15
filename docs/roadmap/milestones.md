@@ -151,7 +151,7 @@ Completion note:
 ## M6: Coordination Layer Build Readiness
 Objective: prepare the first Horizon 3 workflow or set of workflows for implementation planning.
 
-Status: in progress
+Status: complete
 
 Required artifacts:
 - implementation-ready feature specs for the next Horizon 3 workflow area
@@ -172,6 +172,9 @@ Progress notes:
 - `docs/specs/shared-lists.md` — approved and implemented (Phase 1 complete)
 - `docs/specs/recurring-routines.md` — approved and implemented (all 7 phases complete)
 - Implementation plan: `docs/plans/recurring-routines-implementation-plan.md` — executed
+
+Completion note:
+- All three planned Horizon 3 workflows (first-class reminders, shared lists, recurring routines) are specified, implementation-planned, and fully built. The shared recurrence infrastructure (A-008) was validated across reminders and routines. The next spec target is meal planning, which was explicitly deferred until these primitives were proven.
 
 ## M7: Coordination Layer In Use
 Objective: deliver and evaluate household coordination workflows beyond the original inbox so Olivia becomes a broader coordination surface.
@@ -196,6 +199,7 @@ Progress notes:
 - First-class reminders: built and available in the PWA
 - Shared Lists: built and available in the PWA (Phase 1 complete, all 9 screen states implemented)
 - Recurring Routines: built and available in the PWA (all 7 phases complete: contracts, domain, persistence, API, PWA sync/cache, PWA surfaces, verification)
+- Meal Planning: spec drafted (`docs/specs/meal-planning.md`); pending CEO approval before implementation planning
 - Household validation notes: not yet collected; to be gathered during real use
 
 ## Milestone Gate Questions
