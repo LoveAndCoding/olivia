@@ -9,6 +9,8 @@ import { RemindersPage } from './routes/reminders-page';
 import { ReminderDetailPage } from './routes/reminder-detail-page';
 import { ReEntryPage } from './routes/re-entry-page';
 import { SettingsPage } from './routes/settings-page';
+import { ListsPage } from './routes/lists-page';
+import { ListDetailPage } from './routes/list-detail-page';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -18,10 +20,12 @@ const rootRoute = createRootRoute({
   )
 });
 
-// ── Primary four-tab routes ──────────────────────────────────────────────────
+// ── Primary five-tab routes ───────────────────────────────────────────────────
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: HomePage });
 const tasksRoute = createRoute({ getParentRoute: () => rootRoute, path: '/tasks', component: TasksPage });
 const oliviaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/olivia', component: OliviaPage });
+const listsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/lists', component: ListsPage });
+const listDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/lists/$listId', component: ListDetailPage });
 const memoryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/memory', component: MemoryPage });
 
 // ── Supporting routes (token-compliant, hidden from primary nav) ─────────────
@@ -52,6 +56,8 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   tasksRoute,
   oliviaRoute,
+  listsRoute,
+  listDetailRoute,
   memoryRoute,
   itemRoute,
   remindersRoute,

@@ -1,11 +1,12 @@
 import { Link } from '@tanstack/react-router';
 
-export type NavTab = 'home' | 'tasks' | 'olivia' | 'memory';
+export type NavTab = 'home' | 'tasks' | 'olivia' | 'lists' | 'memory';
 
 const NAV_ITEMS: Array<{ tab: NavTab; to: string; icon: string; label: string }> = [
   { tab: 'home',   to: '/',        icon: '🏡', label: 'Home'   },
   { tab: 'tasks',  to: '/tasks',   icon: '✅', label: 'Tasks'  },
   { tab: 'olivia', to: '/olivia',  icon: '✦',  label: 'Olivia' },
+  { tab: 'lists',  to: '/lists',   icon: '☑',  label: 'Lists'  },
   { tab: 'memory', to: '/memory',  icon: '🗂️', label: 'Memory' },
 ];
 
