@@ -125,7 +125,8 @@ export function RemindersPage() {
   }, [snoozeTarget, role, queryClient]);
 
   const isEmpty = !reminderQuery.isLoading && filteredReminders.length === 0;
-  const showAddButton = activeFilter !== 'done';
+  const isSpouse = role === 'spouse';
+  const showAddButton = activeFilter !== 'done' && !isSpouse;
 
   return (
     <div className="screen">
@@ -194,13 +195,15 @@ export function RemindersPage() {
               <OliviaMessage
                 text="No reminders yet. You can say something like 'Remind me next Thursday to call the vet' and I'll take care of it."
               />
-              <div style={{ marginTop: 16, width: '100%' }}>
-                <AddReminderButton
-                  label="Add a reminder…"
-                  icon="＋"
-                  onClick={() => setShowCreateSheet(true)}
-                />
-              </div>
+              {!isSpouse && (
+                <div style={{ marginTop: 16, width: '100%' }}>
+                  <AddReminderButton
+                    label="Add a reminder…"
+                    icon="＋"
+                    onClick={() => setShowCreateSheet(true)}
+                  />
+                </div>
+              )}
             </div>
           )}
 

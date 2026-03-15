@@ -115,6 +115,7 @@ export function ReminderDetailPage() {
     }
   }, [reminder, role, invalidateAndRefresh, showBanner]);
 
+  const isSpouse = role === 'spouse';
   const isCompleted = state === 'completed';
   const isCancelled = state === 'cancelled';
   const isDueOrOverdue = state === 'due' || state === 'overdue';
@@ -257,8 +258,14 @@ export function ReminderDetailPage() {
                 )}
               </div>
 
+              {isSpouse && (
+                <div className="rem-status-banner rem-status-banner-sky" style={{ marginBottom: 16 }}>
+                  👁 View only — actions are available to Lexi
+                </div>
+              )}
+
               {/* Actions — DET-1: upcoming => Edit, Snooze, Cancel */}
-              {state === 'upcoming' && (
+              {!isSpouse && state === 'upcoming' && (
                 <div className="rem-actions-row" style={{ marginBottom: 20 }}>
                   <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => setShowEditSheet(true)}>
                     ✏️ Edit
@@ -273,7 +280,7 @@ export function ReminderDetailPage() {
               )}
 
               {/* Actions — DET-2/DET-3: due or overdue => Done, Snooze, Edit, Cancel */}
-              {isDueOrOverdue && (
+              {!isSpouse && isDueOrOverdue && (
                 <div style={{ marginBottom: 20 }}>
                   <div className="rem-actions-row" style={{ marginBottom: 10 }}>
                     <button type="button" className="rem-btn rem-btn-done" style={{ flex: 1 }} disabled={busy} onClick={handleComplete}>
@@ -295,7 +302,7 @@ export function ReminderDetailPage() {
               )}
 
               {/* Actions — ACTION-4: snoozed => Change snooze, Un-snooze, Mark done now, Cancel */}
-              {isSnoozed && (
+              {!isSpouse && isSnoozed && (
                 <div style={{ marginBottom: 20 }}>
                   <div className="rem-actions-row" style={{ marginBottom: 10 }}>
                     <button type="button" className="rem-btn rem-btn-secondary" disabled={busy} onClick={() => setShowSnoozeSheet(true)}>
@@ -319,7 +326,7 @@ export function ReminderDetailPage() {
               )}
 
               {/* Actions — DET-4: completed => Undo completion */}
-              {isCompleted && (
+              {!isSpouse && isCompleted && (
                 <div className="rem-actions-row" style={{ marginBottom: 20 }}>
                   <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => {
                     void navigate({ to: '/reminders' });
@@ -357,7 +364,7 @@ export function ReminderDetailPage() {
 
       {banner && <ConfirmBanner message={banner.message} variant={banner.variant} />}
 
-      {reminder && (
+      {reminder && !isSpouse && (
         <>
           <EditReminderSheet
             open={showEditSheet}
