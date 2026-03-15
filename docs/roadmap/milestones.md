@@ -199,7 +199,7 @@ Progress notes:
 - First-class reminders: built and available in the PWA
 - Shared Lists: built and available in the PWA (Phase 1 complete, all 9 screen states implemented)
 - Recurring Routines: built and available in the PWA (all 7 phases complete: contracts, domain, persistence, API, PWA sync/cache, PWA surfaces, verification)
-- Meal Planning: spec drafted (`docs/specs/meal-planning.md`); pending CEO approval before implementation planning
+- Meal Planning: spec approved (D-021); visual spec complete (`docs/plans/meal-planning-visual-implementation-spec.md`, OLI-32); implementation plan in progress ([OLI-33](/OLI/issues/OLI-33))
 - Household validation notes: not yet collected; to be gathered during real use
 
 ## Milestone Gate Questions
