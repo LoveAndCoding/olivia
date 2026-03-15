@@ -534,6 +534,146 @@ export const listItemMutationResponseSchema = z.object({
   newVersion: z.number().int().positive()
 });
 
+// ─── Recurring Routines ───────────────────────────────────────────────────────
+
+export const routineStatusSchema = z.enum(['active', 'paused', 'archived']);
+export const routineDueStateSchema = z.enum(['upcoming', 'due', 'overdue', 'completed', 'paused']);
+export const routineRecurrenceRuleSchema = z.enum(['daily', 'weekly', 'monthly', 'every_n_days']);
+
+export const routineEventTypeSchema = z.enum([
+  'routine_created',
+  'routine_updated',
+  'routine_completed',
+  'routine_paused',
+  'routine_resumed',
+  'routine_archived',
+  'routine_restored',
+  'routine_deleted'
+]);
+
+export const routineSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().trim().min(1),
+  owner: ownerSchema,
+  recurrenceRule: routineRecurrenceRuleSchema,
+  intervalDays: z.number().int().positive().nullable(),
+  status: routineStatusSchema,
+  currentDueDate: z.string().datetime(),
+  dueState: routineDueStateSchema.optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  archivedAt: z.string().datetime().nullable(),
+  version: z.number().int().positive(),
+  pendingSync: z.boolean().optional()
+}).refine(
+  (r) => r.recurrenceRule !== 'every_n_days' || (r.intervalDays !== null && r.intervalDays > 0),
+  { message: 'intervalDays must be a positive integer when recurrenceRule is every_n_days' }
+);
+
+export const routineOccurrenceSchema = z.object({
+  id: z.string().uuid(),
+  routineId: z.string().uuid(),
+  dueDate: z.string().datetime(),
+  completedAt: z.string().datetime().nullable(),
+  completedBy: ownerSchema.nullable(),
+  skipped: z.boolean(),
+  createdAt: z.string().datetime()
+});
+
+// Query response schemas
+export const activeRoutineIndexResponseSchema = z.object({
+  routines: z.array(routineSchema),
+  source: querySourceSchema
+});
+
+export const archivedRoutineIndexResponseSchema = z.object({
+  routines: z.array(routineSchema),
+  source: querySourceSchema
+});
+
+export const routineDetailResponseSchema = z.object({
+  routine: routineSchema,
+  occurrences: z.array(routineOccurrenceSchema),
+  source: querySourceSchema
+});
+
+// Command/request schemas
+export const createRoutineRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  title: z.string().trim().min(1),
+  owner: ownerSchema,
+  recurrenceRule: routineRecurrenceRuleSchema,
+  intervalDays: z.number().int().positive().nullable().optional(),
+  firstDueDate: z.string().datetime()
+}).refine(
+  (r) => r.recurrenceRule !== 'every_n_days' || (r.intervalDays !== null && r.intervalDays !== undefined && r.intervalDays > 0),
+  { message: 'intervalDays must be a positive integer when recurrenceRule is every_n_days' }
+);
+
+export const updateRoutineRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  routineId: z.string().uuid(),
+  expectedVersion: z.number().int().positive(),
+  title: z.string().trim().min(1).optional(),
+  owner: ownerSchema.optional(),
+  recurrenceRule: routineRecurrenceRuleSchema.optional(),
+  intervalDays: z.number().int().positive().nullable().optional()
+});
+
+export const completeRoutineOccurrenceRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  routineId: z.string().uuid(),
+  expectedVersion: z.number().int().positive()
+});
+
+export const pauseRoutineRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  routineId: z.string().uuid(),
+  expectedVersion: z.number().int().positive(),
+  confirmed: z.literal(true)
+});
+
+export const resumeRoutineRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  routineId: z.string().uuid(),
+  expectedVersion: z.number().int().positive()
+});
+
+export const archiveRoutineRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  routineId: z.string().uuid(),
+  expectedVersion: z.number().int().positive(),
+  confirmed: z.literal(true)
+});
+
+export const restoreRoutineRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  routineId: z.string().uuid(),
+  expectedVersion: z.number().int().positive()
+});
+
+export const deleteRoutineRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  routineId: z.string().uuid(),
+  confirmed: z.literal(true)
+});
+
+// Mutation response schemas
+export const routineMutationResponseSchema = z.object({
+  savedRoutine: routineSchema,
+  newVersion: z.number().int().positive()
+});
+
+export const completeRoutineOccurrenceResponseSchema = z.object({
+  savedRoutine: routineSchema,
+  occurrence: routineOccurrenceSchema,
+  newVersion: z.number().int().positive()
+});
+
+export const deleteRoutineResponseSchema = z.object({
+  deleted: z.literal(true)
+});
+
 // ─── Outbox commands ─────────────────────────────────────────────────────────
 
 export const outboxCommandSchema = z.discriminatedUnion('kind', [
@@ -670,6 +810,71 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
     listId: z.string().uuid(),
     itemId: z.string().uuid(),
     confirmed: z.literal(true)
+  }),
+  z.object({
+    kind: z.literal('routine_create'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    title: z.string().trim().min(1),
+    owner: ownerSchema,
+    recurrenceRule: routineRecurrenceRuleSchema,
+    intervalDays: z.number().int().positive().nullable().optional(),
+    firstDueDate: z.string().datetime()
+  }),
+  z.object({
+    kind: z.literal('routine_update'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    routineId: z.string().uuid(),
+    expectedVersion: z.number().int().positive(),
+    title: z.string().trim().min(1).optional(),
+    owner: ownerSchema.optional(),
+    recurrenceRule: routineRecurrenceRuleSchema.optional(),
+    intervalDays: z.number().int().positive().nullable().optional()
+  }),
+  z.object({
+    kind: z.literal('routine_complete'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    routineId: z.string().uuid(),
+    expectedVersion: z.number().int().positive()
+  }),
+  z.object({
+    kind: z.literal('routine_pause'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    routineId: z.string().uuid(),
+    expectedVersion: z.number().int().positive(),
+    confirmed: z.literal(true)
+  }),
+  z.object({
+    kind: z.literal('routine_resume'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    routineId: z.string().uuid(),
+    expectedVersion: z.number().int().positive()
+  }),
+  z.object({
+    kind: z.literal('routine_archive'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    routineId: z.string().uuid(),
+    expectedVersion: z.number().int().positive(),
+    confirmed: z.literal(true)
+  }),
+  z.object({
+    kind: z.literal('routine_restore'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    routineId: z.string().uuid(),
+    expectedVersion: z.number().int().positive()
+  }),
+  z.object({
+    kind: z.literal('routine_delete'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    routineId: z.string().uuid(),
+    confirmed: z.literal(true)
   })
 ]);
 
@@ -755,3 +960,25 @@ export type UncheckListItemRequest = z.infer<typeof uncheckListItemRequestSchema
 export type RemoveListItemRequest = z.infer<typeof removeListItemRequestSchema>;
 export type ListMutationResponse = z.infer<typeof listMutationResponseSchema>;
 export type ListItemMutationResponse = z.infer<typeof listItemMutationResponseSchema>;
+
+// Recurring Routines types
+export type RoutineStatus = z.infer<typeof routineStatusSchema>;
+export type RoutineDueState = z.infer<typeof routineDueStateSchema>;
+export type RoutineRecurrenceRule = z.infer<typeof routineRecurrenceRuleSchema>;
+export type RoutineEventType = z.infer<typeof routineEventTypeSchema>;
+export type Routine = z.infer<typeof routineSchema>;
+export type RoutineOccurrence = z.infer<typeof routineOccurrenceSchema>;
+export type ActiveRoutineIndexResponse = z.infer<typeof activeRoutineIndexResponseSchema>;
+export type ArchivedRoutineIndexResponse = z.infer<typeof archivedRoutineIndexResponseSchema>;
+export type RoutineDetailResponse = z.infer<typeof routineDetailResponseSchema>;
+export type CreateRoutineRequest = z.infer<typeof createRoutineRequestSchema>;
+export type UpdateRoutineRequest = z.infer<typeof updateRoutineRequestSchema>;
+export type CompleteRoutineOccurrenceRequest = z.infer<typeof completeRoutineOccurrenceRequestSchema>;
+export type PauseRoutineRequest = z.infer<typeof pauseRoutineRequestSchema>;
+export type ResumeRoutineRequest = z.infer<typeof resumeRoutineRequestSchema>;
+export type ArchiveRoutineRequest = z.infer<typeof archiveRoutineRequestSchema>;
+export type RestoreRoutineRequest = z.infer<typeof restoreRoutineRequestSchema>;
+export type DeleteRoutineRequest = z.infer<typeof deleteRoutineRequestSchema>;
+export type RoutineMutationResponse = z.infer<typeof routineMutationResponseSchema>;
+export type CompleteRoutineOccurrenceResponse = z.infer<typeof completeRoutineOccurrenceResponseSchema>;
+export type DeleteRoutineResponse = z.infer<typeof deleteRoutineResponseSchema>;

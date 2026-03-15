@@ -1,9 +1,13 @@
 import {
   activeListIndexResponseSchema,
+  activeRoutineIndexResponseSchema,
   archivedListIndexResponseSchema,
+  archivedRoutineIndexResponseSchema,
   cancelReminderResponseSchema,
   completeReminderResponseSchema,
+  completeRoutineOccurrenceResponseSchema,
   confirmCreateReminderResponseSchema,
+  deleteRoutineResponseSchema,
   itemDetailResponseSchema,
   inboxViewResponseSchema,
   listDetailResponseSchema,
@@ -16,17 +20,23 @@ import {
   reminderDetailResponseSchema,
   reminderSettingsResponseSchema,
   reminderViewResponseSchema,
+  routineDetailResponseSchema,
+  routineMutationResponseSchema,
   saveReminderNotificationPreferencesResponseSchema,
   snoozeReminderResponseSchema,
   type ActiveListIndexResponse,
+  type ActiveRoutineIndexResponse,
   type ActorRole,
   type ArchivedListIndexResponse,
+  type ArchivedRoutineIndexResponse,
   type CancelReminderResponse,
   type CompleteReminderResponse,
+  type CompleteRoutineOccurrenceResponse,
   type ConfirmCreateResponse,
   type ConfirmCreateReminderResponse,
   type ConfirmUpdateResponse,
   type ConfirmUpdateReminderResponse,
+  type DeleteRoutineResponse,
   type DraftItem,
   type DraftReminder,
   type ItemDetailResponse,
@@ -34,6 +44,7 @@ import {
   type ListDetailResponse,
   type ListItemMutationResponse,
   type ListMutationResponse,
+  type Owner,
   type PreviewCreateResponse,
   type PreviewCreateReminderResponse,
   type PreviewUpdateResponse,
@@ -43,6 +54,9 @@ import {
   type ReminderSettingsResponse,
   type ReminderUpdateChange,
   type ReminderViewResponse,
+  type RoutineDetailResponse,
+  type RoutineMutationResponse,
+  type RoutineRecurrenceRule,
   type SnoozeReminderResponse,
   type StructuredInput,
   type StructuredReminderInput,
@@ -371,4 +385,102 @@ export async function removeListItem(role: ActorRole, listId: string, itemId: st
     method: 'DELETE',
     body: JSON.stringify({ actorRole: role, confirmed: true })
   });
+}
+
+// ─── Routine API clients ───────────────────────────────────────────────────────
+
+export async function fetchActiveRoutineIndex(role: ActorRole): Promise<ActiveRoutineIndexResponse> {
+  return activeRoutineIndexResponseSchema.parse(await request<ActiveRoutineIndexResponse>(`/api/routines?actorRole=${role}`));
+}
+
+export async function fetchArchivedRoutineIndex(role: ActorRole): Promise<ArchivedRoutineIndexResponse> {
+  return archivedRoutineIndexResponseSchema.parse(await request<ArchivedRoutineIndexResponse>(`/api/routines/archived?actorRole=${role}`));
+}
+
+export async function fetchRoutineDetail(role: ActorRole, routineId: string): Promise<RoutineDetailResponse> {
+  return routineDetailResponseSchema.parse(await request<RoutineDetailResponse>(`/api/routines/${routineId}?actorRole=${role}`));
+}
+
+export async function createRoutine(
+  role: ActorRole,
+  title: string,
+  owner: Owner,
+  recurrenceRule: RoutineRecurrenceRule,
+  firstDueDate: string,
+  intervalDays?: number | null
+): Promise<RoutineMutationResponse> {
+  return routineMutationResponseSchema.parse(
+    await request<RoutineMutationResponse>('/api/routines', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, title, owner, recurrenceRule, firstDueDate, intervalDays })
+    })
+  );
+}
+
+export async function updateRoutine(
+  role: ActorRole,
+  routineId: string,
+  expectedVersion: number,
+  changes: { title?: string; owner?: Owner; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null }
+): Promise<RoutineMutationResponse> {
+  return routineMutationResponseSchema.parse(
+    await request<RoutineMutationResponse>(`/api/routines/${routineId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ actorRole: role, routineId, expectedVersion, ...changes })
+    })
+  );
+}
+
+export async function completeRoutineOccurrence(role: ActorRole, routineId: string, expectedVersion: number): Promise<CompleteRoutineOccurrenceResponse> {
+  return completeRoutineOccurrenceResponseSchema.parse(
+    await request<CompleteRoutineOccurrenceResponse>('/api/routines/complete', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, routineId, expectedVersion })
+    })
+  );
+}
+
+export async function pauseRoutine(role: ActorRole, routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
+  return routineMutationResponseSchema.parse(
+    await request<RoutineMutationResponse>(`/api/routines/${routineId}/pause`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, routineId, expectedVersion, confirmed: true })
+    })
+  );
+}
+
+export async function resumeRoutine(role: ActorRole, routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
+  return routineMutationResponseSchema.parse(
+    await request<RoutineMutationResponse>(`/api/routines/${routineId}/resume`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, routineId, expectedVersion })
+    })
+  );
+}
+
+export async function archiveRoutine(role: ActorRole, routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
+  return routineMutationResponseSchema.parse(
+    await request<RoutineMutationResponse>(`/api/routines/${routineId}/archive`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, routineId, expectedVersion, confirmed: true })
+    })
+  );
+}
+
+export async function restoreRoutine(role: ActorRole, routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
+  return routineMutationResponseSchema.parse(
+    await request<RoutineMutationResponse>(`/api/routines/${routineId}/restore`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, routineId, expectedVersion })
+    })
+  );
+}
+
+export async function deleteRoutine(role: ActorRole, routineId: string): Promise<DeleteRoutineResponse> {
+  return deleteRoutineResponseSchema.parse(
+    await request<DeleteRoutineResponse>(`/api/routines/${routineId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ actorRole: role, routineId, confirmed: true })
+    })
+  );
 }

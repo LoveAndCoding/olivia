@@ -1,4 +1,4 @@
-import { addDays, addMonths, addWeeks, compareAsc, differenceInCalendarDays, isAfter, isBefore } from 'date-fns';
+import { addDays, addMonths, addWeeks, compareAsc, differenceInCalendarDays, getDaysInMonth, isAfter, isBefore, setDate } from 'date-fns';
 import { parse, parseDate } from 'chrono-node';
 import {
   draftReminderSchema,
@@ -11,6 +11,8 @@ import {
   reminderSchema,
   reminderTimelineEntrySchema,
   remindersByStateSchema,
+  routineSchema,
+  routineOccurrenceSchema,
   sharedListSchema,
   type ActorRole,
   type DraftItem,
@@ -31,6 +33,10 @@ import {
   type ReminderTimelineEntry,
   type ReminderUpdateChange,
   type RemindersByState,
+  type Routine,
+  type RoutineDueState,
+  type RoutineOccurrence,
+  type RoutineRecurrenceRule,
   type SharedList,
   type Suggestion,
   type UpdateChange
@@ -1112,4 +1118,229 @@ export function createItemUncheckedHistoryEntry(item: ListItem, actorRole: Actor
 
 export function createItemRemovedHistoryEntry(listId: string, item: ListItem, actorRole: ActorRole, now: Date = new Date()): ListItemHistoryEntry {
   return createListHistoryEntry(listId, item.id, actorRole, 'item_removed', { body: item.body }, null, now.toISOString());
+}
+
+// ─── Recurring Routines domain helpers ────────────────────────────────────────
+
+/**
+ * Advance a date by a routine's recurrence rule.
+ * For `every_n_days`, intervalDays must be provided.
+ * For `monthly`, clamps to last day of month if needed.
+ */
+export function scheduleNextRoutineOccurrence(
+  fromDate: string | Date,
+  recurrenceRule: RoutineRecurrenceRule,
+  intervalDays?: number | null
+): string {
+  const from = typeof fromDate === 'string' ? new Date(fromDate) : fromDate;
+
+  switch (recurrenceRule) {
+    case 'daily':
+      return addDays(from, 1).toISOString();
+    case 'weekly':
+      return addWeeks(from, 1).toISOString();
+    case 'monthly': {
+      const targetDay = from.getDate();
+      const next = addMonths(from, 1);
+      const daysInNextMonth = getDaysInMonth(next);
+      // Clamp to last day of target month
+      const clampedDay = Math.min(targetDay, daysInNextMonth);
+      return setDate(next, clampedDay).toISOString();
+    }
+    case 'every_n_days': {
+      if (!intervalDays || intervalDays <= 0) {
+        throw new Error('intervalDays must be a positive integer for every_n_days recurrence');
+      }
+      return addDays(from, intervalDays).toISOString();
+    }
+    default:
+      throw new Error(`Unsupported recurrence rule: ${recurrenceRule as string}`);
+  }
+}
+
+/**
+ * Compute the due state for a routine at a given moment.
+ * The `currentOccurrence` is the most recent occurrence row for the current cycle
+ * (i.e., where occurrence.dueDate === routine.currentDueDate), if any.
+ */
+export function computeRoutineDueState(
+  routine: Routine,
+  currentOccurrence: RoutineOccurrence | null,
+  now: Date = new Date()
+): RoutineDueState {
+  if (routine.status === 'paused') {
+    return 'paused';
+  }
+  if (currentOccurrence && currentOccurrence.completedAt !== null) {
+    return 'completed';
+  }
+  const dueDate = new Date(routine.currentDueDate);
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  if (dueDate > now) {
+    return 'upcoming';
+  }
+  if (dueDate >= twentyFourHoursAgo) {
+    return 'due';
+  }
+  return 'overdue';
+}
+
+export function createRoutine(
+  title: string,
+  owner: Owner,
+  recurrenceRule: RoutineRecurrenceRule,
+  firstDueDate: string,
+  intervalDays?: number | null,
+  now: Date = new Date()
+): Routine {
+  if (recurrenceRule === 'every_n_days' && (!intervalDays || intervalDays <= 0)) {
+    throw new Error('intervalDays must be a positive integer when recurrenceRule is every_n_days');
+  }
+  const timestamp = now.toISOString();
+  return routineSchema.parse({
+    id: createId(),
+    title: title.trim(),
+    owner,
+    recurrenceRule,
+    intervalDays: intervalDays ?? null,
+    status: 'active',
+    currentDueDate: firstDueDate,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    archivedAt: null,
+    version: 1
+  });
+}
+
+export function updateRoutine(
+  routine: Routine,
+  changes: { title?: string; owner?: Owner; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null },
+  now: Date = new Date()
+): Routine {
+  const newRecurrenceRule = changes.recurrenceRule ?? routine.recurrenceRule;
+  const newIntervalDays = changes.intervalDays !== undefined ? changes.intervalDays : routine.intervalDays;
+
+  if (newRecurrenceRule === 'every_n_days' && (!newIntervalDays || newIntervalDays <= 0)) {
+    throw new Error('intervalDays must be a positive integer when recurrenceRule is every_n_days');
+  }
+
+  // currentDueDate stays unchanged — it is the anchor for the next completion advancement.
+  // Per Decision A: when the rule changes, the NEXT occurrence after completion is recalculated
+  // from the current cycle's original start (currentDueDate), using the new rule.
+  // completeRoutineOccurrence already does this correctly; no change needed here.
+
+  return routineSchema.parse({
+    ...routine,
+    title: changes.title !== undefined ? changes.title.trim() : routine.title,
+    owner: changes.owner ?? routine.owner,
+    recurrenceRule: newRecurrenceRule,
+    intervalDays: newIntervalDays,
+    updatedAt: now.toISOString(),
+    version: routine.version + 1
+  });
+}
+
+export type CompleteRoutineResult = {
+  updatedRoutine: Routine;
+  occurrence: RoutineOccurrence;
+};
+
+/**
+ * Complete the current routine occurrence.
+ * Advances currentDueDate from the ORIGINAL due date (schedule-anchored), not from now.
+ */
+export function completeRoutineOccurrence(
+  routine: Routine,
+  completedBy: Owner,
+  now: Date = new Date()
+): CompleteRoutineResult {
+  if (routine.status === 'paused') {
+    throw new Error('Cannot complete a paused routine.');
+  }
+  if (routine.status === 'archived') {
+    throw new Error('Cannot complete an archived routine.');
+  }
+
+  const timestamp = now.toISOString();
+  const originalDueDate = routine.currentDueDate;
+
+  // Schedule-anchored: advance from original due date, not from completion date
+  const nextDueDate = scheduleNextRoutineOccurrence(
+    originalDueDate,
+    routine.recurrenceRule,
+    routine.intervalDays
+  );
+
+  const occurrence = routineOccurrenceSchema.parse({
+    id: createId(),
+    routineId: routine.id,
+    dueDate: originalDueDate,
+    completedAt: timestamp,
+    completedBy,
+    skipped: false,
+    createdAt: timestamp
+  });
+
+  const updatedRoutine = routineSchema.parse({
+    ...routine,
+    currentDueDate: nextDueDate,
+    updatedAt: timestamp,
+    version: routine.version + 1
+  });
+
+  return { updatedRoutine, occurrence };
+}
+
+export function pauseRoutine(routine: Routine, now: Date = new Date()): Routine {
+  if (routine.status === 'paused') {
+    throw new Error('Routine is already paused.');
+  }
+  if (routine.status === 'archived') {
+    throw new Error('Cannot pause an archived routine.');
+  }
+  return routineSchema.parse({
+    ...routine,
+    status: 'paused',
+    updatedAt: now.toISOString(),
+    version: routine.version + 1
+  });
+}
+
+export function resumeRoutine(routine: Routine, now: Date = new Date()): Routine {
+  if (routine.status !== 'paused') {
+    throw new Error('Routine is not paused.');
+  }
+  return routineSchema.parse({
+    ...routine,
+    status: 'active',
+    updatedAt: now.toISOString(),
+    version: routine.version + 1
+  });
+}
+
+export function archiveRoutine(routine: Routine, now: Date = new Date()): Routine {
+  if (routine.status === 'archived') {
+    throw new Error('Routine is already archived.');
+  }
+  const timestamp = now.toISOString();
+  return routineSchema.parse({
+    ...routine,
+    status: 'archived',
+    archivedAt: timestamp,
+    updatedAt: timestamp,
+    version: routine.version + 1
+  });
+}
+
+export function restoreRoutine(routine: Routine, now: Date = new Date()): Routine {
+  if (routine.status !== 'archived') {
+    throw new Error('Routine is not archived.');
+  }
+  return routineSchema.parse({
+    ...routine,
+    status: 'active',
+    archivedAt: null,
+    updatedAt: now.toISOString(),
+    version: routine.version + 1
+  });
 }

@@ -170,8 +170,8 @@ Evidence of completion:
 Progress notes:
 - `docs/specs/first-class-reminders.md` — approved and implemented (Phase 1 complete)
 - `docs/specs/shared-lists.md` — approved and implemented (Phase 1 complete)
-- `docs/specs/recurring-routines.md` — spec written, pending CEO approval and implementation planning
-- Implementation plan for recurring routines: not yet written (next step after CEO approval)
+- `docs/specs/recurring-routines.md` — approved and implemented (all 7 phases complete)
+- Implementation plan: `docs/plans/recurring-routines-implementation-plan.md` — executed
 
 ## M7: Coordination Layer In Use
 Objective: deliver and evaluate household coordination workflows beyond the original inbox so Olivia becomes a broader coordination surface.
@@ -195,7 +195,7 @@ Evidence of completion:
 Progress notes:
 - First-class reminders: built and available in the PWA
 - Shared Lists: built and available in the PWA (Phase 1 complete, all 9 screen states implemented)
-- Recurring Routines: spec in progress, not yet built
+- Recurring Routines: built and available in the PWA (all 7 phases complete: contracts, domain, persistence, API, PWA sync/cache, PWA surfaces, verification)
 - Household validation notes: not yet collected; to be gathered during real use
 
 ## Milestone Gate Questions

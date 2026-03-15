@@ -2,25 +2,34 @@ import {
   addListItem,
   applyUpdate,
   archiveList as archiveListDomain,
+  archiveRoutine as archiveRoutineDomain,
   cancelReminder,
   checkItem,
   completeReminderOccurrence,
+  completeRoutineOccurrence as completeRoutineOccurrenceDomain,
   createDraft,
   createInboxItem,
   createReminder,
   createReminderDraft,
+  createRoutine as createRoutineDomain,
   createSharedList,
+  pauseRoutine as pauseRoutineDomain,
   restoreList as restoreListDomain,
+  restoreRoutine as restoreRoutineDomain,
+  resumeRoutine as resumeRoutineDomain,
   snoozeReminder,
   uncheckItem,
   updateItemBody,
   updateListTitle as updateListTitleDomain,
-  updateReminder
+  updateReminder,
+  updateRoutine as updateRoutineDomain
 } from '@olivia/domain';
 import type {
   ActiveListIndexResponse,
+  ActiveRoutineIndexResponse,
   ActorRole,
   ArchivedListIndexResponse,
+  ArchivedRoutineIndexResponse,
   DraftItem,
   DraftReminder,
   InboxItem,
@@ -29,6 +38,7 @@ import type {
   ListDetailResponse,
   ListItem,
   OutboxCommand,
+  Owner,
   PreviewCreateReminderResponse,
   PreviewCreateResponse,
   PreviewUpdateReminderResponse,
@@ -39,6 +49,10 @@ import type {
   ReminderSettingsResponse,
   ReminderUpdateChange,
   ReminderViewResponse,
+  Routine,
+  RoutineDetailResponse,
+  RoutineOccurrence,
+  RoutineRecurrenceRule,
   SharedList,
   StructuredInput,
   StructuredReminderInput,
@@ -58,13 +72,20 @@ import {
   cacheReminderDetail,
   cacheReminderSettings,
   cacheReminderView,
+  cacheRoutine,
+  cacheRoutineDetail,
+  cacheRoutineIndex,
+  cacheRoutineOccurrence,
   cacheSharedList,
   clientDb,
   enqueueCommand,
   getCachedActiveListIndex,
+  getCachedActiveRoutineIndex,
   getCachedArchivedListIndex,
+  getCachedArchivedRoutineIndex,
   getCachedItemDetail,
   getCachedListDetail,
+  getCachedRoutineDetail,
   getCachedReminder,
   getCachedReminderDetail,
   getCachedReminderSettings,
@@ -74,42 +95,54 @@ import {
   removeListFromCache,
   removeListItemFromCache,
   removeOutboxCommand,
+  removeRoutineFromCache,
   setMeta
 } from './client-db';
 import {
   ApiError,
   addListItem as addListItemApi,
   archiveList as archiveListApi,
+  archiveRoutine as archiveRoutineApi,
   cancelReminder as cancelReminderApi,
   checkListItem as checkListItemApi,
   completeReminder as completeReminderApi,
+  completeRoutineOccurrence as completeRoutineOccurrenceApi,
   confirmCreate,
   confirmCreateReminder,
   confirmUpdate,
   confirmUpdateReminder,
   createList as createListApi,
+  createRoutine as createRoutineApi,
   deleteList as deleteListApi,
+  deleteRoutine as deleteRoutineApi,
   fetchActiveListIndex,
+  fetchActiveRoutineIndex,
   fetchArchivedListIndex,
+  fetchArchivedRoutineIndex,
   fetchInboxView,
   fetchItemDetail,
   fetchListDetail,
   fetchReminderDetail,
   fetchReminderSettings,
   fetchReminderView,
+  fetchRoutineDetail,
   listNotificationSubscriptions,
+  pauseRoutine as pauseRoutineApi,
   previewCreate,
   previewCreateReminder,
   previewUpdate,
   previewUpdateReminder,
   removeListItem as removeListItemApi,
   restoreList as restoreListApi,
+  restoreRoutine as restoreRoutineApi,
+  resumeRoutine as resumeRoutineApi,
   saveNotificationSubscription,
   saveReminderSettings,
   snoozeReminder as snoozeReminderApi,
   uncheckListItem as uncheckListItemApi,
   updateListItemBody as updateListItemBodyApi,
-  updateListTitle as updateListTitleApi
+  updateListTitle as updateListTitleApi,
+  updateRoutine as updateRoutineApi
 } from './api';
 
 const isOffline = () => !window.navigator.onLine;
@@ -523,6 +556,32 @@ async function flushOutboxOnce() {
       } else if (command.kind === 'item_remove') {
         await removeListItemApi(command.actorRole, command.listId, command.itemId);
         await removeListItemFromCache(command.itemId);
+      } else if (command.kind === 'routine_create') {
+        const response = await createRoutineApi(command.actorRole, command.title, command.owner, command.recurrenceRule, command.firstDueDate, command.intervalDays);
+        await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+      } else if (command.kind === 'routine_update') {
+        const { title, owner, recurrenceRule, intervalDays } = command;
+        const response = await updateRoutineApi(command.actorRole, command.routineId, command.expectedVersion, { title, owner, recurrenceRule, intervalDays });
+        await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+      } else if (command.kind === 'routine_complete') {
+        const response = await completeRoutineOccurrenceApi(command.actorRole, command.routineId, command.expectedVersion);
+        await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+        await cacheRoutineOccurrence(response.occurrence);
+      } else if (command.kind === 'routine_pause') {
+        const response = await pauseRoutineApi(command.actorRole, command.routineId, command.expectedVersion);
+        await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+      } else if (command.kind === 'routine_resume') {
+        const response = await resumeRoutineApi(command.actorRole, command.routineId, command.expectedVersion);
+        await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+      } else if (command.kind === 'routine_archive') {
+        const response = await archiveRoutineApi(command.actorRole, command.routineId, command.expectedVersion);
+        await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+      } else if (command.kind === 'routine_restore') {
+        const response = await restoreRoutineApi(command.actorRole, command.routineId, command.expectedVersion);
+        await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+      } else if (command.kind === 'routine_delete') {
+        await deleteRoutineApi(command.actorRole, command.routineId);
+        await removeRoutineFromCache(command.routineId);
       } else {
         throw new Error('Unsupported outbox command kind.');
       }
@@ -530,7 +589,7 @@ async function flushOutboxOnce() {
       await setMeta('last-sync-at', new Date().toISOString());
     } catch (error) {
       if (error instanceof ApiError && error.statusCode === 409) {
-        const entityName = command.kind.startsWith('reminder_') ? 'reminder' : command.kind.startsWith('list_') || command.kind.startsWith('item_') ? 'list' : 'item';
+        const entityName = command.kind.startsWith('reminder_') ? 'reminder' : command.kind.startsWith('list_') || command.kind.startsWith('item_') ? 'list' : command.kind.startsWith('routine_') ? 'routine' : 'item';
         await markOutboxConflict(command.commandId, `Version conflict: refresh this ${entityName} and retry.`);
       }
       throw error;
@@ -783,4 +842,187 @@ export async function removeListItemCommand(role: ActorRole, listId: string, ite
   const command: OutboxCommand = { kind: 'item_remove', commandId: crypto.randomUUID(), actorRole: role, listId, itemId, confirmed: true };
   await enqueueCommand(command);
   await removeListItemFromCache(itemId);
+}
+
+// ─── Routine sync commands ────────────────────────────────────────────────────
+
+export async function loadActiveRoutineIndex(role: ActorRole): Promise<ActiveRoutineIndexResponse> {
+  if (!isOffline()) {
+    try {
+      await flushOutbox();
+      const response = await fetchActiveRoutineIndex(role);
+      await cacheRoutineIndex(response);
+      return response;
+    } catch {
+      return getCachedActiveRoutineIndex();
+    }
+  }
+  return getCachedActiveRoutineIndex();
+}
+
+export async function loadArchivedRoutineIndex(role: ActorRole): Promise<ArchivedRoutineIndexResponse> {
+  if (!isOffline()) {
+    try {
+      await flushOutbox();
+      const response = await fetchArchivedRoutineIndex(role);
+      await cacheRoutineIndex(response);
+      return response;
+    } catch {
+      return getCachedArchivedRoutineIndex();
+    }
+  }
+  return getCachedArchivedRoutineIndex();
+}
+
+export async function loadRoutineDetail(role: ActorRole, routineId: string): Promise<RoutineDetailResponse> {
+  if (!isOffline()) {
+    try {
+      await flushOutbox();
+      const detail = await fetchRoutineDetail(role, routineId);
+      await cacheRoutineDetail(detail);
+      return detail;
+    } catch {
+      const cached = await getCachedRoutineDetail(routineId);
+      if (cached) return cached;
+      throw new Error('Routine not available offline yet.');
+    }
+  }
+  const cached = await getCachedRoutineDetail(routineId);
+  if (cached) return cached;
+  throw new Error('Routine not available offline yet.');
+}
+
+export async function createRoutineCommand(
+  role: ActorRole,
+  title: string,
+  owner: Owner,
+  recurrenceRule: RoutineRecurrenceRule,
+  firstDueDate: string,
+  intervalDays?: number | null
+): Promise<Routine> {
+  if (!isOffline()) {
+    const response = await createRoutineApi(role, title, owner, recurrenceRule, firstDueDate, intervalDays);
+    await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+    return response.savedRoutine;
+  }
+  const routine = createRoutineDomain(title, owner, recurrenceRule, firstDueDate, intervalDays);
+  const pendingRoutine = { ...routine, pendingSync: true };
+  const command: OutboxCommand = { kind: 'routine_create', commandId: crypto.randomUUID(), actorRole: role, title, owner, recurrenceRule, firstDueDate, intervalDays };
+  await cacheRoutine(pendingRoutine);
+  await enqueueCommand(command);
+  return pendingRoutine;
+}
+
+export async function updateRoutineCommand(
+  role: ActorRole,
+  routineId: string,
+  expectedVersion: number,
+  changes: { title?: string; owner?: Owner; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null }
+): Promise<Routine> {
+  if (!isOffline()) {
+    const response = await updateRoutineApi(role, routineId, expectedVersion, changes);
+    await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+    return response.savedRoutine;
+  }
+  const cached = await clientDb.routines.get(routineId);
+  if (!cached) throw new Error('Routine not available offline.');
+  const updated = updateRoutineDomain(cached, changes);
+  const pendingRoutine = { ...updated, pendingSync: true };
+  const command: OutboxCommand = { kind: 'routine_update', commandId: crypto.randomUUID(), actorRole: role, routineId, expectedVersion, ...changes };
+  await cacheRoutine(pendingRoutine);
+  await enqueueCommand(command);
+  return pendingRoutine;
+}
+
+export async function completeRoutineOccurrenceCommand(role: ActorRole, routineId: string, expectedVersion: number): Promise<{ routine: Routine; occurrence: RoutineOccurrence }> {
+  if (!isOffline()) {
+    const response = await completeRoutineOccurrenceApi(role, routineId, expectedVersion);
+    await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+    await cacheRoutineOccurrence(response.occurrence);
+    return { routine: response.savedRoutine, occurrence: response.occurrence };
+  }
+  const cached = await clientDb.routines.get(routineId);
+  if (!cached) throw new Error('Routine not available offline.');
+  const { updatedRoutine, occurrence } = completeRoutineOccurrenceDomain(cached, role);
+  const pendingRoutine = { ...updatedRoutine, pendingSync: true };
+  const command: OutboxCommand = { kind: 'routine_complete', commandId: crypto.randomUUID(), actorRole: role, routineId, expectedVersion };
+  await cacheRoutine(pendingRoutine);
+  await cacheRoutineOccurrence(occurrence);
+  await enqueueCommand(command);
+  return { routine: pendingRoutine, occurrence };
+}
+
+export async function pauseRoutineCommand(role: ActorRole, routineId: string, expectedVersion: number): Promise<Routine> {
+  if (!isOffline()) {
+    const response = await pauseRoutineApi(role, routineId, expectedVersion);
+    await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+    return response.savedRoutine;
+  }
+  const cached = await clientDb.routines.get(routineId);
+  if (!cached) throw new Error('Routine not available offline.');
+  const paused = pauseRoutineDomain(cached);
+  const pendingRoutine = { ...paused, pendingSync: true };
+  const command: OutboxCommand = { kind: 'routine_pause', commandId: crypto.randomUUID(), actorRole: role, routineId, expectedVersion, confirmed: true };
+  await cacheRoutine(pendingRoutine);
+  await enqueueCommand(command);
+  return pendingRoutine;
+}
+
+export async function resumeRoutineCommand(role: ActorRole, routineId: string, expectedVersion: number): Promise<Routine> {
+  if (!isOffline()) {
+    const response = await resumeRoutineApi(role, routineId, expectedVersion);
+    await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+    return response.savedRoutine;
+  }
+  const cached = await clientDb.routines.get(routineId);
+  if (!cached) throw new Error('Routine not available offline.');
+  const resumed = resumeRoutineDomain(cached);
+  const pendingRoutine = { ...resumed, pendingSync: true };
+  const command: OutboxCommand = { kind: 'routine_resume', commandId: crypto.randomUUID(), actorRole: role, routineId, expectedVersion };
+  await cacheRoutine(pendingRoutine);
+  await enqueueCommand(command);
+  return pendingRoutine;
+}
+
+export async function archiveRoutineCommand(role: ActorRole, routineId: string, expectedVersion: number): Promise<Routine> {
+  if (!isOffline()) {
+    const response = await archiveRoutineApi(role, routineId, expectedVersion);
+    await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+    return response.savedRoutine;
+  }
+  const cached = await clientDb.routines.get(routineId);
+  if (!cached) throw new Error('Routine not available offline.');
+  const archived = archiveRoutineDomain(cached);
+  const pendingRoutine = { ...archived, pendingSync: true };
+  const command: OutboxCommand = { kind: 'routine_archive', commandId: crypto.randomUUID(), actorRole: role, routineId, expectedVersion, confirmed: true };
+  await cacheRoutine(pendingRoutine);
+  await enqueueCommand(command);
+  return pendingRoutine;
+}
+
+export async function restoreRoutineCommand(role: ActorRole, routineId: string, expectedVersion: number): Promise<Routine> {
+  if (!isOffline()) {
+    const response = await restoreRoutineApi(role, routineId, expectedVersion);
+    await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+    return response.savedRoutine;
+  }
+  const cached = await clientDb.routines.get(routineId);
+  if (!cached) throw new Error('Routine not available offline.');
+  const restored = restoreRoutineDomain(cached);
+  const pendingRoutine = { ...restored, pendingSync: true };
+  const command: OutboxCommand = { kind: 'routine_restore', commandId: crypto.randomUUID(), actorRole: role, routineId, expectedVersion };
+  await cacheRoutine(pendingRoutine);
+  await enqueueCommand(command);
+  return pendingRoutine;
+}
+
+export async function deleteRoutineCommand(role: ActorRole, routineId: string): Promise<void> {
+  if (!isOffline()) {
+    await deleteRoutineApi(role, routineId);
+    await removeRoutineFromCache(routineId);
+    return;
+  }
+  const command: OutboxCommand = { kind: 'routine_delete', commandId: crypto.randomUUID(), actorRole: role, routineId, confirmed: true };
+  await enqueueCommand(command);
+  await removeRoutineFromCache(routineId);
 }

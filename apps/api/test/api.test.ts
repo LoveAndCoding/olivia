@@ -289,7 +289,7 @@ describe('reminder migrations and api', () => {
       .all() as Array<{ name: string }>;
 
     expect(repository.listItems()).toHaveLength(1);
-    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql']);
+    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql']);
     expect(reminderTables.map((row) => row.name).sort()).toEqual([
       'notification_delivery_log',
       'reminder_notification_preferences',
@@ -946,6 +946,195 @@ describe('shared list api', () => {
     expect(detail.list.allChecked).toBe(false);
     expect(detail.items).toHaveLength(2);
     void item2Res; // used for side effect
+
+    await app.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+});
+
+describe('recurring routines api', () => {
+  it('supports routine create, complete, pause, resume, archive, restore, and delete flows', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'olivia-routines-'));
+    const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
+
+    // Create a routine
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/routines',
+      payload: {
+        actorRole: 'stakeholder',
+        title: 'Take out trash',
+        owner: 'stakeholder',
+        recurrenceRule: 'weekly',
+        firstDueDate: subDays(new Date(), 1).toISOString()
+      }
+    });
+    expect(createRes.statusCode).toBe(201);
+    const { savedRoutine } = createRes.json();
+    expect(savedRoutine.title).toBe('Take out trash');
+    expect(savedRoutine.dueState).toBe('overdue');
+
+    // List routines
+    const listRes = await app.inject({ method: 'GET', url: '/api/routines?actorRole=stakeholder' });
+    expect(listRes.statusCode).toBe(200);
+    expect(listRes.json().routines).toHaveLength(1);
+
+    // Spouse can read
+    const spouseListRes = await app.inject({ method: 'GET', url: '/api/routines?actorRole=spouse' });
+    expect(spouseListRes.statusCode).toBe(200);
+
+    // Spouse cannot create
+    const spouseCreateRes = await app.inject({
+      method: 'POST',
+      url: '/api/routines',
+      payload: {
+        actorRole: 'spouse',
+        title: 'Unauthorized',
+        owner: 'spouse',
+        recurrenceRule: 'daily',
+        firstDueDate: new Date().toISOString()
+      }
+    });
+    expect(spouseCreateRes.statusCode).toBe(403);
+
+    // Complete routine — should advance due date by 1 week from original (schedule-anchored)
+    const completeRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/complete`,
+      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version }
+    });
+    expect(completeRes.statusCode).toBe(200);
+    const { savedRoutine: completedRoutine, occurrence } = completeRes.json();
+    expect(occurrence.completedAt).toBeTruthy();
+    expect(occurrence.dueDate).toBe(savedRoutine.currentDueDate);
+    // After completion the routine should be upcoming (due date advanced by 1 week)
+    expect(completedRoutine.dueState).toBe('upcoming');
+    expect(completedRoutine.version).toBe(savedRoutine.version + 1);
+
+    // Get routine detail including occurrence history
+    const detailRes = await app.inject({
+      method: 'GET',
+      url: `/api/routines/${savedRoutine.id}?actorRole=stakeholder`
+    });
+    expect(detailRes.statusCode).toBe(200);
+    const detail = detailRes.json();
+    expect(detail.occurrences).toHaveLength(1);
+
+    // Pause routine (requires confirmed: true)
+    const pauseWithoutConfirm = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/pause`,
+      payload: { actorRole: 'stakeholder', expectedVersion: completedRoutine.version }
+    });
+    expect(pauseWithoutConfirm.statusCode).toBe(400); // missing confirmed: true
+
+    const pauseRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/pause`,
+      payload: { actorRole: 'stakeholder', expectedVersion: completedRoutine.version, confirmed: true }
+    });
+    expect(pauseRes.statusCode).toBe(200);
+    expect(pauseRes.json().savedRoutine.status).toBe('paused');
+    expect(pauseRes.json().savedRoutine.dueState).toBe('paused');
+
+    const pausedVersion = pauseRes.json().savedRoutine.version;
+
+    // Resume routine
+    const resumeRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/resume`,
+      payload: { actorRole: 'stakeholder', expectedVersion: pausedVersion }
+    });
+    expect(resumeRes.statusCode).toBe(200);
+    expect(resumeRes.json().savedRoutine.status).toBe('active');
+
+    const resumedVersion = resumeRes.json().savedRoutine.version;
+
+    // Archive routine (requires confirmed: true)
+    const archiveRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/archive`,
+      payload: { actorRole: 'stakeholder', expectedVersion: resumedVersion, confirmed: true }
+    });
+    expect(archiveRes.statusCode).toBe(200);
+    expect(archiveRes.json().savedRoutine.status).toBe('archived');
+
+    const archivedVersion = archiveRes.json().savedRoutine.version;
+
+    // Should appear in archived index, not active index
+    const activeAfterArchive = await app.inject({ method: 'GET', url: '/api/routines?actorRole=stakeholder' });
+    expect(activeAfterArchive.json().routines).toHaveLength(0);
+
+    const archivedIndex = await app.inject({ method: 'GET', url: '/api/routines/archived?actorRole=stakeholder' });
+    expect(archivedIndex.json().routines).toHaveLength(1);
+
+    // Restore routine
+    const restoreRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/restore`,
+      payload: { actorRole: 'stakeholder', expectedVersion: archivedVersion }
+    });
+    expect(restoreRes.statusCode).toBe(200);
+    expect(restoreRes.json().savedRoutine.status).toBe('active');
+    expect(restoreRes.json().savedRoutine.archivedAt).toBeNull();
+
+    const restoredVersion = restoreRes.json().savedRoutine.version;
+
+    // Delete routine (requires confirmed: true)
+    const deleteRes = await app.inject({
+      method: 'DELETE',
+      url: `/api/routines/${savedRoutine.id}`,
+      payload: { actorRole: 'stakeholder', confirmed: true }
+    });
+    expect(deleteRes.statusCode).toBe(200);
+    expect(deleteRes.json().deleted).toBe(true);
+    void restoredVersion;
+
+    // Should be gone
+    const afterDelete = await app.inject({ method: 'GET', url: '/api/routines?actorRole=stakeholder' });
+    expect(afterDelete.json().routines).toHaveLength(0);
+
+    await app.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('supports every_n_days routine and version conflict detection', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'olivia-routines2-'));
+    const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/routines',
+      payload: {
+        actorRole: 'stakeholder',
+        title: 'Deep clean',
+        owner: 'stakeholder',
+        recurrenceRule: 'every_n_days',
+        intervalDays: 14,
+        firstDueDate: subDays(new Date(), 1).toISOString()
+      }
+    });
+    expect(createRes.statusCode).toBe(201);
+    const { savedRoutine } = createRes.json();
+    expect(savedRoutine.recurrenceRule).toBe('every_n_days');
+    expect(savedRoutine.intervalDays).toBe(14);
+
+    // Complete it
+    const completeRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/complete`,
+      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version }
+    });
+    expect(completeRes.statusCode).toBe(200);
+
+    // Stale version conflict
+    const stalePauseRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/pause`,
+      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version, confirmed: true }
+    });
+    expect(stalePauseRes.statusCode).toBe(409);
+    expect(stalePauseRes.json().code).toBe('VERSION_CONFLICT');
 
     await app.close();
     rmSync(directory, { recursive: true, force: true });

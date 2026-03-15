@@ -2,8 +2,10 @@ import Dexie, { type Table } from 'dexie';
 import { buildSuggestions, groupItems, groupReminders } from '@olivia/domain';
 import type {
   ActiveListIndexResponse,
+  ActiveRoutineIndexResponse,
   ActorRole,
   ArchivedListIndexResponse,
+  ArchivedRoutineIndexResponse,
   HistoryEntry,
   InboxItem,
   InboxViewResponse,
@@ -17,6 +19,9 @@ import type {
   ReminderSettingsResponse,
   ReminderTimelineEntry,
   ReminderViewResponse,
+  Routine,
+  RoutineDetailResponse,
+  RoutineOccurrence,
   SharedList
 } from '@olivia/contracts';
 
@@ -36,6 +41,8 @@ class OliviaClientDb extends Dexie {
   reminderSettingsCache!: Table<{ actorRole: ActorRole; preferences: ReminderNotificationPreferences }, ActorRole>;
   sharedLists!: Table<SharedList, string>;
   listItems!: Table<ListItem, string>;
+  routines!: Table<Routine, string>;
+  routineOccurrences!: Table<RoutineOccurrence, string>;
   outbox!: Table<StoredOutboxCommand, string>;
   meta!: Table<MetaRecord, string>;
 
@@ -64,6 +71,19 @@ class OliviaClientDb extends Dexie {
       reminderSettingsCache: 'actorRole',
       sharedLists: 'id, status, updatedAt, pendingSync',
       listItems: 'id, listId, position, pendingSync',
+      outbox: 'commandId, kind, state, createdAt',
+      meta: 'key'
+    });
+    this.version(4).stores({
+      items: 'id, status, owner, updatedAt, pendingSync',
+      historyCache: 'itemId',
+      reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',
+      reminderTimelineCache: 'reminderId',
+      reminderSettingsCache: 'actorRole',
+      sharedLists: 'id, status, updatedAt, pendingSync',
+      listItems: 'id, listId, position, pendingSync',
+      routines: 'id, status, owner, currentDueDate, updatedAt, pendingSync',
+      routineOccurrences: 'id, routineId, dueDate',
       outbox: 'commandId, kind, state, createdAt',
       meta: 'key'
     });
@@ -284,4 +304,51 @@ export async function removeListFromCache(listId: string) {
 
 export async function removeListItemFromCache(itemId: string) {
   await clientDb.listItems.delete(itemId);
+}
+
+// ─── Routine cache helpers ────────────────────────────────────────────────────
+
+export async function cacheRoutineIndex(response: ActiveRoutineIndexResponse | ArchivedRoutineIndexResponse) {
+  await clientDb.routines.bulkPut(response.routines);
+}
+
+export async function cacheRoutineDetail(response: RoutineDetailResponse) {
+  await clientDb.transaction('rw', clientDb.routines, clientDb.routineOccurrences, async () => {
+    await clientDb.routines.put(response.routine);
+    await clientDb.routineOccurrences.bulkPut(response.occurrences);
+  });
+}
+
+export async function getCachedActiveRoutineIndex(): Promise<ActiveRoutineIndexResponse> {
+  const routines = await clientDb.routines.where('status').anyOf(['active', 'paused']).sortBy('currentDueDate');
+  return { routines, source: 'cache' };
+}
+
+export async function getCachedArchivedRoutineIndex(): Promise<ArchivedRoutineIndexResponse> {
+  const routines = await clientDb.routines.where('status').equals('archived').sortBy('updatedAt');
+  return { routines: routines.reverse(), source: 'cache' };
+}
+
+export async function getCachedRoutineDetail(routineId: string): Promise<RoutineDetailResponse | null> {
+  const routine = await clientDb.routines.get(routineId);
+  if (!routine) {
+    return null;
+  }
+  const occurrences = await clientDb.routineOccurrences.where('routineId').equals(routineId).sortBy('dueDate');
+  return { routine, occurrences, source: 'cache' };
+}
+
+export async function cacheRoutine(routine: Routine) {
+  await clientDb.routines.put(routine);
+}
+
+export async function cacheRoutineOccurrence(occurrence: RoutineOccurrence) {
+  await clientDb.routineOccurrences.put(occurrence);
+}
+
+export async function removeRoutineFromCache(routineId: string) {
+  await clientDb.transaction('rw', clientDb.routines, clientDb.routineOccurrences, async () => {
+    await clientDb.routines.delete(routineId);
+    await clientDb.routineOccurrences.where('routineId').equals(routineId).delete();
+  });
 }

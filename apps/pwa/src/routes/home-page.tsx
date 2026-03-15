@@ -1,10 +1,10 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo, useCallback } from 'react';
-import { computeFlags, computeReminderState, rankRemindersForSurfacing } from '@olivia/domain';
+import { computeFlags, computeReminderState, computeRoutineDueState as computeRoutineDueStateHelper, rankRemindersForSurfacing } from '@olivia/domain';
 import type { InboxItem, Reminder, DraftReminder } from '@olivia/contracts';
 import { useRole } from '../lib/role';
-import { loadInboxView, loadReminderView, confirmCreateReminderCommand, snoozeReminderCommand } from '../lib/sync';
+import { loadInboxView, loadReminderView, loadActiveRoutineIndex, confirmCreateReminderCommand, snoozeReminderCommand } from '../lib/sync';
 import { getDisplayName, ownerToDisplay } from '../lib/demo-data';
 import { BottomNav } from '../components/bottom-nav';
 import { ReminderRow } from '../components/reminders/ReminderRow';
@@ -85,6 +85,11 @@ export function HomePage() {
   const reminderQuery = useQuery({
     queryKey: ['reminder-view', role],
     queryFn: () => loadReminderView(role),
+  });
+
+  const routineQuery = useQuery({
+    queryKey: ['routine-index-active', role],
+    queryFn: () => loadActiveRoutineIndex(role),
   });
 
   const { summaryTasks, needsCount } = useMemo(() => {
@@ -190,6 +195,18 @@ export function HomePage() {
     setBanner({ message: `😴 Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
     setTimeout(() => setBanner(null), 5000);
   }, [snoozeTarget, role, queryClient]);
+
+  const routineDueCounts = useMemo(() => {
+    if (!routineQuery.data) return { overdue: 0, due: 0, total: 0 };
+    const now = new Date();
+    let overdue = 0, due = 0;
+    for (const r of routineQuery.data.routines) {
+      const state = r.dueState ?? computeRoutineDueStateHelper(r, null, now);
+      if (state === 'overdue') overdue++;
+      else if (state === 'due') due++;
+    }
+    return { overdue, due, total: routineQuery.data.routines.length };
+  }, [routineQuery.data]);
 
   const isLoading = inboxQuery.isLoading || reminderQuery.isLoading;
   const hasError = inboxQuery.isError || reminderQuery.isError;
@@ -355,6 +372,24 @@ export function HomePage() {
               onClick={() => setShowCreateSheet(true)}
             />
           )}
+        </div>
+
+        <div className="divider" />
+
+        {/* Routines section */}
+        <div className="section-head">
+          <div className="section-title">Routines</div>
+          <button type="button" className="section-link" onClick={() => void navigate({ to: '/routines' })}>
+            {routineQuery.data ? `All (${routineQuery.data.routines.length}) →` : 'All →'}
+          </button>
+        </div>
+        <div className="greeting-sub" style={{ padding: '0 22px', marginBottom: 12 }}>
+          {routineQuery.isLoading
+            ? 'Loading…'
+            : routineDueCounts.total === 0
+              ? '0 active'
+              : `${routineDueCounts.total} active${routineDueCounts.overdue > 0 ? ` · ${routineDueCounts.overdue} overdue` : routineDueCounts.due > 0 ? ` · ${routineDueCounts.due} due today` : ''}`
+          }
         </div>
 
         <div className="spacer-bottom" />

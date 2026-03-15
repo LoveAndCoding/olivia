@@ -3,14 +3,19 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import {
   activeListIndexResponseSchema,
+  activeRoutineIndexResponseSchema,
   addListItemRequestSchema,
   archiveListRequestSchema,
+  archiveRoutineRequestSchema,
   archivedListIndexResponseSchema,
+  archivedRoutineIndexResponseSchema,
   cancelReminderRequestSchema,
   cancelReminderResponseSchema,
   checkListItemRequestSchema,
   completeReminderRequestSchema,
   completeReminderResponseSchema,
+  completeRoutineOccurrenceRequestSchema,
+  completeRoutineOccurrenceResponseSchema,
   confirmCreateReminderRequestSchema,
   confirmCreateReminderResponseSchema,
   confirmCreateRequestSchema,
@@ -18,12 +23,16 @@ import {
   confirmUpdateReminderResponseSchema,
   confirmUpdateRequestSchema,
   createListRequestSchema,
+  createRoutineRequestSchema,
   deleteListRequestSchema,
+  deleteRoutineRequestSchema,
+  deleteRoutineResponseSchema,
   inboxViewResponseSchema,
   itemDetailResponseSchema,
   listDetailResponseSchema,
   listItemMutationResponseSchema,
   listMutationResponseSchema,
+  pauseRoutineRequestSchema,
   previewCreateReminderRequestSchema,
   previewCreateReminderResponseSchema,
   previewCreateRequestSchema,
@@ -37,6 +46,10 @@ import {
   reminderViewResponseSchema,
   removeListItemRequestSchema,
   restoreListRequestSchema,
+  restoreRoutineRequestSchema,
+  resumeRoutineRequestSchema,
+  routineDetailResponseSchema,
+  routineMutationResponseSchema,
   saveNotificationSubscriptionRequestSchema,
   saveNotificationSubscriptionResponseSchema,
   saveReminderNotificationPreferencesRequestSchema,
@@ -46,6 +59,7 @@ import {
   uncheckListItemRequestSchema,
   updateListItemBodyRequestSchema,
   updateListTitleRequestSchema,
+  updateRoutineRequestSchema,
   type ActorRole,
   type DraftItem,
   type DraftReminder,
@@ -58,12 +72,15 @@ import {
   addListItem,
   applyUpdate,
   archiveList,
+  archiveRoutine,
   assertStakeholderWrite,
   buildSuggestions,
   cancelReminder,
   checkItem,
   completeReminderOccurrence,
+  completeRoutineOccurrence,
   computeFlags,
+  computeRoutineDueState,
   createDraft,
   createInboxItem,
   createItemAddedHistoryEntry,
@@ -77,16 +94,21 @@ import {
   createListTitleUpdatedHistoryEntry,
   createReminder,
   createReminderDraft,
+  createRoutine,
   createSharedList,
   deriveListSummary,
   groupItems,
   groupReminders,
+  pauseRoutine,
   restoreList,
+  restoreRoutine,
+  resumeRoutine,
   snoozeReminder,
   uncheckItem,
   updateItemBody,
   updateListTitle,
-  updateReminder
+  updateReminder,
+  updateRoutine
 } from '@olivia/domain';
 import { DisabledAiProvider } from './ai';
 import type { AppConfig } from './config';
@@ -928,6 +950,221 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     repository.removeListItem(params.itemId, params.listId, historyEntry);
     request.log.info({ listId: params.listId, itemId: params.itemId }, 'accepted item remove command');
     return reply.status(204).send();
+  });
+
+  // ─── Routine routes ─────────────────────────────────────────────────────────
+
+  app.get('/api/routines', async (request, reply) => {
+    const query = request.query as { actorRole?: ActorRole };
+    if (!isReadableActorRole(query.actorRole)) {
+      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
+    }
+    const now = new Date();
+    const routines = repository.listActiveAndPausedRoutines();
+    const routinesWithState = routines.map((routine) => {
+      const currentOccurrence = repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate);
+      return { ...routine, dueState: computeRoutineDueState(routine, currentOccurrence, now) };
+    });
+    return reply.send(activeRoutineIndexResponseSchema.parse({ routines: routinesWithState, source: 'server' }));
+  });
+
+  app.get('/api/routines/archived', async (request, reply) => {
+    const query = request.query as { actorRole?: ActorRole };
+    if (!isReadableActorRole(query.actorRole)) {
+      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
+    }
+    const now = new Date();
+    const routines = repository.listRoutines('archived');
+    const routinesWithState = routines.map((routine) => {
+      const currentOccurrence = repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate);
+      return { ...routine, dueState: computeRoutineDueState(routine, currentOccurrence, now) };
+    });
+    return reply.send(archivedRoutineIndexResponseSchema.parse({ routines: routinesWithState, source: 'server' }));
+  });
+
+  app.get('/api/routines/:routineId', async (request, reply) => {
+    const params = request.params as { routineId: string };
+    const query = request.query as { actorRole?: ActorRole };
+    if (!isReadableActorRole(query.actorRole)) {
+      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
+    }
+    const now = new Date();
+    const routine = repository.getRoutine(params.routineId);
+    if (!routine) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+    }
+    const occurrences = repository.getRoutineOccurrences(routine.id);
+    const currentOccurrence = occurrences.find((o) => o.dueDate === routine.currentDueDate) ?? null;
+    const routineWithState = { ...routine, dueState: computeRoutineDueState(routine, currentOccurrence, now) };
+    return reply.send(routineDetailResponseSchema.parse({ routine: routineWithState, occurrences, source: 'server' }));
+  });
+
+  app.post('/api/routines', async (request, reply) => {
+    const body = createRoutineRequestSchema.parse(request.body);
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const routine = createRoutine(body.title, body.owner, body.recurrenceRule, body.firstDueDate, body.intervalDays, now);
+    repository.createRoutine(routine);
+    request.log.info({ routineId: routine.id }, 'accepted routine create command');
+    const routineWithState = { ...routine, dueState: computeRoutineDueState(routine, null, now) };
+    return reply.status(201).send(routineMutationResponseSchema.parse({ savedRoutine: routineWithState, newVersion: routine.version }));
+  });
+
+  app.patch('/api/routines/:routineId', async (request, reply) => {
+    const params = request.params as { routineId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = updateRoutineRequestSchema.parse({ ...rawBody, routineId: params.routineId });
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const currentRoutine = repository.getRoutine(params.routineId);
+    if (!currentRoutine) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+    }
+    if (currentRoutine.version !== body.expectedVersion) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentRoutine.version, retryGuidance: 'Refresh and retry.' });
+    }
+    const updatedRoutine = updateRoutine(currentRoutine, {
+      title: body.title,
+      owner: body.owner,
+      recurrenceRule: body.recurrenceRule,
+      intervalDays: body.intervalDays
+    }, now);
+    const saved = repository.updateRoutine(updatedRoutine, body.expectedVersion);
+    if (!saved) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+    const currentOccurrence = repository.getRoutineOccurrenceForDueDate(updatedRoutine.id, updatedRoutine.currentDueDate);
+    const routineWithState = { ...updatedRoutine, dueState: computeRoutineDueState(updatedRoutine, currentOccurrence, now) };
+    return reply.send(routineMutationResponseSchema.parse({ savedRoutine: routineWithState, newVersion: updatedRoutine.version }));
+  });
+
+  app.post('/api/routines/:routineId/complete', async (request, reply) => {
+    const params = request.params as { routineId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = completeRoutineOccurrenceRequestSchema.parse({ ...rawBody, routineId: params.routineId });
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const currentRoutine = repository.getRoutine(params.routineId);
+    if (!currentRoutine) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+    }
+    if (currentRoutine.version !== body.expectedVersion) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentRoutine.version, retryGuidance: 'Refresh and retry.' });
+    }
+    const { updatedRoutine, occurrence } = completeRoutineOccurrence(currentRoutine, body.actorRole, now);
+    const saved = repository.completeRoutineOccurrence(updatedRoutine, occurrence, body.expectedVersion);
+    if (!saved) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+    request.log.info({ routineId: params.routineId }, 'accepted routine complete command');
+    const routineWithState = { ...updatedRoutine, dueState: computeRoutineDueState(updatedRoutine, null, now) };
+    return reply.send(completeRoutineOccurrenceResponseSchema.parse({ savedRoutine: routineWithState, occurrence, newVersion: updatedRoutine.version }));
+  });
+
+  app.post('/api/routines/:routineId/pause', async (request, reply) => {
+    const params = request.params as { routineId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = pauseRoutineRequestSchema.parse({ ...rawBody, routineId: params.routineId });
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const currentRoutine = repository.getRoutine(params.routineId);
+    if (!currentRoutine) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+    }
+    if (currentRoutine.version !== body.expectedVersion) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentRoutine.version, retryGuidance: 'Refresh and retry.' });
+    }
+    const pausedRoutine = pauseRoutine(currentRoutine, now);
+    const saved = repository.updateRoutine(pausedRoutine, body.expectedVersion);
+    if (!saved) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+    request.log.info({ routineId: params.routineId }, 'accepted routine pause command');
+    const routineWithState = { ...pausedRoutine, dueState: computeRoutineDueState(pausedRoutine, null, now) };
+    return reply.send(routineMutationResponseSchema.parse({ savedRoutine: routineWithState, newVersion: pausedRoutine.version }));
+  });
+
+  app.post('/api/routines/:routineId/resume', async (request, reply) => {
+    const params = request.params as { routineId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = resumeRoutineRequestSchema.parse({ ...rawBody, routineId: params.routineId });
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const currentRoutine = repository.getRoutine(params.routineId);
+    if (!currentRoutine) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+    }
+    if (currentRoutine.version !== body.expectedVersion) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentRoutine.version, retryGuidance: 'Refresh and retry.' });
+    }
+    const resumedRoutine = resumeRoutine(currentRoutine, now);
+    const saved = repository.updateRoutine(resumedRoutine, body.expectedVersion);
+    if (!saved) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+    const currentOccurrence = repository.getRoutineOccurrenceForDueDate(resumedRoutine.id, resumedRoutine.currentDueDate);
+    const routineWithState = { ...resumedRoutine, dueState: computeRoutineDueState(resumedRoutine, currentOccurrence, now) };
+    return reply.send(routineMutationResponseSchema.parse({ savedRoutine: routineWithState, newVersion: resumedRoutine.version }));
+  });
+
+  app.post('/api/routines/:routineId/archive', async (request, reply) => {
+    const params = request.params as { routineId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = archiveRoutineRequestSchema.parse({ ...rawBody, routineId: params.routineId });
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const currentRoutine = repository.getRoutine(params.routineId);
+    if (!currentRoutine) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+    }
+    if (currentRoutine.version !== body.expectedVersion) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentRoutine.version, retryGuidance: 'Refresh and retry.' });
+    }
+    const archivedRtn = archiveRoutine(currentRoutine, now);
+    const saved = repository.updateRoutine(archivedRtn, body.expectedVersion);
+    if (!saved) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+    request.log.info({ routineId: params.routineId }, 'accepted routine archive command');
+    const routineWithState = { ...archivedRtn, dueState: computeRoutineDueState(archivedRtn, null, now) };
+    return reply.send(routineMutationResponseSchema.parse({ savedRoutine: routineWithState, newVersion: archivedRtn.version }));
+  });
+
+  app.post('/api/routines/:routineId/restore', async (request, reply) => {
+    const params = request.params as { routineId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = restoreRoutineRequestSchema.parse({ ...rawBody, routineId: params.routineId });
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const currentRoutine = repository.getRoutine(params.routineId);
+    if (!currentRoutine) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+    }
+    if (currentRoutine.version !== body.expectedVersion) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentRoutine.version, retryGuidance: 'Refresh and retry.' });
+    }
+    const restoredRoutine = restoreRoutine(currentRoutine, now);
+    const saved = repository.updateRoutine(restoredRoutine, body.expectedVersion);
+    if (!saved) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+    const currentOccurrence = repository.getRoutineOccurrenceForDueDate(restoredRoutine.id, restoredRoutine.currentDueDate);
+    const routineWithState = { ...restoredRoutine, dueState: computeRoutineDueState(restoredRoutine, currentOccurrence, now) };
+    return reply.send(routineMutationResponseSchema.parse({ savedRoutine: routineWithState, newVersion: restoredRoutine.version }));
+  });
+
+  app.delete('/api/routines/:routineId', async (request, reply) => {
+    const params = request.params as { routineId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = deleteRoutineRequestSchema.parse({ ...rawBody, routineId: params.routineId });
+    assertStakeholderWrite(body.actorRole);
+    const currentRoutine = repository.getRoutine(params.routineId);
+    if (!currentRoutine) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+    }
+    repository.deleteRoutine(params.routineId);
+    request.log.info({ routineId: params.routineId }, 'accepted routine delete command');
+    return reply.send(deleteRoutineResponseSchema.parse({ deleted: true }));
   });
 
   app.get('/api/admin/export', async () => repository.exportSnapshot());

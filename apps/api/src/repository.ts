@@ -10,6 +10,8 @@ import {
   reminderNotificationPreferencesSchema,
   reminderSchema,
   reminderTimelineEntrySchema,
+  routineOccurrenceSchema,
+  routineSchema,
   sharedListSchema,
   type ActorRole,
   type HistoryEntry,
@@ -20,6 +22,9 @@ import {
   type Reminder,
   type ReminderNotificationPreferences,
   type ReminderTimelineEntry,
+  type Routine,
+  type RoutineOccurrence,
+  type RoutineStatus,
   type SharedList
 } from '@olivia/contracts';
 
@@ -744,6 +749,149 @@ export class InboxRepository {
       .prepare('SELECT COALESCE(MAX(position) + 1, 0) AS next_position FROM list_items WHERE list_id = ?')
       .get(listId) as { next_position: number };
     return row.next_position;
+  }
+
+  // ─── Routine repository ───────────────────────────────────────────────────
+
+  private mapRoutineRow(row: Record<string, unknown>): Routine {
+    const base = routineSchema.parse({
+      id: row.id,
+      title: row.title,
+      owner: row.owner,
+      recurrenceRule: row.recurrence_rule,
+      intervalDays: row.interval_days ?? null,
+      status: row.status,
+      currentDueDate: row.current_due_date,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      archivedAt: row.archived_at ?? null,
+      version: row.version
+    });
+    return base;
+  }
+
+  private mapRoutineOccurrenceRow(row: Record<string, unknown>): RoutineOccurrence {
+    return routineOccurrenceSchema.parse({
+      id: row.id,
+      routineId: row.routine_id,
+      dueDate: row.due_date,
+      completedAt: row.completed_at ?? null,
+      completedBy: row.completed_by ?? null,
+      skipped: Boolean(row.skipped),
+      createdAt: row.created_at
+    });
+  }
+
+  listRoutines(status: RoutineStatus = 'active'): Routine[] {
+    const rows = this.db
+      .prepare('SELECT * FROM routines WHERE status = ? ORDER BY current_due_date ASC, updated_at DESC')
+      .all(status) as Record<string, unknown>[];
+    return rows.map((row) => this.mapRoutineRow(row));
+  }
+
+  listActiveAndPausedRoutines(): Routine[] {
+    const rows = this.db
+      .prepare("SELECT * FROM routines WHERE status IN ('active', 'paused') ORDER BY current_due_date ASC, updated_at DESC")
+      .all() as Record<string, unknown>[];
+    return rows.map((row) => this.mapRoutineRow(row));
+  }
+
+  getRoutine(routineId: string): Routine | null {
+    const row = this.db
+      .prepare('SELECT * FROM routines WHERE id = ?')
+      .get(routineId) as Record<string, unknown> | undefined;
+    return row ? this.mapRoutineRow(row) : null;
+  }
+
+  getRoutineOccurrences(routineId: string, limit?: number): RoutineOccurrence[] {
+    const sql = limit
+      ? 'SELECT * FROM routine_occurrences WHERE routine_id = ? ORDER BY due_date DESC LIMIT ?'
+      : 'SELECT * FROM routine_occurrences WHERE routine_id = ? ORDER BY due_date DESC';
+    const rows = (limit
+      ? this.db.prepare(sql).all(routineId, limit)
+      : this.db.prepare(sql).all(routineId)) as Record<string, unknown>[];
+    return rows.map((row) => this.mapRoutineOccurrenceRow(row));
+  }
+
+  getRoutineOccurrenceForDueDate(routineId: string, dueDate: string): RoutineOccurrence | null {
+    const row = this.db
+      .prepare('SELECT * FROM routine_occurrences WHERE routine_id = ? AND due_date = ?')
+      .get(routineId, dueDate) as Record<string, unknown> | undefined;
+    return row ? this.mapRoutineOccurrenceRow(row) : null;
+  }
+
+  createRoutine(routine: Routine): void {
+    this.db.prepare(`
+      INSERT INTO routines (
+        id, title, owner, recurrence_rule, interval_days, status, current_due_date,
+        created_at, updated_at, archived_at, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      routine.id, routine.title, routine.owner, routine.recurrenceRule, routine.intervalDays,
+      routine.status, routine.currentDueDate, routine.createdAt, routine.updatedAt, routine.archivedAt, routine.version
+    );
+  }
+
+  updateRoutine(routine: Routine, expectedVersion: number): boolean {
+    const result = this.db.prepare(`
+      UPDATE routines
+      SET title = ?, owner = ?, recurrence_rule = ?, interval_days = ?, status = ?,
+          current_due_date = ?, updated_at = ?, archived_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `).run(
+      routine.title, routine.owner, routine.recurrenceRule, routine.intervalDays, routine.status,
+      routine.currentDueDate, routine.updatedAt, routine.archivedAt, routine.version,
+      routine.id, expectedVersion
+    );
+    return result.changes > 0;
+  }
+
+  deleteRoutine(routineId: string): void {
+    // Foreign key cascade deletes routine_occurrences
+    this.db.prepare('DELETE FROM routines WHERE id = ?').run(routineId);
+  }
+
+  /**
+   * Atomically inserts an occurrence row and advances the routine's currentDueDate.
+   * Returns false if the version check fails (stale update).
+   */
+  completeRoutineOccurrence(
+    updatedRoutine: Routine,
+    occurrence: RoutineOccurrence,
+    expectedVersion: number
+  ): boolean {
+    const insertOccurrence = this.db.prepare(`
+      INSERT INTO routine_occurrences (id, routine_id, due_date, completed_at, completed_by, skipped, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const updateRoutine = this.db.prepare(`
+      UPDATE routines
+      SET current_due_date = ?, updated_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `);
+
+    return this.db.transaction(() => {
+      const result = updateRoutine.run(
+        updatedRoutine.currentDueDate,
+        updatedRoutine.updatedAt,
+        updatedRoutine.version,
+        updatedRoutine.id,
+        expectedVersion
+      );
+      if (result.changes === 0) {
+        return false;
+      }
+      insertOccurrence.run(
+        occurrence.id,
+        occurrence.routineId,
+        occurrence.dueDate,
+        occurrence.completedAt,
+        occurrence.completedBy,
+        occurrence.skipped ? 1 : 0,
+        occurrence.createdAt
+      );
+      return true;
+    })();
   }
 
   exportSnapshot(): {

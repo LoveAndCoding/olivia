@@ -122,3 +122,27 @@ export const listItemHistoryTable = sqliteTable('list_item_history', {
   toValue: text('to_value'),
   createdAt: text('created_at').notNull()
 });
+
+export const routinesTable = sqliteTable('routines', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  owner: text('owner').notNull(),
+  recurrenceRule: text('recurrence_rule').notNull(),
+  intervalDays: integer('interval_days'),
+  status: text('status').notNull(),
+  currentDueDate: text('current_due_date').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  archivedAt: text('archived_at'),
+  version: integer('version').notNull()
+});
+
+export const routineOccurrencesTable = sqliteTable('routine_occurrences', {
+  id: text('id').primaryKey(),
+  routineId: text('routine_id').notNull(),
+  dueDate: text('due_date').notNull(),
+  completedAt: text('completed_at'),
+  completedBy: text('completed_by'),
+  skipped: integer('skipped', { mode: 'boolean' }).notNull(),
+  createdAt: text('created_at').notNull()
+});
