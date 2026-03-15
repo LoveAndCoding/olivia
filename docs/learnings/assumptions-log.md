@@ -89,12 +89,12 @@ Use this structure for future entries:
 - Date: 2026-03-13
 - Area: product strategy
 - Statement: Grocery, shopping, packing, and similar shared lists are distinct enough from inbox items that they should be treated as a separate workflow type rather than only a status or category within the inbox.
-- Confidence: medium
+- Confidence: high
 - Why it matters: this assumption shapes Horizon 3 product boundaries and determines whether Olivia extends the inbox model or introduces a sibling workflow.
-- Evidence so far: the stakeholder explicitly prioritized shared lists as a next-horizon workflow and described them as a separate household pain point.
-- Validation path: write the first shared-list spec and test whether list behavior, collaboration, and completion semantics differ enough from the inbox to justify a separate model.
-- Status: active
-- Related docs: `docs/roadmap/roadmap.md`, `docs/glossary.md`
+- Evidence so far: the spec, visual implementation, and full Phase 1 implementation confirmed that list behavior (immediate check/uncheck, no ownership or status semantics) is meaningfully different from inbox item behavior. A separate model was the right choice.
+- Validation path: completed. The shared-list spec and implementation validate this assumption.
+- Status: validated
+- Related docs: `docs/roadmap/roadmap.md`, `docs/glossary.md`, `docs/learnings/decision-history.md` (D-016)
 
 ### A-008: Recurring schedule infrastructure can be shared across multiple Horizon 3 workflows
 - Date: 2026-03-13

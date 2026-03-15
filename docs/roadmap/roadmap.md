@@ -75,13 +75,13 @@ Product direction:
 - reserve meal planning as a later Horizon 3 expansion once recurring and list primitives are clear
 
 Near-term workflow priorities:
-1. first-class reminders
-2. shared lists
-3. recurring routines
-4. meal planning
+1. ~~first-class reminders~~ — spec approved, implemented (Phase 1 complete)
+2. ~~shared lists~~ — spec approved, implemented (Phase 1 complete)
+3. recurring routines — spec written, pending implementation planning
+4. meal planning — deferred until recurring and list primitives are proven
 
-First Horizon 3 spec target:
-- write a first-class reminder spec next, including the minimum recurrence model needed for reminder-driven follow-through without yet solving every recurring-routine use case
+Active spec target:
+- `docs/specs/recurring-routines.md` — recurring household tasks on a defined schedule (chores, maintenance, bills). Spec written; implementation planning next once CEO approves spec.
 
 How Horizon 3 builds on the MVP:
 - the inbox remains the capture and follow-through foundation for open household work

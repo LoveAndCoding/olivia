@@ -79,3 +79,30 @@ Use this structure for future entries:
 - Implication: reminder and recurrence concepts should be reconsidered explicitly during Horizon 3 scoping rather than inherited unchanged from the MVP.
 - Source: Horizon 3 roadmap and milestone update
 - Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/decision-history.md`
+
+### L-008: The tap-checkbox interaction pattern established in Shared Lists should be the standard for all completion interactions in Horizon 3
+- Date: 2026-03-15
+- Area: design system
+- Learning: The Designer explicitly designed the tap-checkbox pattern in Shared Lists to be directly reusable for Recurring Routines. No new design decisions are needed for that primitive.
+- Why it matters: this accelerates the Recurring Routines design phase because the core completion interaction has already been validated.
+- Implication: Recurring Routines implementation should reuse the checkbox component from Shared Lists rather than introducing a new completion interaction. Drag-to-reorder, swipe-to-complete, and other variations remain deferred.
+- Source: Designer review of OLI-16 (Shared Lists implementation), OLI-17 comments
+- Related docs: `docs/plans/shared-lists-visual-implementation-spec.md`, `docs/specs/shared-lists.md`
+
+### L-009: The per-screen spouse banner is the standard pattern for communicating read-only role across all Horizon 3 workflows
+- Date: 2026-03-15
+- Area: design system / trust model
+- Learning: The per-screen banner approach (established in reminders, validated in Shared Lists) is now the confirmed standard for communicating the spouse's read-only role. Per-component disabled controls create confusion about whether the interface is broken.
+- Why it matters: Recurring Routines and all future Horizon 3 workflows can adopt the banner pattern without reopening the design decision.
+- Implication: any new Horizon 3 workflow with a spouse read-only state should use the same `--lavender-soft` bg, `--violet` text banner pinned below the screen header. No new design token or pattern is needed.
+- Source: Designer review and visual spec for Shared Lists (Section 2.6 and screen state LIST-IDX-5 / LIST-DET-4)
+- Related docs: `docs/plans/shared-lists-visual-implementation-spec.md`
+
+### L-010: Horizon 3 workflows follow a predictable spec-then-design-then-implement cycle; the cycle itself is now stable and documented
+- Date: 2026-03-15
+- Area: project operations
+- Learning: Two full Horizon 3 feature cycles (reminders, shared lists) established a clear pattern: VP of Product writes spec → Designer writes visual spec → Founding Engineer implements. Reviews and milestone updates run at the end of each cycle.
+- Why it matters: future agents can follow this cycle without re-deriving process conventions, and each cycle ends with a predictable set of artifacts.
+- Implication: the Recurring Routines cycle should follow the same pattern. Implementation tasks should not be created until the spec has CEO approval and the visual spec is complete.
+- Source: Shared Lists cycle review (OLI-17)
+- Related docs: `docs/roadmap/milestones.md`, `docs/learnings/decision-history.md`

@@ -129,7 +129,7 @@ Completion note:
 ## M5: Horizon 3 Scoping
 Objective: define the product shape of the household coordination layer well enough that future planning compounds on the MVP rather than drifting away from it.
 
-Status: in progress
+Status: complete
 
 Required artifacts:
 - updated `docs/roadmap/roadmap.md` with concrete Horizon 3 scope
@@ -145,10 +145,13 @@ Exit criteria:
 Evidence of completion:
 - a new agent can identify what Olivia should build next, why it matters, and what should remain deferred
 
+Completion note:
+- Horizon 3 scope was defined with first-class reminders, shared lists, recurring routines, and meal planning as explicit priorities in that order. The reminders and shared lists specs were both written and fully implemented. Recurring routines is the active next spec target.
+
 ## M6: Coordination Layer Build Readiness
 Objective: prepare the first Horizon 3 workflow or set of workflows for implementation planning.
 
-Status: not started
+Status: in progress
 
 Required artifacts:
 - implementation-ready feature specs for the next Horizon 3 workflow area
@@ -164,10 +167,16 @@ Exit criteria:
 Evidence of completion:
 - an implementation plan can be generated for the next Horizon 3 workflow without rediscovering the product model
 
+Progress notes:
+- `docs/specs/first-class-reminders.md` — approved and implemented (Phase 1 complete)
+- `docs/specs/shared-lists.md` — approved and implemented (Phase 1 complete)
+- `docs/specs/recurring-routines.md` — spec written, pending CEO approval and implementation planning
+- Implementation plan for recurring routines: not yet written (next step after CEO approval)
+
 ## M7: Coordination Layer In Use
 Objective: deliver and evaluate household coordination workflows beyond the original inbox so Olivia becomes a broader coordination surface.
 
-Status: not started
+Status: in progress
 
 Required artifacts:
 - built Horizon 3 workflows
@@ -182,6 +191,12 @@ Exit criteria:
 
 Evidence of completion:
 - the project can show specific household coordination problems Olivia now supports beyond the original inbox workflow
+
+Progress notes:
+- First-class reminders: built and available in the PWA
+- Shared Lists: built and available in the PWA (Phase 1 complete, all 9 screen states implemented)
+- Recurring Routines: spec in progress, not yet built
+- Household validation notes: not yet collected; to be gathered during real use
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

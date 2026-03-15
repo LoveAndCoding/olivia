@@ -167,3 +167,23 @@ Use this structure for future entries:
 - Trade-offs: keeps the first implementation focused and easier to execute, but intentionally defers some convenience behaviors and richer control that may later prove valuable in real household use.
 - Status: active
 - Related docs: `docs/specs/first-class-reminders.md`, `docs/specs/shared-household-inbox.md`
+
+### D-016: Shared Lists assumption A-007 is validated — shared lists are behaviorally distinct from inbox items
+- Date: 2026-03-15
+- Area: feature scope / product strategy
+- Decision: Treat A-007 as validated. The Shared Lists workflow was specified, implemented, and reviewed with full spec compliance. The behavioral distinction (checklist with immediate check/uncheck vs. tracked work item with owner and status) was confirmed to be real and product-meaningful.
+- Rationale: the spec, visual implementation, and working implementation collectively demonstrate that list behavior differs enough from inbox behavior that the separate workflow model was the right choice.
+- Alternatives considered: folding lists back into the inbox as a "list mode" item type — this alternative is now confirmed to be the wrong direction.
+- Trade-offs: maintaining a separate workflow model adds surface area to the product, but reduces confusion between accountability-style work (inbox) and checklist-style coordination (lists).
+- Status: active
+- Related docs: `docs/specs/shared-lists.md`, `docs/plans/shared-lists-visual-implementation-spec.md`, `docs/learnings/assumptions-log.md` (A-007)
+
+### D-017: Recurring Routines is the next Horizon 3 spec target
+- Date: 2026-03-15
+- Area: roadmap sequencing
+- Decision: After Shared Lists implementation completes, the next Horizon 3 feature spec target is Recurring Routines — household tasks that repeat on a defined schedule such as chores, maintenance, and bills.
+- Rationale: recurring routines are the third explicit Horizon 3 priority and are the natural next workflow after shared lists. The recurrence model introduced by first-class reminders provides a foundation that recurring routines can extend. The tap-checkbox pattern from shared lists is directly reusable for routine completion.
+- Alternatives considered: jumping to meal planning; expanding shared lists with spouse write access before moving to routines.
+- Trade-offs: focuses on a new workflow type rather than deepening existing workflows; meal planning and spouse write parity remain deferred.
+- Status: active
+- Related docs: `docs/roadmap/roadmap.md`, `docs/specs/recurring-routines.md`
