@@ -1,8 +1,18 @@
 import {
   activityHistoryResponseSchema,
+  nudgesResponseSchema,
+  skipRoutineOccurrenceResponseSchema,
   weeklyViewResponseSchema,
+  completeRitualResponseSchema,
+  reviewRecordSchema,
+  ritualSummaryResponseSchema,
   type ActivityHistoryResponse,
+  type NudgesResponse,
+  type SkipRoutineOccurrenceResponse,
   type WeeklyViewResponse,
+  type CompleteRitualResponse,
+  type ReviewRecord,
+  type RitualSummaryResponse,
   activeListIndexResponseSchema,
   activeRoutineIndexResponseSchema,
   archivedListIndexResponseSchema,
@@ -599,5 +609,60 @@ export async function fetchWeeklyView(weekStart: string): Promise<WeeklyViewResp
 export async function fetchActivityHistory(): Promise<ActivityHistoryResponse> {
   return activityHistoryResponseSchema.parse(
     await request<ActivityHistoryResponse>('/api/activity-history')
+  );
+}
+
+// ─── Planning Ritual Support API client ──────────────────────────────────────
+
+export async function completeRitual(
+  routineId: string,
+  occurrenceId: string,
+  actorRole: ActorRole,
+  carryForwardNotes: string | null,
+  recapNarrative?: string | null,
+  overviewNarrative?: string | null
+): Promise<CompleteRitualResponse> {
+  return completeRitualResponseSchema.parse(
+    await request<CompleteRitualResponse>(`/api/routines/${routineId}/complete-ritual`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole, occurrenceId, carryForwardNotes, recapNarrative, overviewNarrative })
+    })
+  );
+}
+
+export async function generateRitualSummary(
+  routineId: string,
+  occurrenceId: string,
+  signal?: AbortSignal
+): Promise<RitualSummaryResponse> {
+  const res = await request<RitualSummaryResponse>(`/api/routines/${routineId}/generate-ritual-summary`, {
+    method: 'POST',
+    body: JSON.stringify({ occurrenceId }),
+    signal
+  });
+  return ritualSummaryResponseSchema.parse(res);
+}
+
+export async function fetchNudgesApi(role: ActorRole): Promise<NudgesResponse> {
+  const res = await request<NudgesResponse>(`/api/nudges?actorRole=${role}`);
+  return nudgesResponseSchema.parse(res);
+}
+
+export async function skipRoutineOccurrenceApi(
+  routineId: string,
+  role: ActorRole,
+  expectedVersion: number
+): Promise<SkipRoutineOccurrenceResponse> {
+  const res = await request<SkipRoutineOccurrenceResponse>(`/api/routines/${routineId}/skip`, {
+    method: 'POST',
+    body: JSON.stringify({ actorRole: role, routineId, expectedVersion })
+  });
+  return skipRoutineOccurrenceResponseSchema.parse(res);
+}
+
+export async function fetchReviewRecord(reviewRecordId: string, role?: ActorRole): Promise<ReviewRecord> {
+  const params = role ? `?role=${role}` : '';
+  return reviewRecordSchema.parse(
+    await request<ReviewRecord>(`/api/review-records/${reviewRecordId}${params}`)
   );
 }

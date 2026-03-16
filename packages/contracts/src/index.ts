@@ -551,6 +551,8 @@ export const routineEventTypeSchema = z.enum([
   'routine_deleted'
 ]);
 
+export const ritualTypeSchema = z.enum(['weekly_review']);
+
 export const routineSchema = z.object({
   id: z.string().uuid(),
   title: z.string().trim().min(1),
@@ -560,6 +562,7 @@ export const routineSchema = z.object({
   status: routineStatusSchema,
   currentDueDate: z.string().datetime(),
   dueState: routineDueStateSchema.optional(),
+  ritualType: ritualTypeSchema.nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   archivedAt: z.string().datetime().nullable(),
@@ -577,6 +580,7 @@ export const routineOccurrenceSchema = z.object({
   completedAt: z.string().datetime().nullable(),
   completedBy: ownerSchema.nullable(),
   skipped: z.boolean(),
+  reviewRecordId: z.string().uuid().nullable().optional(),
   createdAt: z.string().datetime()
 });
 
@@ -1042,7 +1046,26 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('meal_entry_add'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), entryId: z.string().uuid(), dayOfWeek: dayOfWeekSchema, name: z.string().trim().min(1) }),
   z.object({ kind: z.literal('meal_entry_name_update'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), entryId: z.string().uuid(), expectedVersion: z.number().int().positive(), name: z.string().trim().min(1) }),
   z.object({ kind: z.literal('meal_entry_items_update'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), entryId: z.string().uuid(), expectedVersion: z.number().int().positive(), shoppingItems: z.array(z.string()) }),
-  z.object({ kind: z.literal('meal_entry_delete'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), entryId: z.string().uuid(), confirmed: z.literal(true) })
+  z.object({ kind: z.literal('meal_entry_delete'), commandId: z.string().uuid(), actorRole: actorRoleSchema, planId: z.string().uuid(), entryId: z.string().uuid(), confirmed: z.literal(true) }),
+  z.object({
+    kind: z.literal('ritual_complete'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    routineId: z.string().uuid(),
+    occurrenceId: z.string().uuid(),
+    provisionalReviewRecordId: z.string().uuid(),
+    carryForwardNotes: z.string().max(2000).nullable(),
+    recapNarrative: z.string().max(1000).nullable().optional(),
+    overviewNarrative: z.string().max(1000).nullable().optional(),
+    expectedVersion: z.number().int().positive()
+  }),
+  z.object({
+    kind: z.literal('routine_skip'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    routineId: z.string().uuid(),
+    expectedVersion: z.number().int().positive()
+  })
 ]);
 
 export type ActorRole = z.infer<typeof actorRoleSchema>;
@@ -1185,7 +1208,8 @@ export const activityHistoryRoutineItemSchema = z.object({
   routineTitle: z.string(),
   owner: ownerSchema,
   dueDate: z.string(),        // ISO date, YYYY-MM-DD
-  completedAt: z.string().datetime()
+  completedAt: z.string().datetime(),
+  reviewRecordId: z.string().uuid().nullable().optional()  // populated for planning ritual completions
 });
 
 export const activityHistoryReminderItemSchema = z.object({
@@ -1252,3 +1276,92 @@ export type ActivityHistoryListItem = z.infer<typeof activityHistoryListItemSche
 export type ActivityHistoryItem = z.infer<typeof activityHistoryItemSchema>;
 export type ActivityHistoryDay = z.infer<typeof activityHistoryDaySchema>;
 export type ActivityHistoryResponse = z.infer<typeof activityHistoryResponseSchema>;
+
+// ─── Planning Ritual Support ───────────────────────────────────────────────────
+
+export const ritualSummaryResponseSchema = z.object({
+  recapDraft: z.string().nullable(),      // null if AI failed for this section
+  overviewDraft: z.string().nullable()    // null if AI failed for this section
+});
+
+export type RitualSummaryResponse = z.infer<typeof ritualSummaryResponseSchema>;
+
+export const reviewRecordSchema = z.object({
+  id: z.string().uuid(),
+  ritualOccurrenceId: z.string().uuid(),
+  reviewDate: z.string(),                    // ISO date YYYY-MM-DD
+  lastWeekWindowStart: z.string(),           // ISO date YYYY-MM-DD
+  lastWeekWindowEnd: z.string(),             // ISO date YYYY-MM-DD
+  currentWeekWindowStart: z.string(),        // ISO date YYYY-MM-DD
+  currentWeekWindowEnd: z.string(),          // ISO date YYYY-MM-DD
+  carryForwardNotes: z.string().nullable(),
+  completedAt: z.string().datetime(),
+  completedBy: ownerSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  version: z.number().int().positive(),
+  pendingSync: z.boolean().optional(),
+  recapNarrative: z.string().nullable().optional(),        // null = dismissed or not yet featured
+  overviewNarrative: z.string().nullable().optional(),     // null = dismissed or not yet featured
+  aiGenerationUsed: z.boolean().optional()                 // true = generation endpoint was called
+});
+
+export const completeRitualRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  occurrenceId: z.string().uuid(),
+  carryForwardNotes: z.string().max(2000).nullable(),
+  recapNarrative: z.string().max(1000).nullable().optional(),
+  overviewNarrative: z.string().max(1000).nullable().optional()
+});
+
+export const completeRitualResponseSchema = z.object({
+  reviewRecordId: z.string().uuid(),
+  reviewDate: z.string(),              // ISO date YYYY-MM-DD
+  nextOccurrenceDueDate: z.string()    // ISO datetime
+});
+
+// Planning Ritual types
+export type RitualType = z.infer<typeof ritualTypeSchema>;
+export type ReviewRecord = z.infer<typeof reviewRecordSchema>;
+export type CompleteRitualRequest = z.infer<typeof completeRitualRequestSchema>;
+export type CompleteRitualResponse = z.infer<typeof completeRitualResponseSchema>;
+
+// ─── Proactive Household Nudges ───────────────────────────────────────────────
+
+export const NUDGE_APPROACHING_THRESHOLD_HOURS = 24;
+export const NUDGE_SNOOZE_INTERVAL_HOURS = 1;
+export const NUDGE_MAX_DISPLAY_COUNT = 5;
+
+export const nudgeEntityTypeSchema = z.enum(['routine', 'reminder', 'planningRitual']);
+export type NudgeEntityType = z.infer<typeof nudgeEntityTypeSchema>;
+
+export const nudgeSchema = z.object({
+  entityType: nudgeEntityTypeSchema,
+  entityId: z.string().uuid(),
+  entityName: z.string(),
+  triggerReason: z.string(),
+  overdueSince: z.string().nullable(),    // YYYY-MM-DD, for overdue items; null for approaching-only
+  dueAt: z.string().datetime().nullable() // ISO datetime for approaching reminders; null otherwise
+});
+
+export const nudgesResponseSchema = z.object({
+  nudges: z.array(nudgeSchema)
+});
+
+export type Nudge = z.infer<typeof nudgeSchema>;
+export type NudgesResponse = z.infer<typeof nudgesResponseSchema>;
+
+export const skipRoutineOccurrenceRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  routineId: z.string().uuid(),
+  expectedVersion: z.number().int().positive()
+});
+
+export const skipRoutineOccurrenceResponseSchema = z.object({
+  savedRoutine: routineSchema,
+  occurrence: routineOccurrenceSchema,
+  newVersion: z.number().int().positive()
+});
+
+export type SkipRoutineOccurrenceRequest = z.infer<typeof skipRoutineOccurrenceRequestSchema>;
+export type SkipRoutineOccurrenceResponse = z.infer<typeof skipRoutineOccurrenceResponseSchema>;

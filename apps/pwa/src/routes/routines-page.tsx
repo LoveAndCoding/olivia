@@ -52,6 +52,71 @@ type RoutineCardProps = {
   busy: boolean;
 };
 
+function RitualCard({ routine, dueState, onStartReview, isSpouse }: {
+  routine: Routine;
+  dueState: RoutineDueState;
+  onStartReview: () => void;
+  isSpouse: boolean;
+}) {
+  const badge = dueStateBadge(dueState);
+  const canStart = !isSpouse && (dueState === 'due' || dueState === 'overdue');
+
+  return (
+    <div
+      className="list-card"
+      style={{ cursor: canStart ? 'pointer' : 'default' }}
+      onClick={canStart ? onStartReview : undefined}
+      role={canStart ? 'button' : undefined}
+      tabIndex={canStart ? 0 : undefined}
+      onKeyDown={canStart ? (e) => e.key === 'Enter' && onStartReview() : undefined}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: canStart ? 10 : 0 }}>
+        <span style={{ fontSize: 16, color: 'var(--mint)', flexShrink: 0 }}>↻</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="list-card-title" style={{ fontWeight: 600 }}>{routine.title}</div>
+          <div className="list-card-meta" style={{ color: 'var(--ink-3)', fontSize: 12, marginTop: 2 }}>
+            {formatDueDate(routine.currentDueDate)} · {formatRecurrenceLabel(routine.recurrenceRule, routine.intervalDays)}
+          </div>
+        </div>
+        <span className={badge.className}>{badge.label}</span>
+      </div>
+
+      {canStart && (
+        <button
+          type="button"
+          aria-label={`Start review for "${routine.title}"`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onStartReview();
+          }}
+          style={{
+            width: '100%',
+            height: 44,
+            background: 'var(--bg)',
+            border: '1.5px solid var(--violet)',
+            borderRadius: 10,
+            color: 'var(--violet)',
+            fontSize: 14,
+            fontWeight: 600,
+            fontFamily: 'Plus Jakarta Sans, sans-serif',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+            transition: 'transform 150ms ease',
+          }}
+          onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'; }}
+          onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = ''; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = ''; }}
+        >
+          Start review →
+        </button>
+      )}
+    </div>
+  );
+}
+
 function RoutineCard({ routine, dueState, onComplete, onNavigate, isSpouse, busy }: RoutineCardProps) {
   const badge = dueStateBadge(dueState);
   const canComplete = !isSpouse && (dueState === 'due' || dueState === 'overdue');
@@ -330,6 +395,18 @@ export function RoutinesPage() {
                   <div key={state}>
                     <div className="rem-group-header">{GROUP_LABELS[state]}</div>
                     {items.map((routine) => (
+                      routine.ritualType === 'weekly_review' ? (
+                        <RitualCard
+                          key={routine.id}
+                          routine={routine}
+                          dueState={state}
+                          onStartReview={() => void navigate({
+                            to: '/routines/$routineId/review/$occurrenceId',
+                            params: { routineId: routine.id, occurrenceId: crypto.randomUUID() },
+                          })}
+                          isSpouse={isSpouse}
+                        />
+                      ) : (
                       <RoutineCard
                         key={routine.id}
                         routine={routine}
@@ -339,6 +416,7 @@ export function RoutinesPage() {
                         isSpouse={isSpouse}
                         busy={busyId === routine.id}
                       />
+                      )
                     ))}
                   </div>
                 );

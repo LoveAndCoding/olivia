@@ -12,9 +12,11 @@ import {
   reminderNotificationPreferencesSchema,
   reminderSchema,
   reminderTimelineEntrySchema,
+  reviewRecordSchema,
   routineOccurrenceSchema,
   routineSchema,
   sharedListSchema,
+  NUDGE_APPROACHING_THRESHOLD_HOURS,
   type ActorRole,
   type GeneratedListRef,
   type HistoryEntry,
@@ -24,9 +26,11 @@ import {
   type MealEntry,
   type MealPlan,
   type NotificationSubscription,
+  type Nudge,
   type Reminder,
   type ReminderNotificationPreferences,
   type ReminderTimelineEntry,
+  type ReviewRecord,
   type Routine,
   type RoutineOccurrence,
   type RoutineStatus,
@@ -767,6 +771,7 @@ export class InboxRepository {
       intervalDays: row.interval_days ?? null,
       status: row.status,
       currentDueDate: row.current_due_date,
+      ritualType: row.ritual_type ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       archivedAt: row.archived_at ?? null,
@@ -783,6 +788,7 @@ export class InboxRepository {
       completedAt: row.completed_at ?? null,
       completedBy: row.completed_by ?? null,
       skipped: Boolean(row.skipped),
+      reviewRecordId: row.review_record_id ?? null,
       createdAt: row.created_at
     });
   }
@@ -829,11 +835,12 @@ export class InboxRepository {
     this.db.prepare(`
       INSERT INTO routines (
         id, title, owner, recurrence_rule, interval_days, status, current_due_date,
-        created_at, updated_at, archived_at, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ritual_type, created_at, updated_at, archived_at, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       routine.id, routine.title, routine.owner, routine.recurrenceRule, routine.intervalDays,
-      routine.status, routine.currentDueDate, routine.createdAt, routine.updatedAt, routine.archivedAt, routine.version
+      routine.status, routine.currentDueDate, routine.ritualType ?? null,
+      routine.createdAt, routine.updatedAt, routine.archivedAt, routine.version
     );
   }
 
@@ -841,11 +848,11 @@ export class InboxRepository {
     const result = this.db.prepare(`
       UPDATE routines
       SET title = ?, owner = ?, recurrence_rule = ?, interval_days = ?, status = ?,
-          current_due_date = ?, updated_at = ?, archived_at = ?, version = ?
+          current_due_date = ?, ritual_type = ?, updated_at = ?, archived_at = ?, version = ?
       WHERE id = ? AND version = ?
     `).run(
       routine.title, routine.owner, routine.recurrenceRule, routine.intervalDays, routine.status,
-      routine.currentDueDate, routine.updatedAt, routine.archivedAt, routine.version,
+      routine.currentDueDate, routine.ritualType ?? null, routine.updatedAt, routine.archivedAt, routine.version,
       routine.id, expectedVersion
     );
     return result.changes > 0;
@@ -866,8 +873,8 @@ export class InboxRepository {
     expectedVersion: number
   ): boolean {
     const insertOccurrence = this.db.prepare(`
-      INSERT INTO routine_occurrences (id, routine_id, due_date, completed_at, completed_by, skipped, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO routine_occurrences (id, routine_id, due_date, completed_at, completed_by, skipped, review_record_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const updateRoutine = this.db.prepare(`
       UPDATE routines
@@ -893,6 +900,7 @@ export class InboxRepository {
         occurrence.completedAt,
         occurrence.completedBy,
         occurrence.skipped ? 1 : 0,
+        occurrence.reviewRecordId ?? null,
         occurrence.createdAt
       );
       return true;
@@ -1136,7 +1144,7 @@ export class InboxRepository {
              r.recurrence_rule, r.interval_days, r.status AS routine_status,
              r.current_due_date, r.created_at AS routine_created_at,
              r.updated_at AS routine_updated_at, r.archived_at AS routine_archived_at,
-             r.version AS routine_version
+             r.version AS routine_version, r.ritual_type AS routine_ritual_type
       FROM routine_occurrences ro
       JOIN routines r ON ro.routine_id = r.id
       WHERE ro.completed_at IS NOT NULL
@@ -1156,6 +1164,7 @@ export class InboxRepository {
         intervalDays: row.interval_days ?? null,
         status: row.routine_status,
         currentDueDate: row.current_due_date,
+        ritualType: row.routine_ritual_type ?? null,
         createdAt: row.routine_created_at,
         updatedAt: row.routine_updated_at,
         archivedAt: row.routine_archived_at ?? null,
@@ -1301,5 +1310,221 @@ export class InboxRepository {
       ),
       notificationDeliveries: this.listNotificationDeliveries('stakeholder')
     };
+  }
+
+  // ─── Review Record repository ──────────────────────────────────────────────
+
+  private mapReviewRecordRow(row: Record<string, unknown>): ReviewRecord {
+    return reviewRecordSchema.parse({
+      id: row.id,
+      ritualOccurrenceId: row.ritual_occurrence_id,
+      reviewDate: row.review_date,
+      lastWeekWindowStart: row.last_week_window_start,
+      lastWeekWindowEnd: row.last_week_window_end,
+      currentWeekWindowStart: row.current_week_window_start,
+      currentWeekWindowEnd: row.current_week_window_end,
+      carryForwardNotes: row.carry_forward_notes ?? null,
+      completedAt: row.completed_at,
+      completedBy: row.completed_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      version: row.version,
+      recapNarrative: row.recap_narrative ?? null,
+      overviewNarrative: row.overview_narrative ?? null,
+      aiGenerationUsed: row.ai_generation_used === 1
+    });
+  }
+
+  createReviewRecord(record: Omit<ReviewRecord, 'createdAt' | 'updatedAt' | 'version' | 'pendingSync'>): ReviewRecord {
+    const now = new Date().toISOString();
+    const full: ReviewRecord = {
+      ...record,
+      createdAt: now,
+      updatedAt: now,
+      version: 1
+    };
+    this.db.prepare(`
+      INSERT INTO review_records (
+        id, ritual_occurrence_id, review_date,
+        last_week_window_start, last_week_window_end,
+        current_week_window_start, current_week_window_end,
+        carry_forward_notes, completed_at, completed_by,
+        created_at, updated_at, version,
+        recap_narrative, overview_narrative, ai_generation_used
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      full.id, full.ritualOccurrenceId, full.reviewDate,
+      full.lastWeekWindowStart, full.lastWeekWindowEnd,
+      full.currentWeekWindowStart, full.currentWeekWindowEnd,
+      full.carryForwardNotes, full.completedAt, full.completedBy,
+      full.createdAt, full.updatedAt, full.version,
+      full.recapNarrative ?? null, full.overviewNarrative ?? null,
+      (full.aiGenerationUsed ?? false) ? 1 : 0
+    );
+    return full;
+  }
+
+  getReviewRecord(reviewRecordId: string): ReviewRecord | null {
+    const row = this.db
+      .prepare('SELECT * FROM review_records WHERE id = ?')
+      .get(reviewRecordId) as Record<string, unknown> | undefined;
+    return row ? this.mapReviewRecordRow(row) : null;
+  }
+
+  /**
+   * Atomically marks an occurrence complete with a review record reference,
+   * and advances the routine's currentDueDate.
+   * Returns false if the routine version check fails.
+   */
+  completeRitualOccurrence(
+    updatedRoutine: Routine,
+    occurrence: RoutineOccurrence,
+    reviewRecord: ReviewRecord,
+    expectedVersion: number
+  ): boolean {
+    const insertOccurrence = this.db.prepare(`
+      INSERT INTO routine_occurrences (
+        id, routine_id, due_date, completed_at, completed_by, skipped, review_record_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)
+    `);
+    const insertRecord = this.db.prepare(`
+      INSERT INTO review_records (
+        id, ritual_occurrence_id, review_date,
+        last_week_window_start, last_week_window_end,
+        current_week_window_start, current_week_window_end,
+        carry_forward_notes, completed_at, completed_by,
+        created_at, updated_at, version,
+        recap_narrative, overview_narrative, ai_generation_used
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const linkOccurrence = this.db.prepare(`
+      UPDATE routine_occurrences SET review_record_id = ? WHERE id = ?
+    `);
+    const updateRoutine = this.db.prepare(`
+      UPDATE routines
+      SET current_due_date = ?, updated_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `);
+
+    return this.db.transaction(() => {
+      const result = updateRoutine.run(
+        updatedRoutine.currentDueDate,
+        updatedRoutine.updatedAt,
+        updatedRoutine.version,
+        updatedRoutine.id,
+        expectedVersion
+      );
+      if (result.changes === 0) return false;
+
+      // Insert occurrence first (review_records.ritual_occurrence_id FK references it)
+      insertOccurrence.run(
+        occurrence.id,
+        occurrence.routineId,
+        occurrence.dueDate,
+        occurrence.completedAt,
+        occurrence.completedBy,
+        occurrence.skipped ? 1 : 0,
+        occurrence.createdAt
+      );
+
+      // Now insert review record (occurrence exists, FK satisfied)
+      insertRecord.run(
+        reviewRecord.id, reviewRecord.ritualOccurrenceId, reviewRecord.reviewDate,
+        reviewRecord.lastWeekWindowStart, reviewRecord.lastWeekWindowEnd,
+        reviewRecord.currentWeekWindowStart, reviewRecord.currentWeekWindowEnd,
+        reviewRecord.carryForwardNotes, reviewRecord.completedAt, reviewRecord.completedBy,
+        reviewRecord.createdAt, reviewRecord.updatedAt, reviewRecord.version,
+        reviewRecord.recapNarrative ?? null, reviewRecord.overviewNarrative ?? null,
+        (reviewRecord.aiGenerationUsed ?? false) ? 1 : 0
+      );
+
+      // Link occurrence back to the review record
+      linkOccurrence.run(reviewRecord.id, occurrence.id);
+
+      return true;
+    })();
+  }
+
+  // ─── Proactive Household Nudges ─────────────────────────────────────────────
+
+  /**
+   * Returns all active nudge payloads (unsorted). Priority sorting is done by the caller.
+   * Overdue routines/rituals + approaching/overdue reminders within the 24h threshold.
+   */
+  getNudgePayloads(now: Date): Nudge[] {
+    const thresholdDatetime = new Date(now.getTime() + NUDGE_APPROACHING_THRESHOLD_HOURS * 60 * 60 * 1000);
+    const nudges: Nudge[] = [];
+
+    // Overdue routines and planning rituals
+    const overdueRoutineRows = this.db.prepare(`
+      SELECT r.id, r.title, r.ritual_type, r.current_due_date
+      FROM routines r
+      WHERE r.status = 'active'
+        AND r.current_due_date < ?
+        AND NOT EXISTS (
+          SELECT 1 FROM routine_occurrences o
+          WHERE o.routine_id = r.id
+            AND o.due_date = r.current_due_date
+            AND o.completed_at IS NOT NULL
+        )
+    `).all(now.toISOString()) as Array<{ id: string; title: string; ritual_type: string | null; current_due_date: string }>;
+
+    for (const row of overdueRoutineRows) {
+      const entityType: Nudge['entityType'] = row.ritual_type === 'weekly_review' ? 'planningRitual' : 'routine';
+      const overdueSince = row.current_due_date.slice(0, 10);
+      const overdueDate = new Date(row.current_due_date);
+      const daysAgo = Math.floor((now.getTime() - overdueDate.getTime()) / (1000 * 60 * 60 * 24));
+      let triggerReason: string;
+      if (daysAgo <= 1) {
+        triggerReason = entityType === 'planningRitual' ? 'Weekly review · Overdue since yesterday' : 'Overdue since yesterday';
+      } else if (daysAgo <= 7) {
+        const weekday = overdueDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+        triggerReason = entityType === 'planningRitual' ? `Weekly review · Overdue since ${weekday}` : `Overdue since ${weekday}`;
+      } else {
+        triggerReason = entityType === 'planningRitual' ? 'Weekly review overdue' : 'Overdue — due last week';
+      }
+      nudges.push({ entityType, entityId: row.id, entityName: row.title, triggerReason, overdueSince, dueAt: null });
+    }
+
+    // Approaching and overdue reminders
+    const reminderRows = this.db.prepare(`
+      SELECT id, title, scheduled_at, snoozed_until
+      FROM reminders
+      WHERE completed_at IS NULL
+        AND cancelled_at IS NULL
+        AND COALESCE(snoozed_until, scheduled_at) <= ?
+    `).all(thresholdDatetime.toISOString()) as Array<{ id: string; title: string; scheduled_at: string; snoozed_until: string | null }>;
+
+    for (const row of reminderRows) {
+      const effectiveDueAt = row.snoozed_until ?? row.scheduled_at;
+      const dueDate = new Date(effectiveDueAt);
+      const isPast = dueDate <= now;
+      let triggerReason: string;
+      if (isPast) {
+        const dueDay = dueDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+        const dueHour = dueDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
+        triggerReason = `Overdue since ${dueDay} ${dueHour}`;
+      } else {
+        const msUntil = dueDate.getTime() - now.getTime();
+        const hoursUntil = msUntil / (1000 * 60 * 60);
+        if (hoursUntil < 1) {
+          const minutesUntil = Math.round(msUntil / (1000 * 60));
+          triggerReason = `Due in ${minutesUntil} minute${minutesUntil !== 1 ? 's' : ''}`;
+        } else {
+          const hoursRounded = Math.round(hoursUntil);
+          triggerReason = `Due in ${hoursRounded} hour${hoursRounded !== 1 ? 's' : ''}`;
+        }
+      }
+      nudges.push({
+        entityType: 'reminder',
+        entityId: row.id,
+        entityName: row.title,
+        triggerReason,
+        overdueSince: isPast ? effectiveDueAt.slice(0, 10) : null,
+        dueAt: effectiveDueAt
+      });
+    }
+
+    return nudges;
   }
 }

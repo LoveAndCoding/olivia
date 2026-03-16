@@ -10,7 +10,7 @@ const NAV_ITEMS: Array<{ tab: NavTab; to: string; icon: string; label: string }>
   { tab: 'memory', to: '/history', icon: '🗂️', label: 'Memory' },
 ];
 
-export function BottomNav({ activeTab }: { activeTab: NavTab }) {
+export function BottomNav({ activeTab, nudgeBadgeCount = 0 }: { activeTab: NavTab; nudgeBadgeCount?: number }) {
   return (
     <nav className="bottom-nav" aria-label="Main navigation">
       {NAV_ITEMS.map(({ tab, to, icon, label }) => (
@@ -21,7 +21,17 @@ export function BottomNav({ activeTab }: { activeTab: NavTab }) {
           aria-label={label}
           aria-current={activeTab === tab ? 'page' : undefined}
         >
-          <span className="nav-icon" aria-hidden="true">{icon}</span>
+          <span className="nav-icon-wrap" style={{ position: 'relative', display: 'inline-flex' }}>
+            <span className="nav-icon" aria-hidden="true">{icon}</span>
+            {tab === 'home' && nudgeBadgeCount > 0 && (
+              <span
+                className="nudge-nav-badge"
+                aria-label={`${nudgeBadgeCount > 9 ? '9+' : nudgeBadgeCount} active nudges`}
+              >
+                {nudgeBadgeCount > 9 ? '9+' : nudgeBadgeCount}
+              </span>
+            )}
+          </span>
           <span className="nav-label">{label}</span>
         </Link>
       ))}

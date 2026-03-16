@@ -31,6 +31,7 @@ import {
   type ListItemHistoryEntry,
   type MealEntry,
   type MealPlan,
+  type Nudge,
   type Owner,
   type ParseConfidence,
   type ParserSource,
@@ -1729,4 +1730,120 @@ export function groupActivityHistoryByDay(
   days.sort((a, b) => b.date.localeCompare(a.date));
 
   return days;
+}
+
+// ─── Planning Ritual domain helpers ───────────────────────────────────────────
+
+/**
+ * Computes the prior-calendar-week and current-calendar-week windows relative
+ * to a given anchor date (the occurrence's dueDate).
+ *
+ * Convention: weeks start on Monday (ISO week). The "current week" is the
+ * Monday–Sunday week containing anchorDate. The "last week" is the Monday–Sunday
+ * immediately before.
+ *
+ * Late-completion behaviour: pass occurrence.dueDate as anchorDate to keep
+ * each occurrence anchored to its own scheduled week, not the completion date.
+ */
+export function getReviewWindowsForOccurrence(anchorDate: Date): {
+  lastWeekStart: Date;
+  lastWeekEnd: Date;
+  currentWeekStart: Date;
+  currentWeekEnd: Date;
+} {
+  // "Current week" starts on the Monday of the ISO week that FOLLOWS the anchor's week
+  // end (i.e. after Sunday). Using addDays(anchor, 1) before startOfWeek handles the
+  // Sunday edge case: a Sunday-due ritual reviews the week just ending as "last week"
+  // and the upcoming week as "current week". Mon-Sat anchors land in the same week as
+  // the current Monday regardless.
+  const currentWeekStart = startOfDay(startOfWeek(addDays(anchorDate, 1), { weekStartsOn: 1 }));
+  const currentWeekEnd = endOfDay(addDays(currentWeekStart, 6)); // Sunday 23:59:59.999
+
+  // Prior week
+  const lastWeekStart = startOfDay(subWeeks(currentWeekStart, 1));
+  const lastWeekEnd = endOfDay(addDays(lastWeekStart, 6)); // Sunday 23:59:59.999
+
+  return { lastWeekStart, lastWeekEnd, currentWeekStart, currentWeekEnd };
+}
+
+/**
+ * Formats a review window as ISO date strings (YYYY-MM-DD).
+ */
+export function formatReviewWindowAsDateStrings(window: { start: Date; end: Date }): { start: string; end: string } {
+  return {
+    start: format(window.start, 'yyyy-MM-dd'),
+    end: format(window.end, 'yyyy-MM-dd')
+  };
+}
+
+// ─── Proactive Household Nudges ───────────────────────────────────────────────
+
+/**
+ * Skip the current routine occurrence.
+ * Advances currentDueDate from the ORIGINAL due date (schedule-anchored), not from now.
+ * Sets skipped: true on the recorded occurrence.
+ */
+export function skipRoutineOccurrence(
+  routine: Routine,
+  skippedBy: Owner,
+  now: Date = new Date()
+): CompleteRoutineResult {
+  if (routine.status === 'paused') {
+    throw new Error('Cannot skip a paused routine.');
+  }
+  if (routine.status === 'archived') {
+    throw new Error('Cannot skip an archived routine.');
+  }
+
+  const timestamp = now.toISOString();
+  const originalDueDate = routine.currentDueDate;
+
+  const nextDueDate = scheduleNextRoutineOccurrence(
+    originalDueDate,
+    routine.recurrenceRule,
+    routine.intervalDays
+  );
+
+  const occurrence = routineOccurrenceSchema.parse({
+    id: createId(),
+    routineId: routine.id,
+    dueDate: originalDueDate,
+    completedAt: timestamp,
+    completedBy: skippedBy,
+    skipped: true,
+    createdAt: timestamp
+  });
+
+  const updatedRoutine = routineSchema.parse({
+    ...routine,
+    currentDueDate: nextDueDate,
+    updatedAt: timestamp,
+    version: routine.version + 1
+  });
+
+  return { updatedRoutine, occurrence };
+}
+
+/**
+ * Sort nudges by priority:
+ * 1. planningRitual overdue
+ * 2. reminder approaching or overdue
+ * 3. routine overdue
+ * Within each tier: oldest overdue/approaching first (earliest overdueSince or dueAt).
+ */
+export function sortNudgesByPriority(nudges: Nudge[]): Nudge[] {
+  const tierOrder: Record<string, number> = { planningRitual: 0, reminder: 1, routine: 2 };
+
+  return [...nudges].sort((a, b) => {
+    const tierDiff = (tierOrder[a.entityType] ?? 99) - (tierOrder[b.entityType] ?? 99);
+    if (tierDiff !== 0) return tierDiff;
+
+    // Within tier: oldest first
+    const aDate = a.overdueSince ?? a.dueAt ?? '';
+    const bDate = b.overdueSince ?? b.dueAt ?? '';
+    if (!aDate && !bDate) return 0;
+    if (!aDate) return 1;
+    if (!bDate) return -1;
+    return aDate < bDate ? -1 : aDate > bDate ? 1 : 0;
+  });
 }

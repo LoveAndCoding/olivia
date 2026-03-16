@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import { addDays, format, isSameDay, parseISO, startOfWeek, endOfWeek } from 'date-fns';
+import { addDays, format, isSameDay, isToday, parseISO, startOfWeek, endOfWeek } from 'date-fns';
 import { buildSuggestions, groupItems, groupReminders, getRoutineOccurrenceDatesForWeek, getRoutineOccurrenceStatusForDate, getActivityHistoryWindow, groupActivityHistoryByDay } from '@olivia/domain';
 import type {
   ActiveListIndexResponse,
@@ -24,6 +24,7 @@ import type {
   ReminderSettingsResponse,
   ReminderTimelineEntry,
   ReminderViewResponse,
+  ReviewRecord,
   Routine,
   RoutineDetailResponse,
   RoutineOccurrence,
@@ -34,6 +35,11 @@ import type {
 } from '@olivia/contracts';
 
 type MetaRecord = { key: string; value: string };
+
+type NudgeDismissal = {
+  entityId: string;
+  dismissedAt: string; // ISO date string — used for daily reset
+};
 
 type StoredOutboxCommand = OutboxCommand & {
   createdAt: string;
@@ -53,6 +59,8 @@ class OliviaClientDb extends Dexie {
   routineOccurrences!: Table<RoutineOccurrence, string>;
   mealPlans!: Table<MealPlan, string>;
   mealEntries!: Table<MealEntry, string>;
+  reviewRecords!: Table<ReviewRecord, string>;
+  nudgeDismissals!: Table<NudgeDismissal, string>;
   outbox!: Table<StoredOutboxCommand, string>;
   meta!: Table<MetaRecord, string>;
 
@@ -109,6 +117,39 @@ class OliviaClientDb extends Dexie {
       routineOccurrences: 'id, routineId, dueDate',
       mealPlans: 'id, status, weekStartDate, updatedAt, pendingSync',
       mealEntries: 'id, planId, dayOfWeek, position',
+      outbox: 'commandId, kind, state, createdAt',
+      meta: 'key'
+    });
+    this.version(6).stores({
+      items: 'id, status, owner, updatedAt, pendingSync',
+      historyCache: 'itemId',
+      reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',
+      reminderTimelineCache: 'reminderId',
+      reminderSettingsCache: 'actorRole',
+      sharedLists: 'id, status, updatedAt, pendingSync',
+      listItems: 'id, listId, position, pendingSync',
+      routines: 'id, status, owner, currentDueDate, updatedAt, pendingSync',
+      routineOccurrences: 'id, routineId, dueDate',
+      mealPlans: 'id, status, weekStartDate, updatedAt, pendingSync',
+      mealEntries: 'id, planId, dayOfWeek, position',
+      reviewRecords: 'id, ritualOccurrenceId, reviewDate, completedAt, pendingSync',
+      outbox: 'commandId, kind, state, createdAt',
+      meta: 'key'
+    });
+    this.version(7).stores({
+      items: 'id, status, owner, updatedAt, pendingSync',
+      historyCache: 'itemId',
+      reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',
+      reminderTimelineCache: 'reminderId',
+      reminderSettingsCache: 'actorRole',
+      sharedLists: 'id, status, updatedAt, pendingSync',
+      listItems: 'id, listId, position, pendingSync',
+      routines: 'id, status, owner, currentDueDate, updatedAt, pendingSync',
+      routineOccurrences: 'id, routineId, dueDate',
+      mealPlans: 'id, status, weekStartDate, updatedAt, pendingSync',
+      mealEntries: 'id, planId, dayOfWeek, position',
+      reviewRecords: 'id, ritualOccurrenceId, reviewDate, completedAt, pendingSync',
+      nudgeDismissals: 'entityId, dismissedAt',
       outbox: 'commandId, kind, state, createdAt',
       meta: 'key'
     });
@@ -654,4 +695,43 @@ export async function assembleActivityHistoryFromCache(): Promise<ActivityHistor
 
   const days = groupActivityHistoryByDay(items);
   return { windowStart: windowStartStr, windowEnd: windowEndStr, days };
+}
+
+// ─── Review Record cache helpers ──────────────────────────────────────────────
+
+export async function cacheReviewRecord(record: ReviewRecord): Promise<void> {
+  await clientDb.reviewRecords.put(record);
+}
+
+export async function getCachedReviewRecord(reviewRecordId: string): Promise<ReviewRecord | null> {
+  const record = await clientDb.reviewRecords.get(reviewRecordId);
+  return record ?? null;
+}
+
+// ─── Nudge Dismissal helpers ──────────────────────────────────────────────────
+
+export async function dismissNudge(entityId: string): Promise<void> {
+  await clientDb.nudgeDismissals.put({ entityId, dismissedAt: new Date().toISOString() });
+}
+
+export async function isDismissedToday(entityId: string): Promise<boolean> {
+  const record = await clientDb.nudgeDismissals.get(entityId);
+  if (!record) return false;
+  return isToday(parseISO(record.dismissedAt));
+}
+
+export async function filterDismissed<T extends { entityId: string }>(nudges: T[]): Promise<T[]> {
+  const results: T[] = [];
+  for (const nudge of nudges) {
+    if (!(await isDismissedToday(nudge.entityId))) {
+      results.push(nudge);
+    }
+  }
+  return results;
+}
+
+export async function pruneStaleNudgeDismissals(): Promise<void> {
+  const all = await clientDb.nudgeDismissals.toArray();
+  const stale = all.filter((r) => !isToday(parseISO(r.dismissedAt)));
+  await clientDb.nudgeDismissals.bulkDelete(stale.map((r) => r.entityId));
 }

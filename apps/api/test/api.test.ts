@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -289,7 +290,7 @@ describe('reminder migrations and api', () => {
       .all() as Array<{ name: string }>;
 
     expect(repository.listItems()).toHaveLength(1);
-    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql']);
+    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql']);
     expect(reminderTables.map((row) => row.name).sort()).toEqual([
       'notification_delivery_log',
       'reminder_notification_preferences',
@@ -1479,11 +1480,6 @@ describe('activity history api', () => {
     return mkdtempSync(join(tmpdir(), 'olivia-history-'));
   }
 
-  // Returns the Monday date string of the current week (local time)
-  function thisWeekMonday(): string {
-    return format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-  }
-
   // Returns the Monday date string of last week (local time)
   function lastWeekMonday(): string {
     return format(subWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), 'yyyy-MM-dd');
@@ -1856,6 +1852,503 @@ describe('activity history api', () => {
     for (let i = 1; i < body.days.length; i++) {
       expect(body.days[i - 1].date >= body.days[i].date).toBe(true);
     }
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('planning ritual AI summaries api', () => {
+  function makeRitualRoutine(db: ReturnType<typeof createDatabase>) {
+    const repo = new InboxRepository(db);
+    const now = new Date();
+    const ritual = {
+      id: randomUUID(),
+      title: 'Weekly Review',
+      owner: 'stakeholder' as const,
+      recurrenceRule: 'weekly' as const,
+      intervalDays: null,
+      status: 'active' as const,
+      currentDueDate: now.toISOString(),
+      ritualType: 'weekly_review' as const,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      archivedAt: null,
+      version: 1
+    };
+    repo.createRoutine(ritual);
+    return ritual;
+  }
+
+  it('generate-ritual-summary returns stub drafts for a due weekly_review routine', async () => {
+
+    const dir = mkdtempSync(join(tmpdir(), 'olivia-ritual-ai-'));
+    const dbPath = join(dir, 'test.sqlite');
+    const db = createDatabase(dbPath);
+    const ritual = makeRitualRoutine(db);
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+    const occurrenceId = randomUUID();
+
+    // Happy path — empty household → stub returns null drafts (no recap/overview data)
+    const genRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${ritual.id}/generate-ritual-summary`,
+      payload: { actorRole: 'stakeholder', occurrenceId }
+    });
+    expect(genRes.statusCode).toBe(200);
+    const genBody = genRes.json();
+    expect(genBody).toHaveProperty('recapDraft');
+    expect(genBody).toHaveProperty('overviewDraft');
+
+    // Spouse blocked
+    const spouseRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${ritual.id}/generate-ritual-summary`,
+      payload: { actorRole: 'spouse', occurrenceId }
+    });
+    expect(spouseRes.statusCode).toBe(403);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('generate-ritual-summary returns 404 for unknown routine', async () => {
+
+    const dir = mkdtempSync(join(tmpdir(), 'olivia-ritual-ai2-'));
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/routines/00000000-0000-0000-0000-000000000000/generate-ritual-summary`,
+      payload: { actorRole: 'stakeholder', occurrenceId: randomUUID() }
+    });
+    expect(res.statusCode).toBe(404);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('generate-ritual-summary returns 400 for non-ritual routine', async () => {
+
+    const dir = mkdtempSync(join(tmpdir(), 'olivia-ritual-ai3-'));
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/routines',
+      payload: {
+        actorRole: 'stakeholder',
+        title: 'Take out trash',
+        owner: 'stakeholder',
+        recurrenceRule: 'weekly',
+        firstDueDate: new Date().toISOString()
+      }
+    });
+    expect(createRes.statusCode).toBe(201);
+    const { savedRoutine } = createRes.json();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/generate-ritual-summary`,
+      payload: { actorRole: 'stakeholder', occurrenceId: randomUUID() }
+    });
+    expect(res.statusCode).toBe(400);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('complete-ritual stores accepted narratives and review-records returns them', async () => {
+
+    const dir = mkdtempSync(join(tmpdir(), 'olivia-ritual-ai4-'));
+    const dbPath = join(dir, 'test.sqlite');
+    const db = createDatabase(dbPath);
+    const ritual = makeRitualRoutine(db);
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+    const occurrenceId = randomUUID();
+
+    const completeRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${ritual.id}/complete-ritual`,
+      payload: {
+        actorRole: 'stakeholder',
+        occurrenceId,
+        carryForwardNotes: null,
+        recapNarrative: 'Last week was productive.',
+        overviewNarrative: 'This week looks busy.'
+      }
+    });
+    expect(completeRes.statusCode).toBe(200);
+    const { reviewRecordId } = completeRes.json();
+
+    // Stakeholder can read narrative fields
+    const rrRes = await app.inject({
+      method: 'GET',
+      url: `/api/review-records/${reviewRecordId}?role=stakeholder`
+    });
+    expect(rrRes.statusCode).toBe(200);
+    const rr = rrRes.json();
+    expect(rr.recapNarrative).toBe('Last week was productive.');
+    expect(rr.overviewNarrative).toBe('This week looks busy.');
+    expect(rr.aiGenerationUsed).toBe(true);
+
+    // Spouse can read narrative fields
+    const spouseRrRes = await app.inject({
+      method: 'GET',
+      url: `/api/review-records/${reviewRecordId}?role=spouse`
+    });
+    expect(spouseRrRes.statusCode).toBe(200);
+    expect(spouseRrRes.json().recapNarrative).toBe('Last week was productive.');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('complete-ritual without narratives stores null narrative fields', async () => {
+
+    const dir = mkdtempSync(join(tmpdir(), 'olivia-ritual-ai5-'));
+    const dbPath = join(dir, 'test.sqlite');
+    const db = createDatabase(dbPath);
+    const ritual = makeRitualRoutine(db);
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const completeRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${ritual.id}/complete-ritual`,
+      payload: {
+        actorRole: 'stakeholder',
+        occurrenceId: randomUUID(),
+        carryForwardNotes: 'Some notes here.'
+      }
+    });
+    expect(completeRes.statusCode).toBe(200);
+    const { reviewRecordId } = completeRes.json();
+
+    const rrRes = await app.inject({
+      method: 'GET',
+      url: `/api/review-records/${reviewRecordId}?role=stakeholder`
+    });
+    expect(rrRes.statusCode).toBe(200);
+    const rr = rrRes.json();
+    expect(rr.recapNarrative).toBeNull();
+    expect(rr.overviewNarrative).toBeNull();
+    expect(rr.aiGenerationUsed).toBe(false);
+    expect(rr.carryForwardNotes).toBe('Some notes here.');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('proactive household nudges api', () => {
+  function makeDir() {
+    const dir = mkdtempSync(join(tmpdir(), 'olivia-nudges-'));
+    return { dir, dbPath: join(dir, 'test.sqlite') };
+  }
+
+  function makeOverdueRoutine(db: ReturnType<typeof createDatabase>) {
+    const repo = new InboxRepository(db);
+    const pastDate = subDays(new Date(), 3).toISOString();
+    const routine: Parameters<typeof repo.createRoutine>[0] = {
+      id: randomUUID(),
+      title: 'Morning routine',
+      owner: 'stakeholder',
+      recurrenceRule: 'weekly',
+      intervalDays: null,
+      status: 'active',
+      currentDueDate: pastDate,
+      ritualType: null,
+      createdAt: pastDate,
+      updatedAt: pastDate,
+      archivedAt: null,
+      version: 1
+    };
+    repo.createRoutine(routine);
+    return routine;
+  }
+
+  function makeOverduePlanningRitual(db: ReturnType<typeof createDatabase>) {
+    const repo = new InboxRepository(db);
+    const pastDate = subDays(new Date(), 5).toISOString();
+    const ritual = {
+      id: randomUUID(),
+      title: 'Weekly household review',
+      owner: 'stakeholder' as const,
+      recurrenceRule: 'weekly' as const,
+      intervalDays: null,
+      status: 'active' as const,
+      currentDueDate: pastDate,
+      ritualType: 'weekly_review' as const,
+      createdAt: pastDate,
+      updatedAt: pastDate,
+      archivedAt: null,
+      version: 1
+    };
+    repo.createRoutine(ritual);
+    return ritual;
+  }
+
+  it('returns empty nudges when no overdue items', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().nudges).toHaveLength(0);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns overdue routine nudge', async () => {
+    const { dir, dbPath } = makeDir();
+    const db = createDatabase(dbPath);
+    makeOverdueRoutine(db);
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    expect(res.statusCode).toBe(200);
+    const { nudges } = res.json();
+    expect(nudges).toHaveLength(1);
+    expect(nudges[0].entityType).toBe('routine');
+    expect(nudges[0].entityName).toBe('Morning routine');
+    expect(nudges[0].overdueSince).toBeTruthy();
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns planning ritual nudge with planningRitual entityType', async () => {
+    const { dir, dbPath } = makeDir();
+    const db = createDatabase(dbPath);
+    makeOverduePlanningRitual(db);
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    expect(res.statusCode).toBe(200);
+    const { nudges } = res.json();
+    expect(nudges).toHaveLength(1);
+    expect(nudges[0].entityType).toBe('planningRitual');
+    expect(nudges[0].entityName).toBe('Weekly household review');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns approaching reminder nudge (within 24h)', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    await createReminderViaApi(app, {
+      title: 'Vet appointment',
+      scheduledAt: addHours(new Date(), 2).toISOString()
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    expect(res.statusCode).toBe(200);
+    const { nudges } = res.json();
+    expect(nudges).toHaveLength(1);
+    expect(nudges[0].entityType).toBe('reminder');
+    expect(nudges[0].entityName).toBe('Vet appointment');
+    expect(nudges[0].dueAt).toBeTruthy();
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('does not return reminder due in 25h (outside threshold)', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    await createReminderViaApi(app, {
+      title: 'Future appointment',
+      scheduledAt: addHours(new Date(), 25).toISOString()
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().nudges).toHaveLength(0);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('does not return completed routine occurrence', async () => {
+    const { dir, dbPath } = makeDir();
+    const db = createDatabase(dbPath);
+    const routine = makeOverdueRoutine(db);
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const completeRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${routine.id}/complete`,
+      payload: { actorRole: 'stakeholder', expectedVersion: 1 }
+    });
+    expect(completeRes.statusCode).toBe(200);
+
+    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().nudges).toHaveLength(0);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('sorts planning ritual first, then reminder, then routine', async () => {
+    const { dir, dbPath } = makeDir();
+    const db = createDatabase(dbPath);
+    makeOverdueRoutine(db);
+    makeOverduePlanningRitual(db);
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    await createReminderViaApi(app, {
+      title: 'Grocery run',
+      scheduledAt: addHours(new Date(), 1).toISOString()
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    expect(res.statusCode).toBe(200);
+    const { nudges } = res.json();
+    expect(nudges.length).toBeGreaterThanOrEqual(3);
+    expect(nudges[0].entityType).toBe('planningRitual');
+    expect(nudges[1].entityType).toBe('reminder');
+    expect(nudges[2].entityType).toBe('routine');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('does not return resolved reminder', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const created = await createReminderViaApi(app, {
+      title: 'Past reminder',
+      scheduledAt: addHours(new Date(), 1).toISOString()
+    });
+    const reminder = created.savedReminder;
+
+    const completeRes = await app.inject({
+      method: 'POST',
+      url: '/api/reminders/complete',
+      payload: { actorRole: 'stakeholder', reminderId: reminder.id, expectedVersion: reminder.version, approved: true }
+    });
+    expect(completeRes.statusCode).toBe(200);
+
+    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().nudges).toHaveLength(0);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('skip routine endpoint: advances currentDueDate and sets skipped: true', async () => {
+    const { dir, dbPath } = makeDir();
+    const db = createDatabase(dbPath);
+    const routine = makeOverdueRoutine(db);
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const skipRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${routine.id}/skip`,
+      payload: { actorRole: 'stakeholder', expectedVersion: 1 }
+    });
+    expect(skipRes.statusCode).toBe(200);
+    const body = skipRes.json();
+    expect(body.occurrence.skipped).toBe(true);
+    expect(new Date(body.savedRoutine.currentDueDate).getTime()).toBeGreaterThan(new Date(routine.currentDueDate).getTime());
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('skip routine endpoint: rejects spouse role', async () => {
+    const { dir, dbPath } = makeDir();
+    const db = createDatabase(dbPath);
+    const routine = makeOverdueRoutine(db);
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${routine.id}/skip`,
+      payload: { actorRole: 'spouse', expectedVersion: 1 }
+    });
+    expect(res.statusCode).toBe(403);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('skip routine endpoint: 404 when routine not found', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${randomUUID()}/skip`,
+      payload: { actorRole: 'stakeholder', expectedVersion: 1 }
+    });
+    expect(res.statusCode).toBe(404);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('skip routine endpoint: 409 on version conflict', async () => {
+    const { dir, dbPath } = makeDir();
+    const db = createDatabase(dbPath);
+    const routine = makeOverdueRoutine(db);
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${routine.id}/skip`,
+      payload: { actorRole: 'stakeholder', expectedVersion: 99 }
+    });
+    expect(res.statusCode).toBe(409);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('skip removes routine from nudge list on next poll', async () => {
+    const { dir, dbPath } = makeDir();
+    const db = createDatabase(dbPath);
+    const routine = makeOverdueRoutine(db);
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const before = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    expect(before.json().nudges.some((n: { entityId: string }) => n.entityId === routine.id)).toBe(true);
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/routines/${routine.id}/skip`,
+      payload: { actorRole: 'stakeholder', expectedVersion: 1 }
+    });
+
+    const after = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    expect(after.json().nudges.some((n: { entityId: string }) => n.entityId === routine.id)).toBe(false);
 
     await app.close();
     rmSync(dir, { recursive: true, force: true });

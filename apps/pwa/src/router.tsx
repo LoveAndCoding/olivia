@@ -16,6 +16,8 @@ import { RoutineDetailPage } from './routes/routine-detail-page';
 import { MealsPage } from './routes/meals-page';
 import { MealDetailPage } from './routes/meal-detail-page';
 import { HistoryPage } from './routes/history-page';
+import { ReviewFlowPage } from './routes/review-flow-page';
+import { ReviewRecordDetailPage } from './routes/review-record-detail-page';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -40,6 +42,8 @@ const remindersRoute = createRoute({ getParentRoute: () => rootRoute, path: '/re
 const reminderDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reminders/$reminderId', component: ReminderDetailPage });
 const routinesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/routines', component: RoutinesPage });
 const routineDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/routines/$routineId', component: RoutineDetailPage });
+const reviewFlowRoute = createRoute({ getParentRoute: () => rootRoute, path: '/routines/$routineId/review/$occurrenceId', component: ReviewFlowPage });
+const reviewRecordDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/review-records/$reviewRecordId', component: ReviewRecordDetailPage });
 const mealsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/meals', component: MealsPage });
 const mealDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/meals/$planId', component: MealDetailPage });
 const reEntryRoute = createRoute({
@@ -75,6 +79,8 @@ const routeTree = rootRoute.addChildren([
   reminderDetailRoute,
   routinesRoute,
   routineDetailRoute,
+  reviewFlowRoute,
+  reviewRecordDetailRoute,
   mealsRoute,
   mealDetailRoute,
   reEntryRoute,

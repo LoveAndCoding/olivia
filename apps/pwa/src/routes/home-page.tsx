@@ -8,6 +8,7 @@ import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, W
 import { useRole } from '../lib/role';
 import { loadWeeklyView, confirmCreateReminderCommand, snoozeReminderCommand, loadReminderView } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
+import { NudgeTray, useNudges } from './nudge-tray';
 import { CreateReminderSheet } from '../components/reminders/CreateReminderSheet';
 import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
@@ -253,6 +254,8 @@ export function HomePage() {
   const [banner, setBanner] = useState<{ message: string; variant: 'mint' | 'sky' } | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
+  const { nudges, dismiss: dismissNudge, removeNudge } = useNudges(role);
+
   const { weekStart, weekEnd } = useMemo(() => getWeekBounds(new Date()), []);
   const weekStartString = useMemo(() => weekStart.toISOString().split('T')[0], [weekStart]);
   const weekLabel = useMemo(() => formatWeekLabel(weekStart, weekEnd), [weekStart, weekEnd]);
@@ -366,6 +369,14 @@ export function HomePage() {
       </div>
 
       <div className="screen-scroll" ref={scrollAreaRef}>
+        {/* Proactive nudge tray */}
+        <NudgeTray
+          role={role}
+          nudges={nudges}
+          onDismiss={dismissNudge}
+          onRemove={removeNudge}
+        />
+
         {/* Olivia nudge card */}
         {nudge && !nudgeDismissed && (
           <div
@@ -484,7 +495,7 @@ export function HomePage() {
         onSelectTime={handleSnoozeSelect}
       />
 
-      <BottomNav activeTab="home" />
+      <BottomNav activeTab="home" nudgeBadgeCount={nudges.length} />
     </div>
   );
 }

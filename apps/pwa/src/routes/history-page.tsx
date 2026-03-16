@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { BottomNav } from '../components/bottom-nav';
 import { useRole } from '../lib/role';
 import { loadActivityHistory } from '../lib/sync';
@@ -21,7 +21,10 @@ function formatDayHeader(dateStr: string): string {
 
 function itemDeepLinkPath(item: ActivityHistoryItem): string {
   switch (item.type) {
-    case 'routine': return `/routines/${item.routineId}`;
+    case 'routine':
+      // Ritual completions navigate to the review record detail
+      if (item.reviewRecordId) return `/review-records/${item.reviewRecordId}`;
+      return `/routines/${item.routineId}`;
     case 'reminder': return `/reminders/${item.reminderId}`;
     case 'meal': return `/meals/${item.planId}`;
     case 'inbox': return `/items/${item.itemId}`;
@@ -68,11 +71,32 @@ function itemSubtitle(item: ActivityHistoryItem): string | null {
 }
 
 function HistoryItemRow({ item }: { item: ActivityHistoryItem }) {
+  const navigate = useNavigate();
   const icon = itemIcon(item.type);
   const colorClass = itemColorClass(item.type);
   const title = itemTitle(item);
   const subtitle = itemSubtitle(item);
   const path = itemDeepLinkPath(item);
+  const isRitualCompletion = item.type === 'routine' && !!item.reviewRecordId;
+
+  if (isRitualCompletion) {
+    return (
+      <button
+        type="button"
+        className={`history-item ${colorClass}`}
+        style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', padding: 0 }}
+        onClick={() => void navigate({ to: '/review-records/$reviewRecordId', params: { reviewRecordId: item.reviewRecordId! } })}
+      >
+        <span className="history-item__icon" aria-hidden="true">{icon}</span>
+        <span className="history-item__text">
+          <span className="history-item__title">{title}</span>
+          <span className="history-item__subtitle" style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)' }}>
+            Review
+          </span>
+        </span>
+      </button>
+    );
+  }
 
   return (
     <Link to={path} className={`history-item ${colorClass}`}>

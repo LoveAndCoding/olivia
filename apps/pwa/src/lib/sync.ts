@@ -9,6 +9,7 @@ import {
   checkItem,
   completeReminderOccurrence,
   completeRoutineOccurrence as completeRoutineOccurrenceDomain,
+  skipRoutineOccurrence as skipRoutineOccurrenceDomain,
   createDraft,
   createInboxItem,
   createMealPlan as createMealPlanDomain,
@@ -29,7 +30,9 @@ import {
   updateMealEntryName as updateMealEntryNameDomain,
   updateMealPlanTitle as updateMealPlanTitleDomain,
   updateReminder,
-  updateRoutine as updateRoutineDomain
+  updateRoutine as updateRoutineDomain,
+  getReviewWindowsForOccurrence,
+  formatReviewWindowAsDateStrings
 } from '@olivia/domain';
 import type {
   ActiveListIndexResponse,
@@ -61,6 +64,7 @@ import type {
   ReminderSettingsResponse,
   ReminderUpdateChange,
   ReminderViewResponse,
+  ReviewRecord,
   Routine,
   RoutineDetailResponse,
   RoutineOccurrence,
@@ -70,7 +74,10 @@ import type {
   StructuredReminderInput,
   UpdateChange,
   ActivityHistoryResponse,
-  WeeklyViewResponse
+  CompleteRitualResponse,
+  WeeklyViewResponse,
+  RitualSummaryResponse,
+  Nudge
 } from '@olivia/contracts';
 import {
   appendCachedReminderTimelineEntries,
@@ -94,6 +101,8 @@ import {
   cacheRoutineDetail,
   cacheRoutineIndex,
   cacheRoutineOccurrence,
+  cacheReviewRecord,
+  getCachedReviewRecord,
   cacheSharedList,
   clientDb,
   enqueueCommand,
@@ -181,7 +190,12 @@ import {
   updateMealPlanTitle as updateMealPlanTitleApi,
   updateRoutine as updateRoutineApi,
   fetchWeeklyView,
-  fetchActivityHistory
+  fetchActivityHistory,
+  completeRitual as completeRitualApi,
+  fetchReviewRecord as fetchReviewRecordApi,
+  generateRitualSummary,
+  fetchNudgesApi,
+  skipRoutineOccurrenceApi
 } from './api';
 
 const isOffline = () => !window.navigator.onLine;
@@ -606,6 +620,10 @@ async function flushOutboxOnce() {
         const response = await completeRoutineOccurrenceApi(command.actorRole, command.routineId, command.expectedVersion);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
         await cacheRoutineOccurrence(response.occurrence);
+      } else if (command.kind === 'routine_skip') {
+        const response = await skipRoutineOccurrenceApi(command.routineId, command.actorRole, command.expectedVersion);
+        await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+        await cacheRoutineOccurrence(response.occurrence);
       } else if (command.kind === 'routine_pause') {
         const response = await pauseRoutineApi(command.actorRole, command.routineId, command.expectedVersion);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
@@ -648,6 +666,18 @@ async function flushOutboxOnce() {
       } else if (command.kind === 'meal_entry_delete') {
         await deleteMealEntryApi(command.actorRole, command.planId, command.entryId);
         await removeMealEntryFromCache(command.entryId);
+      } else if (command.kind === 'ritual_complete') {
+        const response = await completeRitualApi(command.routineId, command.occurrenceId, command.actorRole, command.carryForwardNotes, command.recapNarrative, command.overviewNarrative);
+        // Fetch canonical review record from server and replace provisional local record
+        const canonicalRecord = await fetchReviewRecordApi(response.reviewRecordId, command.actorRole);
+        // Delete provisional record if it had a different ID (should match but handle edge case)
+        if (command.provisionalReviewRecordId !== response.reviewRecordId) {
+          await clientDb.reviewRecords.delete(command.provisionalReviewRecordId);
+        }
+        await cacheReviewRecord({ ...canonicalRecord, pendingSync: false });
+        // Refresh routine in cache
+        const routineDetail = await fetchRoutineDetail(command.actorRole, command.routineId);
+        await cacheRoutineDetail(routineDetail);
       } else {
         throw new Error('Unsupported outbox command kind.');
       }
@@ -711,6 +741,45 @@ export async function saveReminderSettingsCommand(
   const response = await saveReminderSettings(role, preferences);
   await cacheReminderSettings(response);
   return response;
+}
+
+// ─── Nudge sync commands ───────────────────────────────────────────────────────
+
+export async function loadNudges(role: ActorRole): Promise<Nudge[]> {
+  if (isOffline()) return [];
+  try {
+    const response = await fetchNudgesApi(role);
+    return response.nudges;
+  } catch {
+    return [];
+  }
+}
+
+export async function submitRoutineSkip(
+  role: ActorRole,
+  routineId: string,
+  expectedVersion: number
+): Promise<void> {
+  if (!isOffline()) {
+    const response = await skipRoutineOccurrenceApi(routineId, role, expectedVersion);
+    await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
+    await cacheRoutineOccurrence(response.occurrence);
+    return;
+  }
+  // Offline: optimistic local update + enqueue
+  const cached = await getCachedRoutineDetail(routineId);
+  if (cached) {
+    const { updatedRoutine, occurrence } = skipRoutineOccurrenceDomain(cached.routine, role);
+    await cacheRoutine({ ...updatedRoutine, pendingSync: true });
+    await cacheRoutineOccurrence(occurrence);
+  }
+  await enqueueCommand({
+    kind: 'routine_skip',
+    commandId: crypto.randomUUID(),
+    actorRole: role,
+    routineId,
+    expectedVersion
+  });
 }
 
 // ─── Shared List sync commands ────────────────────────────────────────────────
@@ -1312,4 +1381,159 @@ export async function loadActivityHistory(): Promise<ActivityHistoryResponse> {
     }
   }
   return assembleActivityHistoryFromCache();
+}
+
+// ─── Planning Ritual Support ──────────────────────────────────────────────────
+
+/**
+ * Loads AI-generated ritual summary drafts.
+ * Online-only: AI drafts are transient session state, never cached.
+ * Offline or error: returns null drafts (graceful degradation).
+ */
+export async function loadRitualSummaries(
+  routineId: string,
+  occurrenceId: string
+): Promise<RitualSummaryResponse> {
+  if (isOffline()) {
+    return { recapDraft: null, overviewDraft: null };
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const result = await generateRitualSummary(routineId, occurrenceId, controller.signal);
+    clearTimeout(timeout);
+    return result;
+  } catch {
+    clearTimeout(timeout);
+    return { recapDraft: null, overviewDraft: null };
+  }
+}
+
+/**
+ * Completes a planning ritual occurrence and saves the review record.
+ * Online: calls the server and caches the result.
+ * Offline: creates a provisional review record locally, updates the routine,
+ *          and enqueues a 'ritual_complete' outbox command.
+ */
+export async function submitRitualCompletion(
+  role: ActorRole,
+  routineId: string,
+  occurrenceId: string,
+  expectedVersion: number,
+  carryForwardNotes: string | null,
+  recapNarrative: string | null = null,
+  overviewNarrative: string | null = null
+): Promise<CompleteRitualResponse> {
+  if (!isOffline()) {
+    const response = await completeRitualApi(routineId, occurrenceId, role, carryForwardNotes, recapNarrative, overviewNarrative);
+    // Refresh routine and occurrence in cache
+    const routineDetail = await fetchRoutineDetail(role, routineId);
+    await cacheRoutineDetail(routineDetail);
+    // Build and cache a provisional review record (server is source of truth, but cache for offline read)
+    const now = new Date().toISOString();
+    const provisionalRecord: ReviewRecord = {
+      id: response.reviewRecordId,
+      ritualOccurrenceId: occurrenceId,
+      reviewDate: response.reviewDate,
+      lastWeekWindowStart: '',  // will be fetched from server on detail view
+      lastWeekWindowEnd: '',
+      currentWeekWindowStart: '',
+      currentWeekWindowEnd: '',
+      carryForwardNotes,
+      recapNarrative,
+      overviewNarrative,
+      aiGenerationUsed: !!(recapNarrative || overviewNarrative),
+      completedAt: now,
+      completedBy: role as 'stakeholder',
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+      pendingSync: false
+    };
+    await cacheReviewRecord(provisionalRecord);
+    return response;
+  }
+
+  // Offline: generate provisional IDs and build local state
+  const provisionalReviewRecordId = crypto.randomUUID();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const cached = await clientDb.routines.get(routineId);
+  if (!cached) throw new Error('Routine not available offline.');
+
+  // Compute windows from the routine's current due date anchor
+  const anchorDate = new Date(cached.currentDueDate);
+  const windows = getReviewWindowsForOccurrence(anchorDate);
+  const lastWeek = formatReviewWindowAsDateStrings({ start: windows.lastWeekStart, end: windows.lastWeekEnd });
+  const currentWeek = formatReviewWindowAsDateStrings({ start: windows.currentWeekStart, end: windows.currentWeekEnd });
+  const reviewDate = now.toISOString().split('T')[0];
+
+  const provisionalRecord: ReviewRecord = {
+    id: provisionalReviewRecordId,
+    ritualOccurrenceId: occurrenceId,
+    reviewDate,
+    lastWeekWindowStart: lastWeek.start,
+    lastWeekWindowEnd: lastWeek.end,
+    currentWeekWindowStart: currentWeek.start,
+    currentWeekWindowEnd: currentWeek.end,
+    carryForwardNotes,
+    recapNarrative,
+    overviewNarrative,
+    aiGenerationUsed: !!(recapNarrative || overviewNarrative),
+    completedAt: nowIso,
+    completedBy: role as 'stakeholder',
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    version: 1,
+    pendingSync: true
+  };
+
+  const { updatedRoutine, occurrence } = completeRoutineOccurrenceDomain(cached, role, now);
+  const occurrenceWithReview = { ...occurrence, id: occurrenceId, reviewRecordId: provisionalReviewRecordId };
+
+  await clientDb.transaction('rw', clientDb.routines, clientDb.routineOccurrences, clientDb.reviewRecords, async () => {
+    await cacheRoutine({ ...updatedRoutine, pendingSync: true });
+    await cacheRoutineOccurrence(occurrenceWithReview);
+    await cacheReviewRecord(provisionalRecord);
+  });
+
+  const command: OutboxCommand = {
+    kind: 'ritual_complete',
+    commandId: crypto.randomUUID(),
+    actorRole: role,
+    routineId,
+    occurrenceId,
+    provisionalReviewRecordId,
+    carryForwardNotes,
+    recapNarrative,
+    overviewNarrative,
+    expectedVersion
+  };
+  await enqueueCommand(command);
+
+  return {
+    reviewRecordId: provisionalReviewRecordId,
+    reviewDate,
+    nextOccurrenceDueDate: updatedRoutine.currentDueDate
+  };
+}
+
+/**
+ * Loads a review record by ID.
+ * Online: fetches from server, caches locally.
+ * Offline: returns from local Dexie cache (may be provisional).
+ */
+export async function loadReviewRecord(reviewRecordId: string, role?: ActorRole): Promise<ReviewRecord> {
+  if (!isOffline()) {
+    try {
+      const record = await fetchReviewRecordApi(reviewRecordId, role);
+      await cacheReviewRecord({ ...record, pendingSync: false });
+      return record;
+    } catch {
+      // Fall through to cache
+    }
+  }
+  const cached = await getCachedReviewRecord(reviewRecordId);
+  if (!cached) throw new Error('Review record not available offline.');
+  return cached;
 }
