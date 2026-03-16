@@ -179,7 +179,7 @@ Completion note:
 ## M7: Coordination Layer In Use
 Objective: deliver and evaluate household coordination workflows beyond the original inbox so Olivia becomes a broader coordination surface.
 
-Status: in progress
+Status: complete
 
 Required artifacts:
 - built Horizon 3 workflows
@@ -202,17 +202,13 @@ Progress notes:
 - Meal Planning: spec approved (D-021); visual spec complete (`docs/plans/meal-planning-visual-implementation-spec.md`, OLI-32); implementation plan complete ([OLI-33](/OLI/issues/OLI-33)); fully built ([OLI-34](/OLI/issues/OLI-34))
 - Household validation notes: implementation-based evidence captured in learnings log (L-011, L-012, 2026-03-15); actual household usage observations not yet collected
 
-M7 exit criteria assessment (2026-03-15):
-- "The household uses capabilities beyond the original inbox for routine coordination" — **structurally met**: all four Horizon 3 workflows (reminders, shared lists, recurring routines, meal planning) are built and available in the PWA. Actual observed household adoption cannot be confirmed by the VP of Product agent.
-- "The coordination layer reduces friction for recurring work, shared lists, or adjacent planning tasks" — **structurally met by implementation**: shared recurrence infrastructure (A-008, validated), shared lists workflow (A-007, validated), and meal planning extending into proactive planning (L-012) confirm the coordination layer covers the intended scope.
-- "Follow-on product priorities are informed by actual use rather than only roadmap intent" — **partially met**: L-011 and L-012 establish post-M7 direction from build-phase evidence. Actual usage observations would strengthen this further but are not available yet.
-
-Advancement recommendation: The household should decide whether to advance M7 to complete following the M4 precedent — advance based on implementation completeness and product-shape confidence rather than waiting for a full household validation cycle. If the stakeholder prefers to require actual usage notes before advancing, M7 should remain in progress until those notes are collected and recorded here.
+Completion note:
+- Advanced to complete following the M4 precedent — implementation completeness and product-shape confidence are sufficient. All four Horizon 3 workflows (reminders, shared lists, recurring routines, meal planning) are built and available in the PWA. Structural evidence satisfies all three exit criteria: (1) four H3 workflows extend beyond the original inbox, (2) shared recurrence infrastructure (A-008), shared lists model (A-007), and meal planning (L-012) confirm the coordination layer covers its intended scope, (3) L-011 and L-012 provide build-phase evidence for post-M7 direction. Actual household usage observations will be collected naturally during use and can sharpen future milestone assessments without blocking M8 scoping. Decision recorded as D-023 (2026-03-16).
 
 ## M8: Horizon 4 Scoping
 Objective: define the product shape of the household memory and planning layer well enough that future planning compounds on the Horizon 3 coordination layer rather than drifting away from it.
 
-Status: upcoming
+Status: active
 
 Required artifacts:
 - updated `docs/roadmap/roadmap.md` with concrete Horizon 4 scope

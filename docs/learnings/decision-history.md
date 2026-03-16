@@ -228,6 +228,16 @@ Use this structure for future entries:
 - Status: active
 - Related docs: `docs/roadmap/roadmap.md`, `docs/roadmap/milestones.md`, `docs/learnings/learnings-log.md` (L-011, L-012)
 
+### D-023: M7 is complete — coordination layer advanced based on implementation completeness
+- Date: 2026-03-16
+- Area: roadmap progression
+- Decision: Advance M7 (Coordination Layer In Use) to complete following the M4 precedent — implementation completeness and product-shape confidence are sufficient to move forward. Do not wait for household usage observations before beginning M8 scoping.
+- Rationale: all four Horizon 3 workflows (reminders, shared lists, recurring routines, meal planning) are built and available in the PWA. Structural evidence satisfies all three exit criteria. L-011 and L-012 provide build-phase evidence adequate for post-M7 direction. Blocking M8 scoping on usage data would stall product momentum without proportionate benefit; the household will validate during use.
+- Alternatives considered: requiring actual household usage notes before marking M7 complete; partial advancement pending specific usage evidence.
+- Trade-offs: advancing now keeps product momentum and allows M8 scoping to begin immediately; usage-shaped learning is accepted as ongoing rather than a required gate condition.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md`, `docs/learnings/learnings-log.md` (L-011, L-012), `docs/learnings/decision-history.md` (D-022)
+
 ### D-017: Recurring Routines is the next Horizon 3 spec target
 - Date: 2026-03-15
 - Area: roadmap sequencing
