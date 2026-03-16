@@ -248,6 +248,16 @@ Use this structure for future entries:
 - Status: active
 - Related docs: `docs/roadmap/milestones.md`, `docs/learnings/learnings-log.md` (L-011, L-012), `docs/learnings/decision-history.md` (D-022)
 
+### D-025: Planning ritual support spec drafted as the third H4 target
+- Date: 2026-03-16
+- Area: delivery planning
+- Decision: Draft `docs/specs/planning-ritual-support.md` as the third Horizon 4 spec target, scoped to a weekly household review ritual that uses the existing recurring routines infrastructure for scheduling and draws from activity history and unified weekly view data sources for content. The Phase 1 review flow has three sections: last week recap, coming week overview, and carry-forward notes. No AI is required for Phase 1.
+- Rationale: this spec follows the H4 sequencing confirmed in D-022 and the architectural principle in L-013 (synthesize existing H3 state before introducing AI or new primitives). Planning ritual support completes the H4 temporal layer: the weekly view covers the present and near future, activity history covers the recent past, and the planning ritual creates a structured synthesis moment. Using the recurring routines infrastructure avoids introducing a new workflow primitive and reuses proven scheduling and lifecycle behavior. The three-section review flow is the minimum viable ritual that adds meaningful synthesis value over using the weekly view and activity history separately.
+- Alternatives considered: scoping Phase 1 with AI-generated summaries included (rejected — L-013 establishes synthesis-first before AI enhancement); defining a new "ritual" entity type separate from recurring routines (rejected — the recurring routines infrastructure handles all scheduling, lifecycle, and occurrence tracking needs without modification).
+- Trade-offs: narrow Phase 1 scope maximizes execution clarity but defers carry-forward action conversion, shared spouse participation, and AI narrative — all of which are the high-value extensions that make the ritual feel fully realized. Phase 2 scope is clear and well-bounded.
+- Status: active
+- Related docs: `docs/specs/planning-ritual-support.md`, `docs/specs/activity-history.md`, `docs/specs/unified-weekly-view.md`, `docs/specs/recurring-routines.md`, D-022, L-013, L-014
+
 ### D-017: Recurring Routines is the next Horizon 3 spec target
 - Date: 2026-03-15
 - Area: roadmap sequencing
