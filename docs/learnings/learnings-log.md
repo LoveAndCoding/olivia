@@ -125,6 +125,15 @@ Use this structure for future entries:
 - Source: meal planning spec (OLI-28), visual spec (OLI-32), implementation plan (OLI-33), full implementation (OLI-34)
 - Related docs: `docs/specs/meal-planning.md`, `docs/plans/meal-planning-visual-implementation-spec.md`
 
+### L-015: The unified weekly view established the cross-workflow temporal query pattern — activity history should follow the same shape backward in time
+- Date: 2026-03-16
+- Area: product architecture
+- Learning: The unified weekly view implementation (OLI-45) delivered three domain helpers (getWeekBounds, getRoutineOccurrenceDatesForWeek, getRoutineOccurrenceStatusForDate) and a dedicated API endpoint (GET /api/weekly-view) that assembles cross-workflow scheduled state for a given calendar week. This pattern — a single query boundary, a domain layer that provides temporal helpers, a dedicated read-only API endpoint, and PWA assembly from cached H3 state — is the right shape for activity history as well, but looking backward at completed state rather than forward at scheduled state.
+- Why it matters: the activity history implementation does not need to invent a new architectural approach. It can follow the weekly view pattern directly, substituting `completed_at`/`resolved_at` window queries for the weekly view's schedule-projection logic.
+- Implication: the activity history implementation plan should describe the GET /api/activity-history endpoint, the 30-day window domain helper, and per-workflow-type completed-state queries in explicit parallel to the weekly view's domain and API layers. The Founding Engineer should confirm completion timestamp availability for all five H3 data sources before beginning Phase 1 implementation.
+- Source: unified weekly view implementation (OLI-45, 2026-03-16)
+- Related docs: `docs/specs/activity-history.md`, `docs/specs/unified-weekly-view.md`, `docs/plans/unified-weekly-view-implementation-plan.md`
+
 ### L-014: Activity history and the unified weekly view form a complete temporal pair for Olivia's H4 layer
 - Date: 2026-03-16
 - Area: product architecture

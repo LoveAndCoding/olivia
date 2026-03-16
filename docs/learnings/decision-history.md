@@ -248,6 +248,16 @@ Use this structure for future entries:
 - Status: active
 - Related docs: `docs/roadmap/milestones.md`, `docs/learnings/learnings-log.md` (L-011, L-012), `docs/learnings/decision-history.md` (D-022)
 
+### D-027: M10 is complete — Horizon 4 first workflow built
+- Date: 2026-03-16
+- Area: roadmap progression
+- Decision: Advance M10 (Horizon 4 Layer Build) to complete based on implementation evidence from OLI-45. All four exit criteria are satisfied. M11 (Horizon 4 Second Workflow Build Readiness) is now the active milestone.
+- Rationale: (1) The unified weekly view is available in the PWA and surfaces reminders, routines, meal plans, and inbox items by day — all six implementation phases delivered (OLI-45). (2) Household members can navigate to the weekly view via the home screen entry point. (3) No new entity types were introduced — the view draws entirely from existing H3 entity state via GET /api/weekly-view. (4) All acceptance criteria from the spec are met — 154 tests passing (122 domain + 32 API), typecheck clean across all packages. Following the M4, M7, and prior advancement precedents, implementation completeness is sufficient evidence to advance without waiting for household usage observations.
+- Alternatives considered: waiting for household usage observations before marking M10 complete; requiring explicit acceptance criteria sign-off from stakeholder before advancing.
+- Trade-offs: advancing now keeps product momentum and unblocks M11 scoping immediately; usage-shaped learning will be collected naturally during household use of the weekly view.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md`, `docs/specs/unified-weekly-view.md`, `docs/plans/unified-weekly-view-implementation-plan.md`, D-022, D-026, L-013, L-015
+
 ### D-026: M9 is complete — Horizon 4 Build Readiness achieved
 - Date: 2026-03-16
 - Area: roadmap progression

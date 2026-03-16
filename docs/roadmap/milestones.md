@@ -270,7 +270,7 @@ Completion note:
 ## M10: Horizon 4 Layer Build
 Objective: deliver and evaluate the first Horizon 4 workflow so Olivia gains a household memory and temporal planning layer.
 
-Status: active
+Status: complete
 
 Required artifacts:
 - built unified weekly view — all three H4 specs provide context; the weekly view implementation plan is the primary guide
@@ -290,6 +290,35 @@ Progress notes:
 - Implementation plan ready (OLI-42): `docs/plans/unified-weekly-view-implementation-plan.md`
 - Visual spec ready (OLI-40): `docs/plans/unified-weekly-view-visual-implementation-spec.md`
 - Implementation complete (OLI-45): all six phases delivered. Contract schemas, domain helpers (getWeekBounds, getRoutineOccurrenceDatesForWeek, getRoutineOccurrenceStatusForDate), API endpoint GET /api/weekly-view, PWA api/sync/offline assembly, and weekly view home screen (home-page.tsx). 154 tests passing (122 domain + 32 API). Typecheck clean across all packages.
+
+Completion note:
+- Advanced to complete based on implementation evidence from OLI-45. All four M10 exit criteria are satisfied: (1) the unified weekly view is available in the PWA and surfaces reminders, routines, meal plans, and inbox items by day — all six implementation phases delivered; (2) household members can navigate to the weekly view and see the current week's household state — home-page.tsx delivers the primary entry point; (3) no new entity types were introduced — the view draws entirely from existing H3 entity state via the GET /api/weekly-view endpoint; (4) all acceptance criteria from the spec are met — 154 tests passing (122 domain + 32 API), typecheck clean. The domain helper pattern (getWeekBounds, getRoutineOccurrenceDatesForWeek, getRoutineOccurrenceStatusForDate) establishes the temporal query foundation that activity history will extend backward in time. Decision recorded as D-027 (2026-03-16).
+
+## M11: Horizon 4 Second Workflow Build Readiness
+Objective: prepare the activity history workflow for implementation so the household can begin gaining backward-looking recall of what was accomplished.
+
+Status: active
+
+Required artifacts:
+- CEO-approved activity history spec (`docs/specs/activity-history.md` — currently Draft; requires CEO approval before implementation planning begins)
+- Visual spec for activity history (`docs/plans/activity-history-visual-implementation-spec.md`)
+- Implementation plan for activity history
+- Updated learnings and decisions based on unified weekly view build outcomes (L-015)
+
+Exit criteria:
+- the activity history spec has CEO approval and is concrete enough for implementation without major product ambiguity
+- the visual spec resolves all designer decisions deferred from the feature spec (navigation entry point, day-section layout, workflow-type visual differentiation consistent with the weekly view)
+- the implementation plan builds on existing H3 completion-state data — no new entity types introduced in Phase 1
+- the four open questions in the activity history spec are either resolved or explicitly deferred with rationale
+
+Evidence of completion:
+- an implementation plan can be generated for activity history without rediscovering the product model
+- the implementation agent has clear acceptance criteria, a visual reference, and bounded engineering decisions
+
+Progress notes:
+- Activity history feature spec written (OLI-41): `docs/specs/activity-history.md` — status is Draft, awaiting CEO approval
+- Planning ritual support spec written (OLI-43): `docs/specs/planning-ritual-support.md` — provides forward context for the third H4 workflow
+- L-015 added: unified weekly view build outcomes inform activity history implementation approach
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
