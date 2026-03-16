@@ -74,6 +74,13 @@ import {
   updateRoutineRequestSchema,
   weeklyViewResponseSchema,
   activityHistoryResponseSchema,
+  completeRitualRequestSchema,
+  completeRitualResponseSchema,
+  reviewRecordSchema,
+  ritualSummaryResponseSchema,
+  nudgesResponseSchema,
+  skipRoutineOccurrenceRequestSchema,
+  skipRoutineOccurrenceResponseSchema,
   type ActorRole,
   type DraftItem,
   type DraftReminder,
@@ -141,9 +148,13 @@ import {
   getRoutineOccurrenceDatesForWeek,
   getRoutineOccurrenceStatusForDate,
   getActivityHistoryWindow,
-  groupActivityHistoryByDay
+  groupActivityHistoryByDay,
+  getReviewWindowsForOccurrence,
+  formatReviewWindowAsDateStrings,
+  skipRoutineOccurrence,
+  sortNudgesByPriority
 } from '@olivia/domain';
-import { DisabledAiProvider } from './ai';
+import { createAiProvider, type RitualSummaryInput } from './ai';
 import type { AppConfig } from './config';
 import { createDatabase } from './db/client';
 import { DraftStore } from './drafts';
@@ -227,7 +238,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   const db = createDatabase(config.dbPath);
   const repository = new InboxRepository(db);
   const drafts = new DraftStore();
-  const aiProvider = new DisabledAiProvider();
+  const aiProvider = createAiProvider(config.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY, app.log);
   const push = createPushProvider(config);
   const stopJobs = startBackgroundJobs(repository, push, config, app.log);
   app.addHook('onClose', async () => stopJobs());
@@ -1590,14 +1601,15 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
     // Map each source to ActivityHistoryItem union members
     const items = [
-      // Routine occurrences
+      // Routine occurrences (planning rituals include reviewRecordId)
       ...data.completedRoutineOccurrences.map(({ routineOccurrence, routine }) => ({
         type: 'routine' as const,
         routineId: routine.id,
         routineTitle: routine.title,
         owner: routine.owner,
         dueDate: routineOccurrence.dueDate.split('T')[0],
-        completedAt: routineOccurrence.completedAt!
+        completedAt: routineOccurrence.completedAt!,
+        reviewRecordId: routineOccurrence.reviewRecordId ?? null
       })),
 
       // Resolved reminders
@@ -1652,6 +1664,315 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       windowEnd: windowEndDate,
       days
     }));
+  });
+
+  // ─── Planning Ritual Support ──────────────────────────────────────────────────
+
+  app.post('/api/routines/:routineId/generate-ritual-summary', async (request, reply) => {
+    const params = request.params as { routineId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const actorRole = rawBody.actorRole as string;
+    if (actorRole === 'spouse') {
+      return reply.status(403).send({ code: 'FORBIDDEN', message: 'Spouse cannot initiate AI generation.' });
+    }
+
+    const routine = repository.getRoutine(params.routineId);
+    if (!routine) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+    }
+    if (routine.ritualType !== 'weekly_review') {
+      return reply.status(400).send({ code: 'NOT_A_RITUAL', message: 'Not a planning ritual.' });
+    }
+
+    const occurrenceId = rawBody.occurrenceId as string | undefined;
+    if (!occurrenceId) {
+      return reply.status(400).send({ code: 'MISSING_OCCURRENCE', message: 'occurrenceId is required.' });
+    }
+
+    const existingOccurrence = repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate);
+    if (existingOccurrence && existingOccurrence.completedAt !== null) {
+      return reply.status(409).send({ code: 'ALREADY_COMPLETED', message: 'Occurrence already completed.' });
+    }
+
+    // Compute review windows anchored to the occurrence's due date
+    const anchorDate = new Date(routine.currentDueDate);
+    const windows = getReviewWindowsForOccurrence(anchorDate);
+    const lastWeek = formatReviewWindowAsDateStrings({ start: windows.lastWeekStart, end: windows.lastWeekEnd });
+    const currentWeek = formatReviewWindowAsDateStrings({ start: windows.currentWeekStart, end: windows.currentWeekEnd });
+
+    // Assemble recap items from activity history for the last-week window
+    const lastWeekStart = new Date(lastWeek.start + 'T00:00:00');
+    const lastWeekEnd = new Date(lastWeek.end + 'T23:59:59');
+    const histData = repository.getActivityHistoryData(lastWeekStart, lastWeekEnd);
+    const recapItems = [
+      ...histData.completedRoutineOccurrences.map(({ routineOccurrence, routine: r }) => ({
+        type: 'routine' as const,
+        routineId: r.id,
+        routineTitle: r.title,
+        owner: r.owner,
+        dueDate: routineOccurrence.dueDate.split('T')[0],
+        completedAt: routineOccurrence.completedAt!,
+        reviewRecordId: routineOccurrence.reviewRecordId ?? null
+      })),
+      ...histData.resolvedReminders.map((r) => ({
+        type: 'reminder' as const,
+        reminderId: r.id,
+        title: r.title,
+        owner: r.owner,
+        resolvedAt: r.state === 'completed' ? r.completedAt! : r.cancelledAt!,
+        resolution: (r.state === 'completed' ? 'completed' : 'dismissed') as 'completed' | 'dismissed'
+      })),
+      ...histData.pastMealEntries.map(({ entry, plan }) => {
+        const entryDate = new Date(plan.weekStartDate + 'T00:00:00');
+        entryDate.setDate(entryDate.getDate() + entry.dayOfWeek);
+        return {
+          type: 'meal' as const,
+          entryId: entry.id,
+          planId: plan.id,
+          planTitle: plan.title,
+          name: entry.name,
+          dayOfWeek: entry.dayOfWeek,
+          date: entryDate.toISOString().split('T')[0]
+        };
+      }),
+      ...histData.doneInboxItems.map((item) => ({
+        type: 'inbox' as const,
+        itemId: item.id,
+        title: item.title,
+        owner: item.owner,
+        completedAt: item.lastStatusChangedAt
+      })),
+      ...histData.checkedListItems.map(({ item, listName }) => ({
+        type: 'listItem' as const,
+        itemId: item.id,
+        body: item.body,
+        listId: item.listId,
+        listName,
+        checkedAt: item.checkedAt!
+      }))
+    ];
+
+    // Assemble weekly view data for the current-week window
+    const currentWeekStart = new Date(currentWeek.start + 'T00:00:00');
+    const currentWeekEnd = new Date(currentWeek.end + 'T23:59:59');
+    const weekData = repository.getWeeklyViewData(currentWeekStart, currentWeekEnd);
+    const now = new Date();
+    const overviewDays: WeeklyDayView[] = [];
+    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+      const dayDate = new Date(currentWeekStart);
+      dayDate.setDate(currentWeekStart.getDate() + dayIndex);
+      const dayMidnight = startOfDay(dayDate);
+      const dayDateStr = format(dayMidnight, 'yyyy-MM-dd');
+
+      const dayReminders: WeeklyReminder[] = weekData.reminders
+        .filter((r) => isSameDay(parseISO(r.scheduledAt.split('T')[0] + 'T00:00:00'), dayMidnight))
+        .map((r) => ({
+          reminderId: r.id,
+          title: r.title,
+          owner: r.owner,
+          scheduledAt: r.scheduledAt,
+          dueState: r.state
+        }));
+
+      const dayRoutines: WeeklyRoutineOccurrence[] = [];
+      for (const r of weekData.routines) {
+        const occurrenceDates = getRoutineOccurrenceDatesForWeek(r, currentWeekStart, currentWeekEnd);
+        const matchesThisDay = occurrenceDates.some((d) => isSameDay(d, dayMidnight));
+        if (matchesThisDay) {
+          const routineOccs = weekData.routineOccurrences.get(r.id) ?? [];
+          const dueState = getRoutineOccurrenceStatusForDate(r, routineOccs, dayMidnight, now);
+          dayRoutines.push({
+            routineId: r.id,
+            routineTitle: r.title,
+            owner: r.owner,
+            recurrenceRule: r.recurrenceRule,
+            intervalDays: r.intervalDays ?? null,
+            dueDate: dayDateStr,
+            dueState,
+            completed: dueState === 'completed'
+          });
+        }
+      }
+
+      const weekStartDateStr = format(currentWeekStart, 'yyyy-MM-dd');
+      const dayMeals: WeeklyMealEntry[] = weekData.activeMealPlan
+        ? weekData.mealEntries
+            .filter((e) => e.dayOfWeek === dayIndex)
+            .map((e) => ({
+              entryId: e.id,
+              planId: e.planId,
+              planTitle: weekData.activeMealPlan!.title,
+              name: e.name,
+              dayOfWeek: e.dayOfWeek,
+              weekStartDate: weekStartDateStr
+            }))
+        : [];
+
+      const dayInboxItems: WeeklyInboxItem[] = weekData.inboxItems
+        .filter((item) => item.dueAt && isSameDay(parseISO(item.dueAt.split('T')[0] + 'T00:00:00'), dayMidnight))
+        .map((item) => ({
+          itemId: item.id,
+          title: item.title,
+          owner: item.owner,
+          dueAt: item.dueAt!,
+          status: item.status
+        }));
+
+      overviewDays.push({
+        date: dayDateStr,
+        dayOfWeek: dayIndex,
+        routines: dayRoutines,
+        reminders: dayReminders,
+        meals: dayMeals,
+        inboxItems: dayInboxItems
+      });
+    }
+
+    const summaryInput: RitualSummaryInput = {
+      recapItems,
+      lastWeekWindowStart: lastWeek.start,
+      lastWeekWindowEnd: lastWeek.end,
+      overviewDays,
+      currentWeekWindowStart: currentWeek.start,
+      currentWeekWindowEnd: currentWeek.end
+    };
+
+    try {
+      const output = await aiProvider.generateRitualSummaries(summaryInput);
+      return reply.send(ritualSummaryResponseSchema.parse({
+        recapDraft: output.recapDraft,
+        overviewDraft: output.overviewDraft
+      }));
+    } catch {
+      // AI provider error: return null drafts, do not propagate error
+      return reply.send(ritualSummaryResponseSchema.parse({ recapDraft: null, overviewDraft: null }));
+    }
+  });
+
+  app.post('/api/routines/:routineId/complete-ritual', async (request, reply) => {
+    const params = request.params as { routineId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = completeRitualRequestSchema.parse({ ...rawBody });
+    assertStakeholderWrite(body.actorRole);
+
+    const now = new Date();
+    const routine = repository.getRoutine(params.routineId);
+    if (!routine) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+    }
+    if (routine.ritualType !== 'weekly_review') {
+      return reply.status(400).send({ code: 'NOT_A_RITUAL', message: 'Not a planning ritual.' });
+    }
+
+    // Check if currentDueDate occurrence is already completed (ritual already done for this cycle)
+    const existingOccurrence = repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate);
+    if (existingOccurrence && existingOccurrence.completedAt !== null) {
+      return reply.status(409).send({ code: 'ALREADY_COMPLETED', message: 'Occurrence already completed.' });
+    }
+
+    // Anchor windows to occurrence due date, not completion date (handles late completions)
+    const anchorDate = new Date(routine.currentDueDate);
+    const windows = getReviewWindowsForOccurrence(anchorDate);
+    const lastWeek = formatReviewWindowAsDateStrings({ start: windows.lastWeekStart, end: windows.lastWeekEnd });
+    const currentWeek = formatReviewWindowAsDateStrings({ start: windows.currentWeekStart, end: windows.currentWeekEnd });
+    const reviewDate = format(now, 'yyyy-MM-dd');
+    const completedAt = now.toISOString();
+    const occurrenceId = body.occurrenceId; // client-generated UUID; used as idempotency key
+
+    const nowIso = now.toISOString();
+    const recapNarrative = body.recapNarrative ?? null;
+    const overviewNarrative = body.overviewNarrative ?? null;
+    const aiGenerationUsed = !!(recapNarrative || overviewNarrative);
+    const fullReviewRecord = {
+      id: randomUUID(),
+      ritualOccurrenceId: occurrenceId,
+      reviewDate,
+      lastWeekWindowStart: lastWeek.start,
+      lastWeekWindowEnd: lastWeek.end,
+      currentWeekWindowStart: currentWeek.start,
+      currentWeekWindowEnd: currentWeek.end,
+      carryForwardNotes: body.carryForwardNotes,
+      recapNarrative,
+      overviewNarrative,
+      aiGenerationUsed,
+      completedAt,
+      completedBy: body.actorRole as 'stakeholder',
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      version: 1
+    };
+
+    // Use domain function to advance currentDueDate; we override the occurrence ID and add reviewRecordId
+    const { updatedRoutine, occurrence: domainOccurrence } = completeRoutineOccurrence(routine, body.actorRole, now);
+    const occurrenceWithReview = {
+      ...domainOccurrence,
+      id: occurrenceId,
+      reviewRecordId: fullReviewRecord.id
+    };
+
+    const savedOk = repository.completeRitualOccurrence(updatedRoutine, occurrenceWithReview, fullReviewRecord, routine.version);
+    if (!savedOk) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+
+    request.log.info({ routineId: routine.id, reviewRecordId: fullReviewRecord.id }, 'accepted ritual complete command');
+    return reply.send(completeRitualResponseSchema.parse({
+      reviewRecordId: fullReviewRecord.id,
+      reviewDate,
+      nextOccurrenceDueDate: updatedRoutine.currentDueDate
+    }));
+  });
+
+  app.get('/api/review-records/:reviewRecordId', async (request, reply) => {
+    const params = request.params as { reviewRecordId: string };
+    const query = request.query as Record<string, unknown>;
+    const role = query.role;
+    if (role !== undefined && !isReadableActorRole(role)) {
+      return reply.status(403).send({ code: 'ROLE_INVALID', message: 'Invalid role.' });
+    }
+    const record = repository.getReviewRecord(params.reviewRecordId);
+    if (!record) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Review record not found.' });
+    }
+    return reply.send(reviewRecordSchema.parse(record));
+  });
+
+  // ─── Proactive Household Nudges ─────────────────────────────────────────────
+
+  app.get('/api/nudges', async (request, reply) => {
+    const query = request.query as Record<string, unknown>;
+    const role = query.actorRole;
+    if (role !== undefined && !isReadableActorRole(role)) {
+      return reply.status(403).send({ code: 'ROLE_INVALID', message: 'Invalid role.' });
+    }
+
+    const now = new Date();
+    const nudges = repository.getNudgePayloads(now);
+    const sorted = sortNudgesByPriority(nudges);
+    return reply.send(nudgesResponseSchema.parse({ nudges: sorted }));
+  });
+
+  app.post('/api/routines/:routineId/skip', async (request, reply) => {
+    const params = request.params as { routineId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = skipRoutineOccurrenceRequestSchema.parse({ ...rawBody, routineId: params.routineId });
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const currentRoutine = repository.getRoutine(params.routineId);
+    if (!currentRoutine) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+    }
+    if (currentRoutine.version !== body.expectedVersion) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentRoutine.version, retryGuidance: 'Refresh and retry.' });
+    }
+    const { updatedRoutine, occurrence } = skipRoutineOccurrence(currentRoutine, body.actorRole, now);
+    const saved = repository.completeRoutineOccurrence(updatedRoutine, occurrence, body.expectedVersion);
+    if (!saved) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
+    }
+    request.log.info({ routineId: params.routineId }, 'accepted routine skip command');
+    const routineWithState = { ...updatedRoutine, dueState: computeRoutineDueState(updatedRoutine, null, now) };
+    return reply.send(skipRoutineOccurrenceResponseSchema.parse({ savedRoutine: routineWithState, occurrence, newVersion: updatedRoutine.version }));
   });
 
   app.get('/api/admin/export', async () => repository.exportSnapshot());

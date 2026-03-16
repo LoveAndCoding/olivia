@@ -13,7 +13,8 @@ export type AppConfig = {
   dbPath: string;
   staleThresholdDays: number;
   dueSoonDays: number;
-  aiProvider: 'disabled';
+  aiProvider: 'disabled' | 'claude';
+  anthropicApiKey?: string;
   notificationsEnabled: boolean;
   vapidPublicKey: string | null;
   vapidPrivateKey: string | null;
@@ -29,7 +30,8 @@ export function loadConfig(): AppConfig {
     dbPath: resolveDbPath(),
     staleThresholdDays: Number(process.env.OLIVIA_STALE_THRESHOLD_DAYS ?? 14),
     dueSoonDays: Number(process.env.OLIVIA_DUE_SOON_DAYS ?? 7),
-    aiProvider: 'disabled',
+    aiProvider: process.env.ANTHROPIC_API_KEY ? 'claude' : 'disabled',
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY || undefined,
     notificationsEnabled: process.env.OLIVIA_NOTIFICATIONS_ENABLED === 'true',
     vapidPublicKey: process.env.OLIVIA_VAPID_PUBLIC_KEY ?? null,
     vapidPrivateKey: process.env.OLIVIA_VAPID_PRIVATE_KEY ?? null,

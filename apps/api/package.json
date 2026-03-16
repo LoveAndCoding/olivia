@@ -10,6 +10,7 @@
     "test": "vitest run test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@fastify/cors": "latest",
     "@olivia/contracts": "0.1.0",
     "@olivia/domain": "0.1.0",
