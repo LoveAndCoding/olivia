@@ -297,7 +297,7 @@ Completion note:
 ## M11: Horizon 4 Second Workflow Build Readiness
 Objective: prepare the activity history workflow for implementation so the household can begin gaining backward-looking recall of what was accomplished.
 
-Status: active
+Status: complete
 
 Required artifacts:
 - CEO-approved activity history spec (`docs/specs/activity-history.md` — approved, D-028)
@@ -316,9 +316,14 @@ Evidence of completion:
 - the implementation agent has clear acceptance criteria, a visual reference, and bounded engineering decisions
 
 Progress notes:
-- Activity history feature spec written (OLI-41): `docs/specs/activity-history.md` — approved by CEO (D-028, 2026-03-15); visual spec and implementation plan can now begin
+- Activity history feature spec written (OLI-41): `docs/specs/activity-history.md` — approved by CEO (D-028, 2026-03-15)
 - Planning ritual support spec written (OLI-43): `docs/specs/planning-ritual-support.md` — provides forward context for the third H4 workflow
 - L-015 added: unified weekly view build outcomes inform activity history implementation approach
+- Visual spec complete (OLI-48): `docs/plans/activity-history-visual-implementation-spec.md` — resolves all 7 designer decisions (OQ-1 through OQ-4 plus navigation, ordering, and completed-item treatment); Memory tab as primary nav entry, `/history` route, 5-screen-state coverage, all five workflow-type item rows
+- Implementation plan complete (OLI-49): `docs/plans/activity-history-implementation-plan.md` — 7-phase plan, no new entity types, builds on existing H3 completion-state data
+
+Completion note:
+- All M11 required artifacts are in place. Exit criteria met: (1) activity history spec has CEO approval (D-028) and is execution-ready with 20 acceptance criteria; (2) the visual spec resolves all seven designer decisions deferred from the feature spec — navigation entry point (Memory tab primary + weekly view footer link secondary), day-section ordering (chronological interleave, no sub-headers), workflow-type differentiation (5-type system with shared list items as fifth), completed-item treatment (full opacity, no strikethrough), day header labeling (Today/Yesterday/older), shared list item volume (individual items in Phase 1), and dismissed-reminder visual treatment (OQ-2); (3) the implementation plan builds on existing H3 completion-state data — no new entity types introduced in Phase 1, pure read-only aggregation layer; (4) all four open questions from the feature spec are either resolved in the visual spec or explicitly deferred to the Founding Engineer (timestamp availability, OQ-4). Decision recorded as D-029 (2026-03-16).
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-029: M11 is complete — Horizon 4 second workflow build readiness achieved
+- Date: 2026-03-16
+- Area: roadmap progression
+- Decision: Advance M11 (Horizon 4 Second Workflow Build Readiness) to complete. All required artifacts exist and all exit criteria are met.
+- Rationale: (1) The activity history spec has CEO approval (D-028) and is execution-ready with 20 acceptance criteria and full template coverage. (2) The visual spec (OLI-48) resolves all seven designer decisions deferred from the feature spec — navigation entry point (Memory tab primary + weekly view footer secondary), day-section ordering (chronological interleave, no sub-headers), 5-type workflow differentiation (shared list items as fifth type using `--violet`/✓), completed-item treatment (full opacity, no strikethrough), day header labeling (Today/Yesterday/older), shared list item display (individual in Phase 1), and dismissed-reminder treatment (OQ-2). (3) The implementation plan (OLI-49) covers all seven phases with no new entity types — pure read-only aggregation over existing H3 completion state. (4) All four open questions from the feature spec are resolved or explicitly deferred to the Founding Engineer with rationale (OQ-4: timestamp availability).
+- Alternatives considered: waiting for Founding Engineer confirmation on timestamp availability before advancing — rejected because OQ-4 is correctly delegated to the implementation plan and does not block product readiness; requiring CEO review of the visual spec and implementation plan before advancing — not required by M11 gate conditions.
+- Trade-offs: advancing now unblocks the Founding Engineer to begin activity history implementation immediately; the single deferred open question (timestamp availability) is appropriately surfaced in Section 11 of the visual spec and in the implementation plan phase notes.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md`, `docs/specs/activity-history.md`, `docs/plans/activity-history-visual-implementation-spec.md`, `docs/plans/activity-history-implementation-plan.md`, D-028, D-027, L-015
+
 ### D-001: Olivia will be positioned as a household command center
 - Date: 2026-03-08
 - Area: product strategy
