@@ -757,7 +757,8 @@ Evidence of completion:
 - the implementation agent has a clear algorithm to implement, edge cases to handle, and bounded engineering decisions
 
 Progress notes:
-- Feature spec drafted (OLI-79): `docs/specs/completion-window-push-timing.md` — 14 acceptance criteria, IQR algorithm with variance guard, no new tables, 5 Founding Engineer open questions. Pending CEO approval.
+- Feature spec drafted and CEO-approved (OLI-79, D-048): `docs/specs/completion-window-push-timing.md` — 14 acceptance criteria, IQR algorithm with variance guard, no new tables, 5 Founding Engineer open questions resolved in implementation plan.
+- Implementation plan complete (OLI-80): `docs/plans/completion-window-push-timing-implementation-plan.md` — 7 phases, 7 architecture decisions (timezone source, max hold duration, sample size, lead buffer, variance threshold, routine-only scope, constants-not-env-vars), 14 acceptance criteria mapped to unit and integration tests.
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

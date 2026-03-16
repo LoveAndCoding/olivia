@@ -1,7 +1,7 @@
 # Feature Spec: Completion-Window-Based Push Timing
 
 ## Status
-- Draft
+- Approved (CEO, 2026-03-16)
 
 ## Summary
 

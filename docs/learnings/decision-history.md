@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-048: CEO approves completion-window-based push timing spec — M26 spec gate passed
+- Date: 2026-03-16
+- Area: delivery planning / H5 Phase 2 Layer 1
+- Decision: Approve `docs/specs/completion-window-push-timing.md` as the feature spec for completion-window-based push timing. All four key design decisions confirmed: (1) routine nudges only in this phase — reminders and rituals use immediate delivery, (2) invisible to household — no UI, no settings, no timing explanation surfaced, (3) no new tables or columns — windows computed on demand from existing `routine_occurrences.completedAt` data, (4) IQR algorithm with variance guard (>6h = no_window) and 2-day maximum hold bypass. The 5 open questions (timezone source, max hold duration, sample size, lead buffer, variance threshold) are appropriately scoped as Founding Engineer implementation decisions with sensible defaults recommended. 14 acceptance criteria are concrete and testable. Trust model is unchanged — timing changes when Olivia speaks, not what Olivia can do.
+- Rationale: The spec is thorough on edge cases, risks, and failure modes. The IQR approach is statistically sound for small samples. On-demand computation is correct at household scale. The scope is narrow enough to validate the timing hypothesis before investing in Layer 2 (LLM). The spec builds cleanly on the M24 push infrastructure and extends the existing scheduler evaluation loop.
+- Alternatives considered: none at this stage — this spec follows directly from the M25 scoping decision (D-047) which already evaluated the two-layer approach.
+- Trade-offs: household-level windows (not per-member) may produce blended windows for multi-member households; accepted as consistent with Phase 2 household-wide push posture. On-demand computation trades storage simplicity for repeated queries, acceptable at household scale.
+- Status: active
+- Related docs: `docs/specs/completion-window-push-timing.md`, D-047, L-027, M26
+
 ### D-047: M25 complete — AI-enhanced nudge timing scoped as two-layer approach; first spec target is completion-window-based push timing
 - Date: 2026-03-16
 - Area: delivery planning / roadmap progression / H5 Phase 2
