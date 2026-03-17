@@ -4184,3 +4184,281 @@ textarea:focus, input:focus, select:focus {
     animation: none;
   }
 }
+
+/* ─── Onboarding Components (OLI-119) ──────────────────────────────────────── */
+
+/* Welcome Card (Home Screen) */
+.onb-welcome-card {
+  margin: 0 16px 20px;
+  background: linear-gradient(135deg, var(--violet) 0%, var(--violet-2, #8B7FF5) 100%);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--shadow-violet);
+  position: relative;
+  overflow: hidden;
+  animation: popIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.onb-welcome-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.onb-welcome-headline {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: white;
+  line-height: 1.3;
+  margin-bottom: 10px;
+}
+.onb-welcome-body {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+.onb-welcome-btn-primary {
+  display: inline-block;
+  background: white;
+  color: var(--violet);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: 16px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.onb-welcome-btn-primary:active {
+  transform: scale(0.97);
+}
+.onb-welcome-skip {
+  display: block;
+  margin-top: 12px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 0;
+  min-height: 44px;
+}
+
+/* Continue Setup Card (Home Screen) */
+.onb-continue-card {
+  margin: 0 16px 20px;
+  background: var(--surface);
+  border: 1.5px solid var(--lavender-mid, #D4CCFF);
+  border-left: 3px solid var(--violet);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.onb-continue-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--violet);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.onb-continue-body {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--ink);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.onb-continue-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.onb-continue-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-4);
+  flex-shrink: 0;
+}
+.onb-continue-dot-done {
+  background: var(--mint);
+}
+.onb-continue-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-2);
+  margin-left: 4px;
+}
+.onb-continue-actions {
+  display: flex;
+  gap: 10px;
+}
+.onb-continue-btn {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 16px;
+}
+
+/* Onboarding Chat Page */
+.onb-page {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: var(--bg);
+}
+.onb-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: 12px 22px 16px;
+  border-bottom: 1px solid var(--ink-4);
+}
+.onb-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--violet);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 14px;
+}
+.onb-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.onb-orb {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+.onb-title {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.onb-subtitle {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* Topic Progress Bar */
+.onb-progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.onb-progress-bar::-webkit-scrollbar {
+  display: none;
+}
+.onb-progress-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.onb-progress-item:not(:last-child)::after {
+  content: '\00B7';
+  color: var(--ink-3);
+  margin: 0 2px;
+}
+.onb-progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+.onb-progress-dot-done {
+  background: var(--mint);
+}
+.onb-progress-dot-current {
+  width: 10px;
+  height: 10px;
+  background: var(--violet);
+  box-shadow: 0 0 0 4px var(--violet-dim, rgba(108, 92, 231, 0.1));
+}
+.onb-progress-dot-ahead {
+  background: var(--ink-4);
+}
+.onb-progress-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.onb-progress-done .onb-progress-label {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.onb-progress-current .onb-progress-label {
+  font-weight: 700;
+  color: var(--violet);
+}
+
+/* Onboarding chat area */
+.onb-chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 16px 120px;
+}
+
+/* Progressive exit prompt */
+.onb-exit-prompt {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 16px 0;
+  animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.onb-btn {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 16px;
+}
+
+/* Confirmed/dismissed states for action cards */
+.oa-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  margin-top: 6px;
+  display: inline-block;
+}
+.oa-confirmed {
+  color: var(--mint);
+  background: var(--mint-soft, #E0FFF9);
+}
+.oa-dismissed {
+  color: var(--ink-2);
+  background: var(--surface-2);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .onb-welcome-card,
+  .onb-continue-card,
+  .onb-exit-prompt {
+    animation: none;
+  }
+}

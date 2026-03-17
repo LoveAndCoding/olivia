@@ -19,6 +19,7 @@ import { HistoryPage } from './routes/history-page';
 import { WeekPage } from './routes/week-page';
 import { ReviewFlowPage } from './routes/review-flow-page';
 import { ReviewRecordDetailPage } from './routes/review-record-detail-page';
+import { OnboardingPage } from './routes/onboarding-page';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -58,6 +59,7 @@ const reEntryRoute = createRoute({
   component: ReEntryPage
 });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage });
+const onboardingRoute = createRoute({ getParentRoute: () => rootRoute, path: '/onboarding', component: OnboardingPage });
 
 // ── Legacy redirects (old routes → new primary nav) ──────────────────────────
 const addRedirectRoute = createRoute({
@@ -88,6 +90,7 @@ const routeTree = rootRoute.addChildren([
   mealDetailRoute,
   reEntryRoute,
   settingsRoute,
+  onboardingRoute,
   addRedirectRoute,
 ]);
 

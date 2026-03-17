@@ -17,6 +17,7 @@ import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
 import { SpouseBanner } from '../components/lists/SpouseBanner';
 import type { NudgeData } from '../types/display';
+import { fetchOnboardingState, startOnboarding, finishOnboarding, type OnboardingState } from '../lib/api';
 
 // ─── Status badge helpers ─────────────────────────────────────────────────────
 
@@ -405,6 +406,13 @@ export function HomePage() {
 
   const { nudges, dismiss: dismissNudge, removeNudge } = useNudges(role);
 
+  // Onboarding state query
+  const onboardingQuery = useQuery({
+    queryKey: ['onboarding-state'],
+    queryFn: fetchOnboardingState,
+  });
+  const onboardingState: OnboardingState | undefined = onboardingQuery.data;
+
   const { weekStart } = useMemo(() => getWeekBounds(new Date()), []);
   const weekStartString = useMemo(() => weekStart.toISOString().split('T')[0], [weekStart]);
 
@@ -546,8 +554,98 @@ export function HomePage() {
           onRemove={removeNudge}
         />
 
-        {/* Olivia nudge card */}
-        {nudge && !nudgeDismissed && (
+        {/* Onboarding: Welcome Card (new user, no session yet) */}
+        {onboardingState && onboardingState.needsOnboarding && !onboardingState.session && (
+          <div className="onb-welcome-card" role="region" aria-label="Welcome to Olivia">
+            <div className="nudge-deco nudge-deco-1" aria-hidden="true" />
+            <div className="nudge-deco nudge-deco-2" aria-hidden="true" />
+            <div className="nudge-deco nudge-deco-3" aria-hidden="true" />
+            <div className="onb-welcome-eyebrow">{'\u2726'} OLIVIA</div>
+            <div className="onb-welcome-headline">Let{'\u2019'}s get your household set up.</div>
+            <div className="onb-welcome-body">It takes about 10 minutes {'\u2014'} just tell me what{'\u2019'}s on your plate and I{'\u2019'}ll organize it.</div>
+            <button
+              type="button"
+              className="onb-welcome-btn-primary"
+              onClick={async () => {
+                try {
+                  await startOnboarding();
+                  void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
+                  void navigate({ to: '/onboarding' });
+                } catch {
+                  // AI unavailable — navigate anyway, page will handle the error
+                  void navigate({ to: '/onboarding' });
+                }
+              }}
+            >
+              Let{'\u2019'}s go {'\u2192'}
+            </button>
+            <button
+              type="button"
+              className="onb-welcome-skip"
+              onClick={async () => {
+                try {
+                  await startOnboarding();
+                  await finishOnboarding();
+                  void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
+                } catch {
+                  // ignore
+                }
+              }}
+            >
+              Skip for now
+            </button>
+          </div>
+        )}
+
+        {/* Onboarding: Continue Setup Card (session started but not finished) */}
+        {onboardingState?.session && onboardingState.session.status === 'started' && (
+          <div className="onb-continue-card" role="region" aria-label="Continue setting up">
+            <div className="onb-continue-eyebrow">{'\u2726'} Continue setting up</div>
+            <div className="onb-continue-body">
+              {onboardingState.session.topicsCompleted.length > 0
+                ? `You\u2019ve set up ${onboardingState.session.topicsCompleted.join(' and ')}. Ready to keep going?`
+                : `Whenever you\u2019re ready, I can help organize your household.`
+              }
+            </div>
+            <div className="onb-continue-progress">
+              {['tasks', 'routines', 'reminders', 'lists', 'meals'].map((topic) => (
+                <div
+                  key={topic}
+                  className={`onb-continue-dot ${onboardingState.session!.topicsCompleted.includes(topic) ? 'onb-continue-dot-done' : ''}`}
+                />
+              ))}
+              <span className="onb-continue-label">
+                {onboardingState.session.topicsCompleted.length} of 5 topics covered
+              </span>
+            </div>
+            <div className="onb-continue-actions">
+              <button
+                type="button"
+                className="btn-primary onb-continue-btn"
+                onClick={() => void navigate({ to: '/onboarding' })}
+              >
+                Continue {'\u2192'}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary onb-continue-btn"
+                onClick={async () => {
+                  try {
+                    await finishOnboarding();
+                    void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                I{'\u2019'}m good {'\u2713'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Olivia nudge card (hidden during onboarding) */}
+        {nudge && !nudgeDismissed && !(onboardingState?.needsOnboarding || onboardingState?.session?.status === 'started') && (
           <div
             className="nudge"
             role="region"

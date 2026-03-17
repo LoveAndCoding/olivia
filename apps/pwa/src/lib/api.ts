@@ -748,3 +748,96 @@ export async function confirmChatAction(toolCallId: string): Promise<Record<stri
 export async function dismissChatAction(toolCallId: string): Promise<void> {
   await request<{ dismissed: boolean }>(`/api/chat/actions/${toolCallId}/dismiss`, { method: 'POST' });
 }
+
+// ─── Onboarding API (OLI-119) ──────────────────────────────────────────────
+
+export type OnboardingState = {
+  needsOnboarding: boolean;
+  session: OnboardingSession | null;
+  entityCount: number;
+};
+
+export type OnboardingSession = {
+  id: string;
+  conversationId: string;
+  status: 'started' | 'finished';
+  topicsCompleted: string[];
+  currentTopic: string | null;
+  entitiesCreated: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function fetchOnboardingState(): Promise<OnboardingState> {
+  return request<OnboardingState>('/api/onboarding/state');
+}
+
+export async function startOnboarding(): Promise<{ session: OnboardingSession }> {
+  return request<{ session: OnboardingSession }>('/api/onboarding/start', { method: 'POST' });
+}
+
+export async function fetchOnboardingConversation(limit = 50, before?: string): Promise<ChatConversationResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (before) params.set('before', before);
+  return request<ChatConversationResponse>(`/api/onboarding/conversation?${params.toString()}`);
+}
+
+export async function* streamOnboardingMessage(content: string): AsyncGenerator<ChatStreamEvent> {
+  const response = await fetch(resolveApiUrl('/api/onboarding/messages'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content })
+  });
+
+  if (!response.ok) {
+    if (response.status === 503) {
+      yield { event: 'error', data: { message: 'Olivia is unavailable right now. You can still use the app to manage your household.' } };
+      return;
+    }
+    yield { event: 'error', data: { message: 'Something unexpected happened. Try sending your message again.' } };
+    return;
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) return;
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    let currentEvent = '';
+    for (const line of lines) {
+      if (line.startsWith('event: ')) {
+        currentEvent = line.slice(7);
+      } else if (line.startsWith('data: ') && currentEvent) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          yield { event: currentEvent, data } as ChatStreamEvent;
+        } catch {
+          // skip unparseable data
+        }
+        currentEvent = '';
+      }
+    }
+  }
+}
+
+export async function advanceOnboardingTopic(): Promise<{
+  done: boolean;
+  currentTopic?: string;
+  topicPrompt?: string;
+  topicsCompleted: string[];
+}> {
+  return request('/api/onboarding/next-topic', { method: 'POST' });
+}
+
+export async function finishOnboarding(): Promise<{ session: OnboardingSession }> {
+  return request<{ session: OnboardingSession }>('/api/onboarding/finish', { method: 'POST' });
+}
