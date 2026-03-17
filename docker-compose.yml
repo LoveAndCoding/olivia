@@ -16,6 +16,7 @@ services:
       OLIVIA_NOTIFY_STALE_ITEM: "${OLIVIA_NOTIFY_STALE_ITEM:-false}"
       OLIVIA_NOTIFY_DIGEST: "${OLIVIA_NOTIFY_DIGEST:-false}"
       OLIVIA_NOTIFICATION_INTERVAL_MS: "${OLIVIA_NOTIFICATION_INTERVAL_MS:-3600000}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
     volumes:
       # SQLite database persisted on the host across deploys and restarts.
       - olivia-data:/data
