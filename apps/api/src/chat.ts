@@ -240,7 +240,7 @@ export async function* streamChat(
   repository: InboxRepository,
   config: AppConfig,
   conversationId: string,
-  userContent: string,
+  _userContent: string,
   now: Date
 ): AsyncGenerator<ChatStreamEvent> {
   const householdContext = assembleHouseholdContext(repository, config, now);
