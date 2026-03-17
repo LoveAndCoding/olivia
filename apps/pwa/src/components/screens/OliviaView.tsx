@@ -8,6 +8,7 @@ import type { ChatMessage, ChatToolCall, QuickChip } from '../../types/display';
 import {
   streamChatMessage, confirmChatAction, dismissChatAction, clearChatConversation
 } from '../../lib/api';
+import { ChatMarkdown } from '../ChatMarkdown';
 
 // ─── Action Card Labels ───────────────────────────────────────────────────────
 
@@ -289,7 +290,7 @@ export function OliviaView({
                 </div>
               ) : (
                 <>
-                  {msg.text}
+                  <ChatMarkdown text={msg.text} />
                   {msg.isStreaming && <span className="streaming-cursor" aria-hidden="true" />}
                 </>
               )}

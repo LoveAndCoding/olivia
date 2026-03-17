@@ -1215,6 +1215,176 @@ p { margin: 0; }
   box-shadow: 0 4px 14px rgba(108,92,231,0.25);
 }
 
+/* ── MARKDOWN IN CHAT BUBBLES ──────────────────────── */
+
+.md-content p {
+  margin: 0 0 10px 0;
+}
+.md-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Headings — Olivia bubble */
+.msg-olivia .md-content h1,
+.msg-olivia .md-content h2,
+.msg-olivia .md-content h3 {
+  font-family: 'Fraunces', serif;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+  margin: 14px 0 6px 0;
+}
+.msg-olivia .md-content h1 { font-size: 17px; }
+.msg-olivia .md-content h2 { font-size: 15px; }
+.msg-olivia .md-content h3 { font-size: 14px; }
+.msg-olivia .md-content :first-child:is(h1, h2, h3) {
+  margin-top: 0;
+}
+
+/* Headings — User bubble */
+.msg-user .md-content h1,
+.msg-user .md-content h2,
+.msg-user .md-content h3 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 14px 0 6px 0;
+}
+.msg-user .md-content h1 { font-size: 16px; }
+.msg-user .md-content h2 { font-size: 15px; }
+.msg-user .md-content h3 { font-size: 14px; }
+.msg-user .md-content :first-child:is(h1, h2, h3) {
+  margin-top: 0;
+}
+
+/* Bold & Italic — Olivia */
+.msg-olivia .md-content strong {
+  font-weight: 700;
+}
+.msg-olivia .md-content em {
+  /* parent is already italic — no change */
+}
+
+/* Bold & Italic — User */
+.msg-user .md-content strong {
+  font-weight: 700;
+}
+.msg-user .md-content em {
+  font-style: italic;
+}
+
+/* Lists */
+.md-content ul,
+.md-content ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+.md-content li {
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+.md-content li:last-child {
+  margin-bottom: 0;
+}
+.md-content ul { list-style-type: disc; }
+.md-content ul ul { list-style-type: circle; }
+.md-content ol { list-style-type: decimal; }
+
+/* List markers — Olivia */
+.msg-olivia .md-content ul li::marker {
+  color: var(--violet);
+}
+.msg-olivia .md-content ol li::marker {
+  color: var(--violet);
+  font-weight: 600;
+}
+
+/* Inline code */
+.md-content code:not(pre code) {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.85em;
+  font-style: normal;
+  font-weight: 400;
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.msg-olivia .md-content code:not(pre code) {
+  background: var(--violet-dim);
+  color: var(--violet);
+}
+.msg-user .md-content code:not(pre code) {
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+}
+
+/* Fenced code blocks */
+.md-content pre {
+  margin: 10px 0;
+  border-radius: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.md-content pre code {
+  display: block;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 12px 14px;
+  white-space: pre;
+  tab-size: 2;
+}
+.msg-olivia .md-content pre {
+  background: var(--surface-2);
+  border: 1px solid var(--ink-4);
+}
+.msg-olivia .md-content pre code {
+  color: var(--ink);
+}
+.msg-user .md-content pre {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.msg-user .md-content pre code {
+  color: white;
+}
+.md-content pre::-webkit-scrollbar { display: none; }
+.md-content pre { scrollbar-width: none; }
+
+/* Links */
+.md-content a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  transition: color 0.15s ease;
+}
+.msg-olivia .md-content a {
+  color: var(--violet);
+  text-decoration-color: var(--violet-dim);
+}
+.msg-olivia .md-content a:hover,
+.msg-olivia .md-content a:active {
+  text-decoration-color: var(--violet);
+}
+.msg-user .md-content a {
+  color: white;
+  text-decoration-color: rgba(255, 255, 255, 0.4);
+}
+.msg-user .md-content a:hover,
+.msg-user .md-content a:active {
+  text-decoration-color: white;
+}
+
+/* Strikethrough */
+.md-content del {
+  text-decoration: line-through;
+}
+
 /* ── ACTION CARDS ───────────────────────────────────── */
 
 .olivia-action-card {
