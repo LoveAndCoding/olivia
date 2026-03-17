@@ -56,6 +56,7 @@ type HealthCheckProgress = {
   id: string; // 'current'
   reviewedItemIds: string[];
   startedAt: string;
+  totalItems?: number;
 };
 
 class OliviaClientDb extends Dexie {
@@ -812,14 +813,26 @@ export async function getHealthCheckProgress(): Promise<HealthCheckProgress | nu
   return (await clientDb.healthCheckProgress.get('current')) ?? null;
 }
 
-export async function saveHealthCheckProgress(reviewedItemId: string): Promise<void> {
+export async function saveHealthCheckProgress(reviewedItemId: string, totalItems?: number): Promise<void> {
   const existing = await clientDb.healthCheckProgress.get('current');
   if (existing) {
+    const updated = { ...existing };
     if (!existing.reviewedItemIds.includes(reviewedItemId)) {
-      await clientDb.healthCheckProgress.put({ ...existing, reviewedItemIds: [...existing.reviewedItemIds, reviewedItemId] });
+      updated.reviewedItemIds = [...existing.reviewedItemIds, reviewedItemId];
     }
+    if (totalItems !== undefined) updated.totalItems = totalItems;
+    await clientDb.healthCheckProgress.put(updated);
   } else {
-    await clientDb.healthCheckProgress.put({ id: 'current', reviewedItemIds: [reviewedItemId], startedAt: new Date().toISOString() });
+    await clientDb.healthCheckProgress.put({ id: 'current', reviewedItemIds: [reviewedItemId], startedAt: new Date().toISOString(), totalItems });
+  }
+}
+
+export async function saveHealthCheckTotalItems(totalItems: number): Promise<void> {
+  const existing = await clientDb.healthCheckProgress.get('current');
+  if (existing) {
+    await clientDb.healthCheckProgress.put({ ...existing, totalItems });
+  } else {
+    await clientDb.healthCheckProgress.put({ id: 'current', reviewedItemIds: [], startedAt: new Date().toISOString(), totalItems });
   }
 }
 

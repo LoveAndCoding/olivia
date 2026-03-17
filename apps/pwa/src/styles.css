@@ -4495,11 +4495,493 @@ textarea:focus, input:focus, select:focus {
   background: var(--surface-2);
 }
 
-/* Reduced motion */
+/* Reduced motion — onboarding */
 @media (prefers-reduced-motion: reduce) {
   .onb-welcome-card,
   .onb-continue-card,
   .onb-exit-prompt {
     animation: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   HEALTH CHECK — HOME CARD + REVIEW SCREEN
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Home Screen Card ─────────────────────────────────── */
+.health-check-card {
+  margin: 0 16px 20px;
+  background: var(--surface);
+  border: 1.5px solid var(--ink-4);
+  border-left: 3px solid var(--sky);
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  animation: fadeUp 0.25s ease-out both;
+}
+
+.health-check-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.health-check-card__icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 12px;
+  background: var(--sky-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sky);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.health-check-card__title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  padding-top: 5px;
+  flex: 1;
+}
+
+.health-check-card__dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--ink-3);
+  margin: -8px -8px 0 0;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+
+.health-check-card__dismiss:hover {
+  background: var(--surface-2);
+}
+
+.health-check-card__body {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink);
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.health-check-card__body--progress {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-style: normal;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.health-check-card__actions {
+  display: flex;
+}
+
+.health-check-card__btn {
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: var(--violet);
+  color: white;
+  height: 44px;
+  transition: background 0.15s ease;
+}
+
+.health-check-card__btn:hover {
+  background: #5B4DD6;
+}
+
+.health-check-card__btn:active {
+  transform: scale(0.98);
+}
+
+/* ── Review Screen ────────────────────────────────────── */
+.health-check-page {
+  min-height: 100dvh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  animation: screenIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.health-check-page__header {
+  padding: 16px 22px 12px;
+  position: relative;
+  text-align: center;
+}
+
+.health-check-page__back {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--violet-text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 6px;
+}
+
+.health-check-page__title {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--ink);
+}
+
+.health-check-page__subtitle {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+
+.health-check-page__intro {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.5;
+  padding: 0 22px;
+  margin-bottom: 20px;
+}
+
+.health-check-page__loading {
+  padding: 40px 22px;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.health-check-page__content {
+  flex: 1;
+  padding-bottom: 32px;
+}
+
+/* ── Section Groups ───────────────────────────────────── */
+.health-check-section {
+  margin-bottom: 20px;
+}
+
+.health-check-section__label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--ink-2);
+  padding: 0 22px 8px;
+}
+
+/* ── Item Cards ───────────────────────────────────────── */
+.health-check-item {
+  background: var(--surface);
+  border: 1.5px solid var(--ink-4);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  margin: 0 16px 10px;
+  animation: taskIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  opacity: 0;
+  transition: opacity 0.25s ease-out, max-height 0.25s ease-out;
+  overflow: hidden;
+}
+
+.health-check-item--collapsing {
+  opacity: 0;
+  max-height: 0 !important;
+  padding: 0 16px;
+  margin-bottom: 0;
+  border-width: 0;
+}
+
+.health-check-item__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.health-check-item__icon {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Type-colored icon backgrounds */
+.health-check-item__icon--routine  { background: var(--mint-soft);  color: var(--mint); }
+.health-check-item__icon--reminder { background: var(--rose-soft);  color: var(--rose); }
+.health-check-item__icon--list     { background: var(--peach-soft); color: var(--peach); }
+.health-check-item__icon--inbox    { background: var(--lavender-soft); color: var(--violet); }
+.health-check-item__icon--mealPlan { background: var(--sky-soft);   color: var(--sky); }
+
+.health-check-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.health-check-item__name {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.health-check-item__activity {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-top: 1px;
+}
+
+.health-check-item__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.health-check-item__btn {
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  min-height: 40px;
+  transition: all 0.15s ease;
+}
+
+.health-check-item__btn--primary {
+  background: var(--violet);
+  color: white;
+}
+
+.health-check-item__btn--primary:hover { background: #5B4DD6; }
+
+.health-check-item__btn--primary.health-check-item__btn--checked {
+  background: var(--mint);
+}
+
+.health-check-item__btn--secondary {
+  background: var(--lavender-soft);
+  color: var(--violet);
+}
+
+.health-check-item__btn--secondary:hover { background: var(--lavender-mid); }
+
+/* Item stagger delays */
+.health-check-item:nth-child(2) { animation-delay: 0.05s; }
+.health-check-item:nth-child(3) { animation-delay: 0.10s; }
+.health-check-item:nth-child(4) { animation-delay: 0.15s; }
+.health-check-item:nth-child(5) { animation-delay: 0.20s; }
+.health-check-item:nth-child(6) { animation-delay: 0.25s; }
+.health-check-item:nth-child(7) { animation-delay: 0.30s; }
+.health-check-item:nth-child(8) { animation-delay: 0.35s; }
+.health-check-item:nth-child(9) { animation-delay: 0.40s; }
+.health-check-item:nth-child(10) { animation-delay: 0.45s; }
+
+/* ── Overflow Note ────────────────────────────────────── */
+.health-check-overflow {
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin: 12px 16px 0;
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+/* ── Completion State ─────────────────────────────────── */
+.health-check-page__complete {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 32px;
+  gap: 12px;
+}
+
+.health-check-page__check-icon {
+  color: var(--violet);
+  animation: fadeUp 0.3s ease-out both;
+}
+
+.health-check-page__complete-title {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--ink);
+  animation: fadeUp 0.3s ease-out both;
+  animation-delay: 0.08s;
+  opacity: 0;
+}
+
+.health-check-page__complete-body {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink-2);
+  line-height: 1.5;
+  animation: fadeUp 0.3s ease-out both;
+  animation-delay: 0.16s;
+  opacity: 0;
+}
+
+.health-check-page__home-btn {
+  margin-top: 8px;
+  padding: 12px 28px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--violet);
+  color: white;
+  border: none;
+  cursor: pointer;
+  height: 44px;
+  transition: background 0.15s ease;
+  animation: fadeUp 0.3s ease-out both;
+  animation-delay: 0.24s;
+  opacity: 0;
+}
+
+.health-check-page__home-btn:hover { background: #5B4DD6; }
+
+/* ── Archive Confirmation Modal ───────────────────────── */
+.freshness-archive-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.freshness-archive-confirm__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  animation: sheetFadeIn 0.2s ease;
+}
+
+.freshness-archive-confirm__sheet {
+  position: relative;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 22px;
+  width: 100%;
+  max-width: 480px;
+  animation: sheetUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.freshness-archive-confirm__title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.freshness-archive-confirm__body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  color: var(--ink-2);
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.freshness-archive-confirm__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.freshness-archive-confirm__actions .btn-secondary {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--lavender-soft);
+  color: var(--violet);
+  border: none;
+  cursor: pointer;
+  height: 44px;
+  transition: background 0.15s ease;
+}
+
+.freshness-archive-confirm__actions .btn-secondary:hover { background: var(--lavender-mid); }
+
+.freshness-archive-confirm__actions .btn-primary {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--rose);
+  color: white;
+  border: none;
+  cursor: pointer;
+  height: 44px;
+  transition: background 0.15s ease;
+}
+
+.freshness-archive-confirm__actions .btn-primary:hover { background: #f06a9e; }
+
+/* ── Reduced Motion — Health Check ────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .health-check-card,
+  .health-check-item,
+  .health-check-page,
+  .health-check-page__check-icon,
+  .health-check-page__complete-title,
+  .health-check-page__complete-body,
+  .health-check-page__home-btn,
+  .freshness-archive-confirm__backdrop,
+  .freshness-archive-confirm__sheet {
+    animation: none;
+    opacity: 1;
+  }
+
+  .health-check-item--collapsing {
+    transition: none;
   }
 }

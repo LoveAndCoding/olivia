@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { format } from 'date-fns';
-import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix } from '@phosphor-icons/react';
+import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix, Stethoscope } from '@phosphor-icons/react';
 import { computeReminderState, rankRemindersForSurfacing } from '@olivia/domain';
 import { getWeekBounds } from '@olivia/domain';
 import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, WeeklyReminder, WeeklyMealEntry, WeeklyInboxItem } from '@olivia/contracts';
@@ -420,11 +420,13 @@ export function HomePage() {
   });
   const healthCheckState: HealthCheckState | undefined = healthCheckQuery.data;
 
-  const [healthCheckProgressCount, setHealthCheckProgressCount] = useState<number | null>(null);
+  const [healthCheckRemainingCount, setHealthCheckRemainingCount] = useState<number | null>(null);
   // Check for partial progress on mount
   useState(() => {
     void getHealthCheckProgress().then((p) => {
-      if (p) setHealthCheckProgressCount(p.reviewedItemIds.length);
+      if (p && p.totalItems && p.reviewedItemIds.length > 0) {
+        setHealthCheckRemainingCount(Math.max(0, p.totalItems - p.reviewedItemIds.length));
+      }
     });
   });
 
@@ -662,24 +664,15 @@ export function HomePage() {
         {/* Health Check Card (data freshness — monthly prompt) */}
         {healthCheckState?.shouldShow && (
           <div className="health-check-card" role="region" aria-label="Monthly health check">
-            <div className="health-check-card__eyebrow">{'\u2726'} Monthly check-up</div>
-            <div className="health-check-card__body">
-              {healthCheckProgressCount && healthCheckProgressCount > 0
-                ? `${healthCheckProgressCount} item${healthCheckProgressCount === 1 ? '' : 's'} reviewed \u2014 pick up where you left off?`
-                : `Want to make sure everything\u2019s still accurate?`
-              }
-            </div>
-            <div className="health-check-card__actions">
+            <div className="health-check-card__header">
+              <div className="health-check-card__icon">
+                <Stethoscope size={18} weight="bold" />
+              </div>
+              <div className="health-check-card__title">Monthly check-up</div>
               <button
                 type="button"
-                className="btn-primary health-check-card__btn"
-                onClick={() => void navigate({ to: '/health-check' })}
-              >
-                Review {'\u2192'}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary health-check-card__btn"
+                className="health-check-card__dismiss"
+                aria-label="Dismiss health check"
                 onClick={async () => {
                   try {
                     await dismissHealthCheck();
@@ -689,7 +682,22 @@ export function HomePage() {
                   }
                 }}
               >
-                Not now
+                {'\u00D7'}
+              </button>
+            </div>
+            <div className={`health-check-card__body${healthCheckRemainingCount != null && healthCheckRemainingCount > 0 ? ' health-check-card__body--progress' : ''}`}>
+              {healthCheckRemainingCount != null && healthCheckRemainingCount > 0
+                ? `${healthCheckRemainingCount} item${healthCheckRemainingCount === 1 ? '' : 's'} left to review`
+                : `Want to make sure everything\u2019s still accurate?`
+              }
+            </div>
+            <div className="health-check-card__actions">
+              <button
+                type="button"
+                className="health-check-card__btn"
+                onClick={() => void navigate({ to: '/health-check' })}
+              >
+                {healthCheckRemainingCount != null && healthCheckRemainingCount > 0 ? 'Continue' : 'Review now'} {'\u2192'}
               </button>
             </div>
           </div>
