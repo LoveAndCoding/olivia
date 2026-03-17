@@ -135,9 +135,13 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { ...(init?.headers as Record<string, string> ?? {}) };
+  if (init?.body) {
+    headers['Content-Type'] ??= 'application/json';
+  }
   const response = await fetch(resolveApiUrl(path), {
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    ...init
+    ...init,
+    headers
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
