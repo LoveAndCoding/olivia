@@ -2172,7 +2172,9 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         case 'create_routine': {
           const recurrenceRule = String(toolCall.data.recurrenceRule ?? 'weekly');
           const intervalDays = recurrenceRule === 'every_n_days' ? Number(toolCall.data.intervalDays ?? 7) : undefined;
-          const firstDueDate = toolCall.data.firstDueDate ? String(toolCall.data.firstDueDate) : format(now, 'yyyy-MM-dd');
+          const rawFirstDueDate = toolCall.data.firstDueDate ? String(toolCall.data.firstDueDate) : format(now, 'yyyy-MM-dd');
+          // Normalize date-only strings (yyyy-MM-dd) to ISO datetime required by routineSchema
+          const firstDueDate = /^\d{4}-\d{2}-\d{2}$/.test(rawFirstDueDate) ? `${rawFirstDueDate}T00:00:00Z` : rawFirstDueDate;
           const owner = (toolCall.data.owner as 'stakeholder' | 'spouse' | 'unassigned') ?? 'stakeholder';
           const routine = createRoutine(
             String(toolCall.data.title ?? ''),
