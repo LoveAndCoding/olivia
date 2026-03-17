@@ -1,48 +1,93 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { CalendarBlank, Wrench, User, Lightbulb } from '@phosphor-icons/react';
-import type { ChatMessage, QuickChip } from '../../types/display';
+import {
+  CalendarBlank, CheckSquare, Bell, Tray, Repeat, CookingPot,
+  Lightbulb, ListBullets, Trash
+} from '@phosphor-icons/react';
+import type { ChatMessage, ChatToolCall, QuickChip } from '../../types/display';
+import {
+  streamChatMessage, confirmChatAction, dismissChatAction, clearChatConversation
+} from '../../lib/api';
 
-const CHIP_ICONS: Record<string, ReactNode> = {
-  "What's this week?": <CalendarBlank size={16} />,
-  'Home maintenance due': <Wrench size={16} />,
-  "What's Christian working on?": <User size={16} />,
-  'What should I remember?': <Lightbulb size={16} />,
+// ─── Action Card Labels ───────────────────────────────────────────────────────
+
+const ACTION_LABELS: Record<string, { label: string; primary: string; secondary: string }> = {
+  create_inbox_item: { label: 'NEW TASK', primary: 'Add task', secondary: 'Edit first' },
+  create_reminder: { label: 'NEW REMINDER', primary: 'Set reminder', secondary: 'Edit first' },
+  add_list_item: { label: 'LIST ITEM', primary: 'Add to list', secondary: 'Skip' },
+  create_meal_entry: { label: 'MEAL ENTRY', primary: 'Add meal', secondary: 'Skip' },
+  complete_routine: { label: 'COMPLETE ROUTINE', primary: 'Complete', secondary: 'Skip' },
+  skip_routine: { label: 'SKIP ROUTINE', primary: 'Skip routine', secondary: 'Cancel' },
 };
 
-const DRAFT_PREVIEW =
-  "Hi Mike, just checking in on the quote from earlier this week — we're keen to get the bathroom project moving and would love to hear back when you have a moment. Any update on timing? Thanks!";
+// ─── Quick Chip Icons ─────────────────────────────────────────────────────────
 
-const DEFAULT_REPLIES = [
-  "Let me look at what's coming up for you this week.",
-  "Based on your household notes, here's what I found:",
-  "I'll add that to your memory so you don't have to track it yourself.",
-  "Noted — want me to set a reminder for this? I can nudge you at the right time.",
-  "Give me a second to check your recent context.",
-  "Here's what I found — let me know if you'd like to dig deeper.",
-];
+const CHIP_ICON_MAP: Record<string, ReactNode> = {
+  CalendarBlank: <CalendarBlank size={16} />,
+  CheckSquare: <CheckSquare size={16} />,
+  Bell: <Bell size={16} />,
+  Tray: <Tray size={16} />,
+  Repeat: <Repeat size={16} />,
+  CookingPot: <CookingPot size={16} />,
+  Lightbulb: <Lightbulb size={16} />,
+  ListBullets: <ListBullets size={16} />,
+};
+
+function getChipIcon(chip: string): ReactNode | null {
+  if (chip.includes('overdue') || chip.includes('due')) return CHIP_ICON_MAP.CheckSquare;
+  if (chip.includes('today') || chip.includes('week')) return CHIP_ICON_MAP.CalendarBlank;
+  if (chip.includes('reminder')) return CHIP_ICON_MAP.Bell;
+  if (chip.includes('inbox')) return CHIP_ICON_MAP.Tray;
+  if (chip.includes('routine')) return CHIP_ICON_MAP.Repeat;
+  if (chip.includes('dinner') || chip.includes('meal')) return CHIP_ICON_MAP.CookingPot;
+  if (chip.includes('remember') || chip.includes('summary')) return CHIP_ICON_MAP.ListBullets;
+  return CHIP_ICON_MAP.Lightbulb;
+}
+
+// ─── Tool Call Preview ────────────────────────────────────────────────────────
+
+function formatToolCallPreview(tc: ChatToolCall): string {
+  const d = tc.data;
+  switch (tc.type) {
+    case 'create_inbox_item':
+      return `${d.title ?? ''}${d.dueText ? ` · due ${d.dueText}` : ''}`;
+    case 'create_reminder':
+      return `${d.title ?? ''}${d.scheduledAt ? ` · ${String(d.scheduledAt).slice(0, 16)}` : ''}`;
+    case 'add_list_item':
+      return `"${d.body ?? ''}" → ${d.listTitle ?? 'list'}`;
+    case 'create_meal_entry':
+      return `${d.name ?? ''}`;
+    case 'complete_routine':
+    case 'skip_routine':
+      return `${d.routineTitle ?? ''}`;
+    default:
+      return JSON.stringify(d);
+  }
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 export type OliviaViewProps = {
-  /** Seed messages shown when the component mounts. */
   initialMessages?: ChatMessage[];
-  /** Suggestion chips shown above the input. */
   chips?: QuickChip[];
-  /** Rotational reply pool; defaults to built-in list. */
-  replies?: string[];
+  onConversationCleared?: () => void;
 };
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function OliviaView({
   initialMessages = [],
   chips = [],
-  replies = DEFAULT_REPLIES,
+  onConversationCleared,
 }: OliviaViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
-  const [replyIndex, setReplyIndex] = useState(0);
-  const [showChips, setShowChips] = useState(chips.length > 0);
-  const [draftSent, setDraftSent] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const showChips = chips.length > 0 && messages.length < 4;
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -54,50 +99,131 @@ export function OliviaView({
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Load initial messages when prop changes (from API data)
+  useEffect(() => {
+    if (initialMessages.length > 0) {
+      setMessages(initialMessages);
+    }
+  }, [initialMessages]);
+
   const sendMessage = useCallback(
-    (text: string) => {
-      if (!text.trim()) return;
+    async (text: string) => {
+      if (!text.trim() || isStreaming) return;
 
       const userMsg: ChatMessage = { id: `user-${Date.now()}`, role: 'user', text: text.trim() };
-      setMessages((prev) => [...prev, userMsg]);
+      setMessages(prev => [...prev, userMsg]);
       setInputValue('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
-      if (messages.length >= 3) setShowChips(false);
+
+      // Add typing indicator
+      const typingId = `typing-${Date.now()}`;
+      setMessages(prev => [...prev, { id: typingId, role: 'olivia', text: '', isStreaming: true }]);
+      setIsStreaming(true);
       scrollToBottom();
 
-      const lowerText = text.toLowerCase();
-      const isYesDraft =
-        messages.length <= 2 &&
-        (lowerText.includes('yes') || lowerText.includes('draft') || lowerText.includes('write') || lowerText.includes('please'));
+      try {
+        let fullText = '';
+        const toolCalls: ChatToolCall[] = [];
+        let finalMessageId = '';
 
-      setTimeout(() => {
-        const oliviaMsg: ChatMessage = isYesDraft
-          ? { id: `olivia-${Date.now()}`, role: 'olivia', text: "Here's a draft — feel free to edit before sending:", showDraftCard: true }
-          : { id: `olivia-${Date.now()}`, role: 'olivia', text: replies[replyIndex % replies.length] };
+        for await (const evt of streamChatMessage(text.trim())) {
+          if (evt.event === 'text') {
+            fullText += (evt as { event: 'text'; data: { delta: string } }).data.delta;
+            setMessages(prev =>
+              prev.map(m => m.id === typingId ? { ...m, text: fullText } : m)
+            );
+            scrollToBottom();
+          } else if (evt.event === 'tool_call') {
+            const tc = (evt as { event: 'tool_call'; data: { toolCall: ChatToolCall } }).data.toolCall;
+            toolCalls.push(tc);
+          } else if (evt.event === 'done') {
+            finalMessageId = (evt as { event: 'done'; data: { messageId: string } }).data.messageId;
+          } else if (evt.event === 'error') {
+            const errorMsg = (evt as { event: 'error'; data: { message: string } }).data.message;
+            setMessages(prev =>
+              prev.map(m => m.id === typingId
+                ? { ...m, text: errorMsg, isStreaming: false, isError: true }
+                : m)
+            );
+            setIsStreaming(false);
+            return;
+          }
+        }
 
-        setMessages((prev) => [...prev, oliviaMsg]);
-        if (!isYesDraft) setReplyIndex((i) => i + 1);
+        // Finalize the message
+        setMessages(prev =>
+          prev.map(m => m.id === typingId
+            ? {
+                ...m,
+                id: finalMessageId || typingId,
+                text: fullText,
+                toolCalls: toolCalls.length > 0 ? toolCalls : null,
+                isStreaming: false
+              }
+            : m)
+        );
+      } catch {
+        setMessages(prev =>
+          prev.map(m => m.id === typingId
+            ? { ...m, text: 'Something unexpected happened on my end. Try sending your message again.', isStreaming: false, isError: true }
+            : m)
+        );
+      } finally {
+        setIsStreaming(false);
         scrollToBottom();
-      }, 900);
+      }
     },
-    [messages.length, replyIndex, replies, scrollToBottom],
+    [isStreaming, scrollToBottom],
   );
 
-  const handleSendDraft = () => {
-    setDraftSent(true);
-    const sentMsg: ChatMessage = { id: `user-sent-${Date.now()}`, role: 'user', text: 'Sent.' };
-    setMessages((prev) => [...prev, sentMsg]);
-    setTimeout(() => {
-      const confirmMsg: ChatMessage = {
-        id: `olivia-confirm-${Date.now()}`,
-        role: 'olivia',
-        text: "I'll mark the plumber task as waiting on reply and remind you if there's no response in 2 days.",
-      };
-      setMessages((prev) => [...prev, confirmMsg]);
-      scrollToBottom();
-    }, 600);
-    scrollToBottom();
-  };
+  const handleConfirmAction = useCallback(async (messageId: string, toolCall: ChatToolCall) => {
+    try {
+      await confirmChatAction(toolCall.id);
+      setMessages(prev =>
+        prev.map(m => {
+          if (m.id !== messageId || !m.toolCalls) return m;
+          return {
+            ...m,
+            toolCalls: m.toolCalls.map(tc =>
+              tc.id === toolCall.id ? { ...tc, status: 'confirmed' as const } : tc
+            )
+          };
+        })
+      );
+    } catch {
+      // Silent fail — the card stays pending
+    }
+  }, []);
+
+  const handleDismissAction = useCallback(async (messageId: string, toolCall: ChatToolCall) => {
+    try {
+      await dismissChatAction(toolCall.id);
+      setMessages(prev =>
+        prev.map(m => {
+          if (m.id !== messageId || !m.toolCalls) return m;
+          return {
+            ...m,
+            toolCalls: m.toolCalls.map(tc =>
+              tc.id === toolCall.id ? { ...tc, status: 'dismissed' as const } : tc
+            )
+          };
+        })
+      );
+    } catch {
+      // Silent fail
+    }
+  }, []);
+
+  const handleClearConversation = useCallback(async () => {
+    try {
+      await clearChatConversation();
+      setMessages([]);
+      setShowClearConfirm(false);
+      onConversationCleared?.();
+    } catch {
+      setShowClearConfirm(false);
+    }
+  }, [onConversationCleared]);
 
   const autoResize = (el: HTMLTextAreaElement) => {
     el.style.height = 'auto';
@@ -109,11 +235,28 @@ export function OliviaView({
       {/* Header */}
       <div className="ai-header">
         <div className="ai-title-row">
-          <div className="olivia-orb" aria-hidden="true">✦</div>
-          <div>
+          <div className={`olivia-orb${isStreaming ? ' orb-active' : ''}`} aria-hidden="true">✦</div>
+          <div style={{ flex: 1 }}>
             <div className="ai-title">Olivia</div>
             <div className="ai-sub">Your household assistant · always here</div>
           </div>
+          {messages.length > 0 && !showClearConfirm && (
+            <button
+              type="button"
+              className="chat-clear-btn"
+              onClick={() => setShowClearConfirm(true)}
+              aria-label="Clear conversation"
+            >
+              <Trash size={20} />
+            </button>
+          )}
+          {showClearConfirm && (
+            <div className="chat-clear-confirm">
+              <span>Clear chat?</span>
+              <button type="button" className="chat-clear-yes" onClick={handleClearConversation}>Yes</button>
+              <button type="button" className="chat-clear-no" onClick={() => setShowClearConfirm(false)}>No</button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -127,24 +270,68 @@ export function OliviaView({
       >
         {messages.length === 0 && (
           <div className="empty-state">
-            <p>Ask me anything about your household.</p>
+            <div className="olivia-orb olivia-orb-lg" aria-hidden="true">✦</div>
+            <h2 className="empty-state-heading">What can I help with?</h2>
+            <p className="empty-state-body">
+              I can check on your household, help plan your week, draft messages, or just keep track of things.
+            </p>
           </div>
         )}
         {messages.map((msg) => (
-          <div key={msg.id} className={`msg msg-${msg.role}`}>
-            <div className="msg-label">{msg.role === 'olivia' ? 'Olivia' : 'You'}</div>
+          <div key={msg.id} className={`msg msg-${msg.role === 'olivia' ? 'olivia' : 'user'}${msg.isError ? ' msg-error' : ''}`}>
+            <div className="msg-label">{msg.role === 'olivia' ? 'OLIVIA' : 'YOU'}</div>
             <div className="msg-bubble">
-              {msg.text}
-              {msg.showDraftCard && !draftSent && (
-                <div className="olivia-action-card">
-                  <div className="oa-label">Draft message</div>
-                  <div className="oa-preview">{DRAFT_PREVIEW}</div>
-                  <div className="oa-buttons">
-                    <button type="button" className="oa-btn oa-btn-send" onClick={handleSendDraft}>Send it ✓</button>
-                    <button type="button" className="oa-btn oa-btn-edit">Edit first</button>
-                  </div>
+              {msg.isStreaming && !msg.text ? (
+                <div className="typing-indicator" aria-label="Olivia is thinking">
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
                 </div>
+              ) : (
+                <>
+                  {msg.text}
+                  {msg.isStreaming && <span className="streaming-cursor" aria-hidden="true" />}
+                </>
               )}
+              {/* Action cards */}
+              {msg.toolCalls?.map(tc => {
+                const labels = ACTION_LABELS[tc.type] ?? { label: tc.type.toUpperCase(), primary: 'Confirm', secondary: 'Dismiss' };
+                return (
+                  <div
+                    key={tc.id}
+                    className={`olivia-action-card${tc.status === 'dismissed' ? ' oa-dismissed' : ''}`}
+                  >
+                    <div className="oa-label">
+                      {labels.label}
+                      {tc.status === 'dismissed' && <span className="oa-status-dismissed"> (dismissed)</span>}
+                    </div>
+                    <div className="oa-preview">{formatToolCallPreview(tc)}</div>
+                    {tc.status === 'pending' && (
+                      <div className="oa-buttons">
+                        <button
+                          type="button"
+                          className="oa-btn oa-btn-send"
+                          onClick={() => handleConfirmAction(msg.id, tc)}
+                          aria-label={`${labels.primary}`}
+                        >
+                          {labels.primary}
+                        </button>
+                        <button
+                          type="button"
+                          className="oa-btn oa-btn-edit"
+                          onClick={() => handleDismissAction(msg.id, tc)}
+                          aria-label={`${labels.secondary}`}
+                        >
+                          {labels.secondary}
+                        </button>
+                      </div>
+                    )}
+                    {tc.status === 'confirmed' && (
+                      <div className="oa-confirmed">✓ Done</div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -163,7 +350,7 @@ export function OliviaView({
                 onClick={() => { setInputValue(chip.trim()); textareaRef.current?.focus(); }}
                 aria-label={`Suggest: ${chip}`}
               >
-                {CHIP_ICONS[chip] && <span className="quick-chip-icon" aria-hidden="true">{CHIP_ICONS[chip]}</span>}
+                {getChipIcon(chip) && <span className="quick-chip-icon" aria-hidden="true">{getChipIcon(chip)}</span>}
                 {chip}
               </button>
             ))}
@@ -181,15 +368,16 @@ export function OliviaView({
             value={inputValue}
             placeholder="Ask Olivia anything…"
             onChange={(e) => { setInputValue(e.target.value); autoResize(e.target); }}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(inputValue); } }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(inputValue); } }}
             aria-label="Message to Olivia"
+            disabled={isStreaming}
           />
           <button
             type="button"
             className="chat-send"
-            onClick={() => sendMessage(inputValue)}
+            onClick={() => void sendMessage(inputValue)}
             aria-label="Send message"
-            disabled={!inputValue.trim()}
+            disabled={!inputValue.trim() || isStreaming}
           >
             ↑
           </button>

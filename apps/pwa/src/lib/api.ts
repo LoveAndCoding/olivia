@@ -1,5 +1,6 @@
 import {
   activityHistoryResponseSchema,
+  chatConversationResponseSchema,
   nudgesResponseSchema,
   skipRoutineOccurrenceResponseSchema,
   weeklyViewResponseSchema,
@@ -7,6 +8,7 @@ import {
   reviewRecordSchema,
   ritualSummaryResponseSchema,
   type ActivityHistoryResponse,
+  type ChatConversationResponse,
   type NudgesResponse,
   type SkipRoutineOccurrenceResponse,
   type WeeklyViewResponse,
@@ -665,4 +667,80 @@ export async function fetchReviewRecord(reviewRecordId: string, role?: ActorRole
   return reviewRecordSchema.parse(
     await request<ReviewRecord>(`/api/review-records/${reviewRecordId}${params}`)
   );
+}
+
+// ─── Chat API ─────────────────────────────────────────────────────────────────
+
+export async function fetchChatConversation(limit = 50, before?: string): Promise<ChatConversationResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (before) params.set('before', before);
+  return chatConversationResponseSchema.parse(
+    await request<ChatConversationResponse>(`/api/chat/conversation?${params}`)
+  );
+}
+
+export type ChatStreamEvent =
+  | { event: 'text'; data: { delta: string } }
+  | { event: 'tool_call'; data: { toolCall: { id: string; type: string; data: Record<string, unknown>; status: string } } }
+  | { event: 'done'; data: { messageId: string; conversationId: string } }
+  | { event: 'error'; data: { message: string } };
+
+export async function* streamChatMessage(content: string): AsyncGenerator<ChatStreamEvent> {
+  const response = await fetch(resolveApiUrl('/api/chat/messages'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content })
+  });
+
+  if (!response.ok) {
+    if (response.status === 503) {
+      yield { event: 'error', data: { message: 'Olivia is unavailable right now. You can still use the app to manage your household.' } };
+      return;
+    }
+    yield { event: 'error', data: { message: 'Something unexpected happened. Try sending your message again.' } };
+    return;
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) return;
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    let currentEvent = '';
+    for (const line of lines) {
+      if (line.startsWith('event: ')) {
+        currentEvent = line.slice(7);
+      } else if (line.startsWith('data: ') && currentEvent) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          yield { event: currentEvent, data } as ChatStreamEvent;
+        } catch {
+          // skip unparseable data
+        }
+        currentEvent = '';
+      }
+    }
+  }
+}
+
+export async function clearChatConversation(): Promise<void> {
+  await request<{ cleared: boolean }>('/api/chat/conversation/clear', { method: 'POST' });
+}
+
+export async function confirmChatAction(toolCallId: string): Promise<Record<string, unknown>> {
+  const res = await request<{ result: Record<string, unknown> }>(`/api/chat/actions/${toolCallId}/confirm`, { method: 'POST' });
+  return res.result;
+}
+
+export async function dismissChatAction(toolCallId: string): Promise<void> {
+  await request<{ dismissed: boolean }>(`/api/chat/actions/${toolCallId}/dismiss`, { method: 'POST' });
 }

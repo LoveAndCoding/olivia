@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { OliviaView } from '../components/screens/OliviaView';
-import { DEMO_INITIAL_MESSAGE, OLIVIA_REPLIES, QUICK_CHIPS } from '../lib/demo-data';
+import { DEMO_INITIAL_MESSAGE, QUICK_CHIPS } from '../lib/demo-data';
 import type { ChatMessage } from '../types/display';
 
 function PhoneFrame({ children }: { children: React.ReactNode }) {
@@ -47,7 +47,6 @@ const meta = {
   args: {
     initialMessages: SEED_MESSAGES,
     chips: QUICK_CHIPS,
-    replies: OLIVIA_REPLIES,
   },
 } satisfies Meta<typeof OliviaView>;
 

@@ -58,10 +58,20 @@ export type MemoryCategory = {
   entries: MemoryEntry[];
 };
 
+export type ChatToolCall = {
+  id: string;
+  type: string;
+  data: Record<string, unknown>;
+  status: 'pending' | 'confirmed' | 'dismissed';
+};
+
 export type ChatMessage = {
   id: string;
   role: 'olivia' | 'user';
   text: string;
+  toolCalls?: ChatToolCall[] | null;
+  isStreaming?: boolean;
+  isError?: boolean;
   showDraftCard?: boolean;
 };
 

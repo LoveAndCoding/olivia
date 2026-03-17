@@ -1366,6 +1366,169 @@ p { margin: 0; }
 
 .chat-send:hover { background: #5B4DD6; transform: scale(1.05); }
 .chat-send:active { transform: scale(0.95); }
+.chat-send:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+/* ── TYPING INDICATOR ──────────────────────────────── */
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--violet);
+  animation: typingBounce 1.2s ease infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.30s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ── STREAMING CURSOR ──────────────────────────────── */
+
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: var(--violet);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ── ORB ACTIVE STATE ──────────────────────────────── */
+
+.olivia-orb.orb-active {
+  animation-duration: 1.5s;
+}
+
+.olivia-orb-lg {
+  width: 56px;
+  height: 56px;
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+/* ── CHAT CLEAR BUTTON ─────────────────────────────── */
+
+.chat-clear-btn {
+  background: none;
+  border: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+.chat-clear-btn:hover { color: var(--ink-2); }
+
+.chat-clear-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.chat-clear-confirm span { color: var(--ink-2); }
+.chat-clear-yes { background: none; border: none; color: var(--rose); cursor: pointer; font-size: 12px; font-weight: 600; }
+.chat-clear-no { background: none; border: none; color: var(--ink-2); cursor: pointer; font-size: 12px; font-weight: 600; }
+
+/* ── ACTION CARD STATES ────────────────────────────── */
+
+.oa-dismissed {
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.oa-status-dismissed {
+  color: var(--ink-3);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.oa-confirmed {
+  color: var(--mint);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-style: normal;
+  padding-top: 4px;
+  animation: fadeUp 0.2s cubic-bezier(0.22,1,0.36,1);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── EMPTY STATE ───────────────────────────────────── */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.empty-state-heading {
+  font-family: 'Fraunces', serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.empty-state-body {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--ink-2);
+  line-height: 1.5;
+  max-width: 280px;
+  margin: 0;
+}
+
+/* ── ERROR MESSAGE BUBBLE ──────────────────────────── */
+
+.msg-error .msg-bubble {
+  background: var(--rose-soft);
+  color: var(--ink);
+  border: 1.5px solid var(--rose);
+  border-radius: 4px 20px 20px 20px;
+  padding: 13px 16px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-style: normal;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ── REDUCED MOTION ────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-dot { animation: none; opacity: 0.7; }
+  .streaming-cursor { animation: none; }
+  .olivia-orb.orb-active { animation-duration: 3s; }
+}
 
 /* ── MEMORY SCREEN SEARCH ───────────────────────────── */
 
