@@ -162,7 +162,8 @@ import {
   getReviewWindowsForOccurrence,
   formatReviewWindowAsDateStrings,
   skipRoutineOccurrence,
-  sortNudgesByPriority
+  sortNudgesByPriority,
+  localDateToUtcNoon
 } from '@olivia/domain';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAiProvider, type RitualSummaryInput } from './ai';
@@ -242,6 +243,7 @@ function resolveReminderUpdateChange(
   }
   return change;
 }
+
 
 export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
@@ -2173,8 +2175,12 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
           const recurrenceRule = String(toolCall.data.recurrenceRule ?? 'weekly');
           const intervalDays = recurrenceRule === 'every_n_days' ? Number(toolCall.data.intervalDays ?? 7) : undefined;
           const rawFirstDueDate = toolCall.data.firstDueDate ? String(toolCall.data.firstDueDate) : format(now, 'yyyy-MM-dd');
-          // Normalize date-only strings (yyyy-MM-dd) to ISO datetime required by routineSchema
-          const firstDueDate = /^\d{4}-\d{2}-\d{2}$/.test(rawFirstDueDate) ? `${rawFirstDueDate}T00:00:00Z` : rawFirstDueDate;
+          // Normalize date-only strings (yyyy-MM-dd) to UTC noon in the household timezone.
+          // Using noon avoids DST day-shift issues (L-025); using the household timezone
+          // ensures "next Wednesday" stays on Wednesday regardless of UTC offset (OLI-134).
+          const firstDueDate = /^\d{4}-\d{2}-\d{2}$/.test(rawFirstDueDate)
+            ? localDateToUtcNoon(rawFirstDueDate, config.householdTimezone)
+            : rawFirstDueDate;
           const owner = (toolCall.data.owner as 'stakeholder' | 'spouse' | 'unassigned') ?? 'stakeholder';
           const routine = createRoutine(
             String(toolCall.data.title ?? ''),

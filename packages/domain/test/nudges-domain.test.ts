@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeCompletionWindow, getCurrentLocalHour, skipRoutineOccurrence, sortNudgesByPriority } from '../src/index';
+import { computeCompletionWindow, getCurrentLocalHour, localDateToUtcNoon, skipRoutineOccurrence, sortNudgesByPriority } from '../src/index';
 import type { Nudge, Routine } from '@olivia/contracts';
 
 const ROUTINE_ID = 'a0a0a0a0-a0a0-4a0a-8a0a-a0a0a0a0a0a0';
@@ -196,5 +196,67 @@ describe('getCurrentLocalHour', () => {
     const date = new Date('2026-03-15T18:30:00Z');
     const hour = getCurrentLocalHour(date, 'America/New_York');
     expect(hour).toBeCloseTo(14.5, 1); // EDT (UTC-4) in March
+  });
+});
+
+describe('localDateToUtcNoon', () => {
+  it('returns noon UTC for UTC timezone', () => {
+    const result = localDateToUtcNoon('2026-03-18', 'UTC');
+    expect(result).toBe('2026-03-18T12:00:00.000Z');
+  });
+
+  it('preserves the correct calendar day for America/New_York (EDT, UTC-4)', () => {
+    // March 18 2026 is EDT (DST already started March 8)
+    // noon ET = 16:00 UTC
+    const result = localDateToUtcNoon('2026-03-18', 'America/New_York');
+    expect(result).toBe('2026-03-18T16:00:00.000Z');
+    // Verify the result is still Wednesday in New York
+    const d = new Date(result);
+    expect(d.getUTCDay()).toBe(3); // Wednesday in UTC too (noon ET → 4pm UTC, same day)
+  });
+
+  it('preserves the correct calendar day for America/New_York (EST, UTC-5)', () => {
+    // January 7 2026 is EST (no DST)
+    // noon ET = 17:00 UTC
+    const result = localDateToUtcNoon('2026-01-07', 'America/New_York');
+    expect(result).toBe('2026-01-07T17:00:00.000Z');
+    // Wednesday in both UTC and local
+    const d = new Date(result);
+    expect(d.getUTCDay()).toBe(3);
+  });
+
+  it('preserves the correct calendar day for Asia/Tokyo (UTC+9)', () => {
+    // Noon in Tokyo = 03:00 UTC (same day)
+    const result = localDateToUtcNoon('2026-03-18', 'Asia/Tokyo');
+    expect(result).toBe('2026-03-18T03:00:00.000Z');
+  });
+
+  it('preserves the correct calendar day for Pacific/Auckland (NZDT, UTC+13)', () => {
+    // Noon in Auckland (NZDT) = 23:00 UTC previous day
+    const result = localDateToUtcNoon('2026-03-18', 'Pacific/Auckland');
+    // noon NZDT = 2026-03-17T23:00:00Z
+    expect(result).toBe('2026-03-17T23:00:00.000Z');
+    // But when formatted in Auckland timezone, it should show March 18
+    const d = new Date(result);
+    const nzDay = new Intl.DateTimeFormat('en-US', { timeZone: 'Pacific/Auckland', day: 'numeric' }).format(d);
+    expect(Number(nzDay)).toBe(18);
+  });
+
+  it('handles DST spring-forward boundary correctly', () => {
+    // March 8 2026 is the DST transition day for America/New_York
+    // Clocks spring forward at 2am, so noon ET on March 8 = noon EDT = 16:00 UTC
+    const result = localDateToUtcNoon('2026-03-08', 'America/New_York');
+    expect(result).toBe('2026-03-08T16:00:00.000Z');
+    const d = new Date(result);
+    expect(d.getUTCDate()).toBe(8); // Still March 8 in UTC
+  });
+
+  it('handles DST fall-back boundary correctly', () => {
+    // November 1 2026 is the DST transition day for America/New_York
+    // Clocks fall back at 2am, so noon ET on Nov 1 = noon EST = 17:00 UTC
+    const result = localDateToUtcNoon('2026-11-01', 'America/New_York');
+    expect(result).toBe('2026-11-01T17:00:00.000Z');
+    const d = new Date(result);
+    expect(d.getUTCDate()).toBe(1);
   });
 });

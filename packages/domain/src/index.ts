@@ -1892,6 +1892,41 @@ export function getCurrentLocalHour(now: Date, timezone: string): number {
 }
 
 /**
+ * Convert a date-only string (YYYY-MM-DD) to a UTC ISO datetime at noon in
+ * the given IANA timezone.  Using noon avoids DST-boundary day shifts (L-025).
+ * Example: "2026-03-18" in "America/New_York" (UTC-4 in March after DST)
+ *   → noon ET = 16:00 UTC → "2026-03-18T16:00:00.000Z"
+ */
+export function localDateToUtcNoon(dateStr: string, timezone: string): string {
+  const [yearStr, monthStr, dayStr] = dateStr.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+
+  // Start with a rough UTC estimate of noon on the target date
+  const estimateUtc = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+
+  // Find what local time our estimate maps to in the target timezone
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(estimateUtc);
+  const get = (type: string) => Number(parts.find(p => p.type === type)?.value ?? 0);
+  const localHour = get('hour') === 24 ? 0 : get('hour');
+  const localDay = get('day');
+
+  // Compute drift between desired noon-on-day and actual local result, then correct
+  const hourDrift = localHour - 12;
+  const dayDrift = localDay - day;
+  const driftMs = (dayDrift * 24 + hourDrift) * 3_600_000;
+  const corrected = new Date(estimateUtc.getTime() - driftMs);
+  return corrected.toISOString();
+}
+
+/**
  * Computes a completion window from an array of completedAt ISO timestamps.
  * Returns a hold/deliver/no_window decision based on the IQR of completion hours.
  */
