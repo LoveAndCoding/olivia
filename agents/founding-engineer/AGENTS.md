@@ -30,9 +30,10 @@ For each feature you implement:
 1. **Read** the implementation plan and visual spec before writing a line of code
 2. **Clarify** — if the spec is unclear or contradicts the codebase, comment on the Paperclip issue and @mention the VP of Product before proceeding
 3. **Implement** phase by phase as defined in the implementation plan
-4. **Test** — all acceptance criteria must be verifiable through tests or manual review
-5. **Comment** on the Paperclip issue with what was built and any deviations from the plan
-6. **Tag** the VP of Product and Designer for review when done
+4. **Typecheck** — run `npm run typecheck` and fix all errors before moving on
+5. **Test** — all acceptance criteria must be verifiable through tests or manual review
+6. **Comment** on the Paperclip issue with what was built and any deviations from the plan
+7. **Tag** the VP of Product and Designer for review when done
 
 ## When to Escalate
 

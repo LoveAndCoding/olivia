@@ -73,11 +73,13 @@ Keep the spec lean. Use short bullets and plain language. Sections may be omitte
 - List concrete, testable product outcomes.
 - Each criterion should be specific enough to verify later.
 - **If the feature includes any UI component**: include a criterion that all component class names have corresponding CSS styles and the component renders as visually specified. Unstyled components must not ship.
+- **All features**: `npm run typecheck` must pass with zero errors before the feature is considered complete.
 
 ## Validation And Testing
 - How will we know this feature is useful in the household?
 - What should be unit tested, integration tested, or manually validated?
 - What user-visible behaviors most need regression protection?
+- `npm run typecheck` must pass — type errors are a shipping blocker.
 
 ## Dependencies And Related Learnings
 - What other docs, decisions, or systems does this feature rely on?

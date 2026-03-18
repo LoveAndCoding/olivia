@@ -7,7 +7,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { buildApp } from '../src/app';
 import type { AppConfig } from '../src/config';
 import { createDatabase } from '../src/db/client';
-import { InboxRepository } from '../src/repository';
 
 const createConfig = (dbPath: string): AppConfig => ({
   port: 0,
@@ -20,6 +19,10 @@ const createConfig = (dbPath: string): AppConfig => ({
   vapidPrivateKey: null,
   vapidContact: 'mailto:test@localhost',
   notificationRules: { dueSoonEnabled: false, staleItemEnabled: false, digestEnabled: false },
+  notificationIntervalMs: 3_600_000,
+  nudgePushIntervalMs: 1_800_000,
+  pwaOrigin: 'http://localhost:4173',
+  householdTimezone: 'UTC',
 });
 
 function makeDir() {

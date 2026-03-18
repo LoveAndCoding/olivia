@@ -9,8 +9,6 @@ import {
   generateFreshnessNudgeCopy,
   shouldShowHealthCheck,
   sortNudgesByPriority,
-  FRESHNESS_THRESHOLDS,
-  HEALTH_CHECK_INTERVAL_DAYS
 } from '../src/index';
 import type { InboxItem, Routine, Reminder, SharedList, Nudge } from '@olivia/contracts';
 
