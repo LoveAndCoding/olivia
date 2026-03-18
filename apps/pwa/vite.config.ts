@@ -13,7 +13,7 @@ export default defineConfig({
     ...(!isStorybook
       ? [
           VitePWA({
-            registerType: 'autoUpdate',
+            registerType: 'prompt',
             strategies: 'injectManifest',
             srcDir: 'src',
             filename: 'sw.ts',

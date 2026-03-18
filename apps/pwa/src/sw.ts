@@ -6,6 +6,14 @@ declare const self: ServiceWorkerGlobalScope;
 // Workbox injects precache manifest here at build time
 precacheAndRoute(self.__WB_MANIFEST);
 
+// ─── Prompt-based update: activate waiting SW on message from client ─────────
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    void self.skipWaiting();
+  }
+});
+
 // ─── Push event handler ──────────────────────────────────────────────────────
 
 self.addEventListener('push', (event: PushEvent) => {

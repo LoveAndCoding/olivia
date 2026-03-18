@@ -153,6 +153,22 @@ button, input, select, textarea {
   font: inherit;
 }
 
+/* ── PWA TOUCH BEHAVIOR ────────────────────────────── */
+a, button, [role="button"], label, nav, summary {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
+/* Prevent text selection and long-press menus on UI chrome */
+.bottom-nav, .screen-header, .sheet-handle, .nav-btn,
+.card, .list-card, .nudge-card, .filter-tab, .fab,
+.btn, .btn-primary, .btn-ghost, .btn-outline, .btn-sm,
+.chip, .badge, .pill, .tag {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 h1, h2, h3, h4 {
   font-family: 'Fraunces', serif;
   font-weight: 700;
@@ -218,6 +234,8 @@ p { margin: 0; }
   background: var(--bg);
   position: relative;
   overflow: hidden;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* ── AMBIENT BACKGROUND BLOBS ───────────────────────── */
@@ -293,6 +311,7 @@ p { margin: 0; }
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   min-height: 0;
+  overscroll-behavior: contain;
 }
 
 .screen-scroll::-webkit-scrollbar {
@@ -808,7 +827,7 @@ p { margin: 0; }
 /* ── TASKS SCREEN HEADER ────────────────────────────── */
 
 .screen-header {
-  padding: 16px 22px 16px;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 22px 16px;
 }
 
 .screen-title {
@@ -2363,7 +2382,8 @@ textarea:focus, input:focus, select:focus {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: 0 20px 100px;
+  padding: 0 20px calc(100px + env(safe-area-inset-bottom, 0px));
+  overscroll-behavior: contain;
 }
 
 .sheet-scroll::-webkit-scrollbar { display: none; }
@@ -5388,4 +5408,78 @@ textarea:focus, input:focus, select:focus {
   .push-opt-in-actions button {
     transition: none;
   }
+}
+
+/* ── UPDATE TOAST ──────────────────────────────────── */
+.update-toast {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1.5px solid var(--violet-border);
+  border-radius: 16px;
+  padding: 10px 16px;
+  box-shadow: var(--shadow-md);
+  animation: fadeUp 0.3s ease-out;
+  max-width: calc(100% - 32px);
+}
+
+.update-toast-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.update-toast-action {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--violet);
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.update-toast-action:active {
+  background: var(--violet-dim);
+}
+
+.update-toast-dismiss {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  margin-left: -4px;
+}
+
+/* ── OFFLINE INDICATOR ─────────────────────────────── */
+.offline-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+  padding: 6px 12px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  animation: fadeUp 0.25s ease-out;
+}
+
+.offline-indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--peach);
+  flex-shrink: 0;
 }
