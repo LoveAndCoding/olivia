@@ -1,5 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="24" fill="#0f172a" />
-  <path d="M32 42h64v44H32z" fill="#e2e8f0" />
-  <path d="M44 54h40M44 70h28" stroke="#0f172a" stroke-width="8" stroke-linecap="round" />
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="#E8E5FF"/>
+
+  <!-- Orbit arc top-right (dark, strong) -->
+  <path d="M256 80 A176 176 0 0 1 432 256"
+        fill="none" stroke="#5047C9" stroke-width="24"
+        stroke-linecap="round" opacity="0.9"/>
+
+  <!-- Orbit arc bottom-left (dim) -->
+  <path d="M256 432 A176 176 0 0 1 80 256"
+        fill="none" stroke="#5047C9" stroke-width="24"
+        stroke-linecap="round" opacity="0.25"/>
+
+  <!-- Lead dot (dark, right) -->
+  <circle cx="432" cy="256" r="40" fill="#5047C9" opacity="0.95"/>
+
+  <!-- Trailing dot (dim, left) -->
+  <circle cx="80" cy="256" r="28" fill="#5047C9" opacity="0.25"/>
+
+  <!-- Centre white filled circle -->
+  <circle cx="256" cy="256" r="104" fill="white"/>
+
+  <!-- Checkmark in brand purple -->
+  <path d="M184 256 L232 304 L328 192"
+        fill="none" stroke="#4A41C0" stroke-width="30"
+        stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="#302B6A"/>
+
+  <!-- Orbit arc top-right (bright) -->
+  <path d="M256 80 A176 176 0 0 1 432 256"
+        fill="none" stroke="#A89EFF" stroke-width="20"
+        stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Orbit arc bottom-left (dim) -->
+  <path d="M256 432 A176 176 0 0 1 80 256"
+        fill="none" stroke="#A89EFF" stroke-width="20"
+        stroke-linecap="round" opacity="0.3"/>
+
+  <!-- Lead dot (bright, right) -->
+  <circle cx="432" cy="256" r="32" fill="#A89EFF" opacity="0.9"/>
+
+  <!-- Trailing dot (dim, left) -->
+  <circle cx="80" cy="256" r="24" fill="#A89EFF" opacity="0.4"/>
+
+  <!-- Centre filled circle -->
+  <circle cx="256" cy="256" r="112" fill="#6B63D4"/>
+
+  <!-- Checkmark -->
+  <path d="M184 256 L232 304 L328 192"
+        fill="none" stroke="white" stroke-width="28"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
