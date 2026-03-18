@@ -17,10 +17,12 @@ export function InlineAddInput({ onAdd, disabled = false }: InlineAddInputProps)
     try {
       await onAdd(trimmed);
       setValue('');
-      inputRef.current?.focus();
     } finally {
       setBusy(false);
     }
+    // Focus after setBusy(false) re-enables the input; rAF ensures the
+    // React re-render has committed before we attempt to focus.
+    requestAnimationFrame(() => inputRef.current?.focus());
   }, [value, busy, onAdd]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
