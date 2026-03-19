@@ -80,6 +80,7 @@ export function TasksPage() {
     const full = await previewCreateCommand(role, undefined, { title: preview.title });
     await confirmCreateCommand(role, full.parsedItem, preview.draftId);
     await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
   };
 
   const summaryLine = inboxQuery.data

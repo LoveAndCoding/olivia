@@ -65,6 +65,7 @@ export function ListsPage() {
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['lists-active'] });
     await queryClient.invalidateQueries({ queryKey: ['lists-archived'] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
   }, [queryClient]);
 
   const handleCreate = useCallback(async (title: string) => {

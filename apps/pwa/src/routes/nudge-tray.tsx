@@ -338,6 +338,7 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       if (!routine) { onRemove(entityId); return; }
       await completeRoutineOccurrenceCommand(role, entityId, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routines'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
     } catch {
       onRemove(entityId);
@@ -350,6 +351,7 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       if (!routine) { onRemove(entityId); return; }
       await submitRoutineSkip(role, entityId, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routines'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
     } catch {
       onRemove(entityId);
@@ -362,6 +364,7 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       if (!reminder) { onRemove(entityId); return; }
       await completeReminderCommand(role, entityId, reminder.version);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
     } catch {
       onRemove(entityId);
@@ -375,6 +378,7 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       const snoozedUntil = addHours(new Date(), NUDGE_SNOOZE_INTERVAL_HOURS).toISOString();
       await snoozeReminderCommand(role, entityId, reminder.version, snoozedUntil);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
     } catch {
       onRemove(entityId);

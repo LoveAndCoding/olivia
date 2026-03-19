@@ -65,6 +65,7 @@ export function MealDetailPage() {
     await queryClient.invalidateQueries({ queryKey: ['meal-plan-detail', role, params.planId] });
     await queryClient.invalidateQueries({ queryKey: ['meal-plans-active', role] });
     await queryClient.invalidateQueries({ queryKey: ['meal-plans-archived', role] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
   }, [queryClient, role, params.planId]);
 
   const handleEditTitle = useCallback(async (newTitle: string) => {

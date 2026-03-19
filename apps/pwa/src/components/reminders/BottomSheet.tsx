@@ -36,6 +36,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      style={{ paddingBottom: 'var(--keyboard-height, 0px)' }}
     >
       <div className="sheet-backdrop-blur" onClick={onClose} />
       <div className="sheet-container" ref={sheetRef}>

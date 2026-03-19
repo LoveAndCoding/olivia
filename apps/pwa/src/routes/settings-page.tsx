@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { clientDb } from '../lib/client-db';
 import { useRole } from '../lib/role';
 import { loadNotificationState, saveDemoNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
@@ -47,6 +47,19 @@ export function SettingsPage() {
     setActiveTheme(mode);
   };
 
+  const [browserPermission, setBrowserPermission] = useState<NotificationPermission | 'unavailable'>(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'unavailable'
+  );
+
+  useEffect(() => {
+    if (typeof Notification === 'undefined') return;
+    // Keep permission state in sync if the user changes it while on the page
+    const interval = setInterval(() => {
+      setBrowserPermission(Notification.permission);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
   const prefs = reminderSettingsQuery.data?.preferences;
   const masterEnabled = prefs?.enabled ?? false;
   const dueEnabled = prefs?.dueRemindersEnabled ?? false;
@@ -68,6 +81,9 @@ export function SettingsPage() {
   }, [masterEnabled, dueEnabled, summaryEnabled, role, queryClient]);
 
   const oliviaNotifMessage = useMemo(() => {
+    if (browserPermission === 'denied') {
+      return 'Notifications are blocked in your browser. I can\'t send you alerts until you re-enable them in your browser settings.';
+    }
     if (!masterEnabled) {
       return 'Reminders always surface in-app even with push off. I\'ll never notify you without your permission.';
     }
@@ -79,7 +95,7 @@ export function SettingsPage() {
       return 'Push notifications are on, but all notification types are off. Enable one to start receiving alerts.';
     }
     return parts.join('. ') + '.';
-  }, [masterEnabled, dueEnabled, summaryEnabled]);
+  }, [browserPermission, masterEnabled, dueEnabled, summaryEnabled]);
 
   return (
     <div className="screen">
@@ -155,6 +171,7 @@ export function SettingsPage() {
                 <button
                   type="button"
                   className={`rem-toggle${masterEnabled ? ' on' : ''}`}
+                  disabled={browserPermission === 'denied'}
                   onClick={() => {
                     const next = !masterEnabled;
                     void savePrefs({
@@ -167,6 +184,20 @@ export function SettingsPage() {
                 />
               </div>
             </div>
+
+            {browserPermission === 'denied' && (
+              <div className="notif-denied-banner" role="alert">
+                <div className="notif-denied-title">Notifications blocked by browser</div>
+                <div className="notif-denied-body">
+                  Your browser is blocking notifications. To re-enable:
+                  <ol className="notif-denied-steps">
+                    <li>Click the lock or info icon in your browser's address bar</li>
+                    <li>Find <strong>Notifications</strong> and change it to <strong>Allow</strong></li>
+                    <li>Reload this page</li>
+                  </ol>
+                </div>
+              </div>
+            )}
 
             <div className="rem-group-header" style={{ marginTop: 8 }}>Notification types</div>
 

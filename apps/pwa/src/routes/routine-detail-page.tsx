@@ -74,6 +74,7 @@ export function RoutineDetailPage() {
   const invalidateAndRefresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['routine-detail', role, params.routineId] });
     await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
   }, [queryClient, role, params.routineId]);
 
   const showBanner = useCallback((message: string, variant: 'mint' | 'sky') => {
@@ -126,6 +127,7 @@ export function RoutineDetailPage() {
       await archiveRoutineCommand(role, routine.id, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', role] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner('Routine archived', 'sky');
       void navigate({ to: '/routines' });
     } finally {
@@ -140,6 +142,7 @@ export function RoutineDetailPage() {
       await restoreRoutineCommand(role, routine.id, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', role] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner('Routine restored', 'mint');
       void navigate({ to: '/routines' });
     } finally {
@@ -155,6 +158,7 @@ export function RoutineDetailPage() {
       await deleteRoutineCommand(role, routine.id);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', role] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       void navigate({ to: '/routines' });
     } finally {
       setBusy(false);

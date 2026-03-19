@@ -23,6 +23,25 @@ export function AppLayout({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('online', handleOnline);
   }, [queryClient]);
 
+  // Track the visual viewport height so the layout shrinks when the virtual
+  // keyboard opens, keeping bottom inputs visible above the keyboard.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const keyboardHeight = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+      document.documentElement.style.setProperty('--vvh', `${vv.height}px`);
+      document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
+
   return (
     <div className={`app-frame${isStandalone ? ' standalone' : ''}`}>
       <div className="ambient ambient-1" aria-hidden="true" />

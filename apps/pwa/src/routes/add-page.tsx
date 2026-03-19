@@ -43,6 +43,7 @@ export function AddPage() {
     try {
       const savedItem = await confirmCreateCommand(role, preview.parsedItem, preview.draftId);
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       navigate({ to: '/items/$itemId', params: { itemId: savedItem.id } });
     } catch (caughtError) {
       setError((caughtError as Error).message);
@@ -66,6 +67,7 @@ export function AddPage() {
         description: structuredDescription || null,
       });
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       navigate({ to: '/items/$itemId', params: { itemId: savedItem.id } });
     } catch (caughtError) {
       setError((caughtError as Error).message);

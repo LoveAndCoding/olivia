@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Owner, UpdateChange, DraftReminder, Reminder, ReminderUpdateChange } from '@olivia/contracts';
+import type { UpdateChange, DraftReminder, Reminder, ReminderUpdateChange } from '@olivia/contracts';
 import { useRole } from '../lib/role';
 import {
   confirmUpdateCommand,
@@ -21,16 +21,14 @@ import { EditReminderSheet } from '../components/reminders/EditReminderSheet';
 import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { CancelConfirmSheet } from '../components/reminders/CancelConfirmSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
+import { EditTaskSheet } from '../components/tasks/EditTaskSheet';
 
 export function ItemDetailPage() {
   const params = useParams({ from: '/items/$itemId' });
   const navigate = useNavigate();
   const { role } = useRole();
   const queryClient = useQueryClient();
-  const [statusValue, setStatusValue] = useState<'open' | 'in_progress' | 'done' | 'deferred'>('in_progress');
-  const [ownerValue, setOwnerValue] = useState<Owner>('stakeholder');
-  const [dueText, setDueText] = useState('');
-  const [note, setNote] = useState('');
+  const [showEditTask, setShowEditTask] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -69,24 +67,26 @@ export function ItemDetailPage() {
 
   const invalidateReminders = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
   }, [queryClient]);
 
-  const applyChange = async (proposedChange: UpdateChange) => {
+  const handleEditTaskSave = useCallback(async (change: UpdateChange) => {
     if (!itemQuery.data) return;
+    setShowEditTask(false);
     setBusy(true);
     setError(null);
     try {
-      await confirmUpdateCommand(role, itemQuery.data.item.id, itemQuery.data.item.version, proposedChange);
-      setNote('');
-      setDueText('');
+      await confirmUpdateCommand(role, itemQuery.data.item.id, itemQuery.data.item.version, change);
       await queryClient.invalidateQueries({ queryKey: ['item-detail', role, params.itemId] });
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
+      showBanner('Updated', 'mint');
     } catch (caughtError) {
       setError((caughtError as Error).message);
     } finally {
       setBusy(false);
     }
-  };
+  }, [itemQuery.data, role, params.itemId, queryClient, showBanner]);
 
   const handleCreateReminderSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateReminder(false);
@@ -215,54 +215,17 @@ export function ItemDetailPage() {
                 )}
 
                 {role === 'stakeholder' ? (
-                  <div className="card stack-md">
-                    <div className="section-header">
-                      <div className="stack-sm">
-                        <span className="eyebrow">Update</span>
-                        <h3 className="card-title" style={{ fontSize: 18 }}>Update item</h3>
-                      </div>
-                      <span className="section-note">Changes apply immediately and can be reversed</span>
-                    </div>
-                    <div className="update-grid">
-                      <div className="stack-sm">
-                        <span className="field-label">Status</span>
-                        <select value={statusValue} onChange={(e) => setStatusValue(e.target.value as typeof statusValue)}>
-                          <option value="open">open</option>
-                          <option value="in_progress">in progress</option>
-                          <option value="done">done</option>
-                          <option value="deferred">deferred</option>
-                        </select>
-                        <button type="button" className="secondary-button" disabled={busy} onClick={() => void applyChange({ status: statusValue })}>
-                          Set status
-                        </button>
-                      </div>
-                      <div className="stack-sm">
-                        <span className="field-label">Owner</span>
-                        <select value={ownerValue} onChange={(e) => setOwnerValue(e.target.value as Owner)}>
-                          <option value="stakeholder">Lexi (stakeholder)</option>
-                          <option value="spouse">Christian (spouse)</option>
-                          <option value="unassigned">unassigned</option>
-                        </select>
-                        <button type="button" className="secondary-button" disabled={busy} onClick={() => void applyChange({ owner: ownerValue })}>
-                          Set owner
-                        </button>
-                      </div>
-                      <div className="stack-sm">
-                        <span className="field-label">Due text</span>
-                        <input value={dueText} onChange={(e) => setDueText(e.target.value)} placeholder="next Friday" />
-                        <button type="button" className="secondary-button" disabled={busy} onClick={() => void applyChange({ dueText })}>
-                          Update due date
-                        </button>
-                      </div>
-                      <div className="stack-sm">
-                        <span className="field-label">Add note</span>
-                        <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Call the preferred vendor first" />
-                        <button type="button" className="secondary-button" disabled={busy} onClick={() => void applyChange({ note })}>
-                          Save note
-                        </button>
-                      </div>
-                    </div>
-                    {error ? <p className="error-text">{error}</p> : null}
+                  <div>
+                    <button
+                      type="button"
+                      className="rem-btn rem-btn-primary"
+                      style={{ width: '100%' }}
+                      disabled={busy}
+                      onClick={() => setShowEditTask(true)}
+                    >
+                      Edit task
+                    </button>
+                    {error ? <p className="error-text" style={{ marginTop: 8 }}>{error}</p> : null}
                   </div>
                 ) : (
                   <div className="card">
@@ -295,6 +258,15 @@ export function ItemDetailPage() {
       </div>
 
       {banner && <ConfirmBanner message={banner.message} variant={banner.variant} />}
+
+      {itemQuery.data && (
+        <EditTaskSheet
+          open={showEditTask}
+          onClose={() => setShowEditTask(false)}
+          item={itemQuery.data.item}
+          onSave={(change) => void handleEditTaskSave(change)}
+        />
+      )}
 
       <CreateReminderSheet
         open={showCreateReminder}

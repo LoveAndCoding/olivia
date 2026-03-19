@@ -248,6 +248,7 @@ export function RoutinesPage() {
     try {
       await completeRoutineOccurrenceCommand(role, routine.id, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner('Marked complete', 'mint');
     } finally {
       setBusyId(null);
@@ -269,6 +270,7 @@ export function RoutinesPage() {
 
     await createRoutineCommand(role, form.title.trim(), form.owner, form.recurrenceRule, firstDueDateIso, intervalDays);
     await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
     setForm({ title: '', owner: 'stakeholder', recurrenceRule: '', intervalDays: '7', firstDueDate: todayIso() });
     showBanner('Routine created', 'mint');
   }, [form, role, queryClient, showBanner]);
