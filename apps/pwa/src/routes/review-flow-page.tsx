@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import type {
   ActivityHistoryItem,
@@ -582,6 +582,7 @@ export function ReviewFlowPage() {
   const params = useParams({ from: '/routines/$routineId/review/$occurrenceId' });
   const { routineId, occurrenceId } = params;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role } = useRole();
 
   const [step, setStep] = useState<Step>(1);
@@ -707,12 +708,15 @@ export function ReviewFlowPage() {
         acceptedRecapNarrative,
         acceptedOverviewNarrative
       );
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-detail', role, routineId] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       void navigate({ to: '/routines' });
     } catch {
       setCompleteError("Couldn't save your review. Try again.");
       setCompleting(false);
     }
-  }, [routine, completing, role, routineId, occurrenceId, notes, recapDraftState, overviewDraftState, navigate]);
+  }, [routine, completing, role, routineId, occurrenceId, notes, recapDraftState, overviewDraftState, navigate, queryClient]);
 
   if (routineQuery.isLoading) {
     return (
