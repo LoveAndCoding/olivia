@@ -6,11 +6,16 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 4173",
     "build": "vite build",
+    "cap:sync": "cap sync ios",
+    "cap:open": "cap open ios",
+    "cap:build": "vite build && cap sync ios",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "storybook": "storybook dev --port 6006",
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.2.0",
     "@olivia/contracts": "0.1.0",
     "@olivia/domain": "0.1.0",
     "@phosphor-icons/react": "^2.1.10",
@@ -26,6 +31,7 @@
     "vite-plugin-pwa": "latest"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.2.0",
     "@storybook/react-vite": "^10.2.17",
     "storybook": "^10.2.17"
   }

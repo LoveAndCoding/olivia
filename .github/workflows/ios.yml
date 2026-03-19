@@ -1,0 +1,42 @@
+name: iOS Build
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "apps/pwa/**"
+      - "packages/**"
+      - "package-lock.json"
+
+jobs:
+  build-ios:
+    name: Build iOS App
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build PWA
+        run: npm run build -w @olivia/contracts && npm run build -w @olivia/domain && npm run build -w @olivia/pwa
+
+      - name: Sync Capacitor iOS
+        working-directory: apps/pwa
+        run: npx cap sync ios
+
+      - name: Build iOS project
+        working-directory: apps/pwa/ios/App
+        run: |
+          xcodebuild build \
+            -scheme App \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -20
