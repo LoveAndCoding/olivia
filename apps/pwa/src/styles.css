@@ -3067,6 +3067,13 @@ input[type="date"].rem-form-input {
   border-color: rgba(245, 158, 11, 0.45);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .notif-denied-banner {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.45);
+  }
+}
+
 .notif-denied-title {
   font-size: 13px;
   font-weight: 700;
@@ -3076,6 +3083,12 @@ input[type="date"].rem-form-input {
 
 [data-theme="dark"] .notif-denied-title {
   color: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .notif-denied-title {
+    color: #fbbf24;
+  }
 }
 
 .notif-denied-body {
