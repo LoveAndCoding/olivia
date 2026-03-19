@@ -67,6 +67,7 @@ export function ItemDetailPage() {
 
   const invalidateReminders = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
   }, [queryClient]);
 
   const handleEditTaskSave = useCallback(async (change: UpdateChange) => {
@@ -78,6 +79,7 @@ export function ItemDetailPage() {
       await confirmUpdateCommand(role, itemQuery.data.item.id, itemQuery.data.item.version, change);
       await queryClient.invalidateQueries({ queryKey: ['item-detail', role, params.itemId] });
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner('Updated', 'mint');
     } catch (caughtError) {
       setError((caughtError as Error).message);

@@ -59,6 +59,7 @@ export function ReminderDetailPage() {
   const invalidateAndRefresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['reminder-detail', role, params.reminderId] });
     await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
   }, [queryClient, role, params.reminderId]);
 
   const showBanner = useCallback((message: string, variant: 'mint' | 'sky') => {

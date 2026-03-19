@@ -112,6 +112,7 @@ export function RemindersPage() {
     setShowCreateSheet(false);
     await confirmCreateReminderCommand(role, draft);
     await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
     setBanner({ message: 'Reminder created', variant: 'mint' });
     setTimeout(() => setBanner(null), 5000);
   }, [role, queryClient]);
@@ -121,6 +122,7 @@ export function RemindersPage() {
     setSnoozeTarget(null);
     await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
     await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
     setBanner({ message: `Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
     setTimeout(() => setBanner(null), 5000);
   }, [snoozeTarget, role, queryClient]);

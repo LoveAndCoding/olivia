@@ -70,6 +70,7 @@ export function ListDetailPage() {
     await queryClient.invalidateQueries({ queryKey: ['list-detail', role, params.listId] });
     await queryClient.invalidateQueries({ queryKey: ['lists-active'] });
     await queryClient.invalidateQueries({ queryKey: ['lists-archived'] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
   }, [queryClient, role, params.listId]);
 
   const handleEditTitle = useCallback(async (newTitle: string) => {

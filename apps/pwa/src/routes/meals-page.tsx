@@ -64,6 +64,7 @@ export function MealsPage() {
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['meal-plans-active', role] });
     await queryClient.invalidateQueries({ queryKey: ['meal-plans-archived', role] });
+    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
   }, [queryClient, role]);
 
   const handleCreate = useCallback(async (title: string, weekStartDate: string) => {
