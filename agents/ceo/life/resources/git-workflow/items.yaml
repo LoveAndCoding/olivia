@@ -1,0 +1,24 @@
+facts:
+  - id: git-workflow-001
+    content: "Development fork is loveandrobots/olivia; upstream source repo is LoveAndCoding/olivia"
+    source: board comment on OLI-175
+    created: "2026-03-20"
+    status: active
+    access_count: 1
+    last_accessed: "2026-03-20"
+
+  - id: git-workflow-002
+    content: "PRs for deployable changes must target upstream (LoveAndCoding/olivia), not the fork"
+    source: board comment on OLI-175
+    created: "2026-03-20"
+    status: active
+    access_count: 1
+    last_accessed: "2026-03-20"
+
+  - id: git-workflow-003
+    content: "GitHub Actions and secrets are configured on upstream repo only; fork does not have Actions enabled"
+    source: board comment on OLI-175
+    created: "2026-03-20"
+    status: active
+    access_count: 1
+    last_accessed: "2026-03-20"
