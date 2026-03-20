@@ -24,6 +24,41 @@ The current direction is:
 - `npm test`: run domain, API, and Playwright end-to-end coverage
 - `npm run build`: produce production builds for all apps and packages
 
+## iOS (Capacitor)
+
+The PWA is wrapped with [Capacitor](https://capacitorjs.com/) for native iOS distribution.
+
+### Prerequisites
+- macOS with Xcode 16+ installed
+- CocoaPods is **not** required — the project uses Swift Package Manager
+
+### Local Dev Workflow
+```bash
+# 1. Build the web assets
+npm run build -w @olivia/pwa
+
+# 2. Sync web assets into the native project
+npm run cap:sync -w @olivia/pwa
+
+# 3. Open the Xcode project
+npm run cap:open -w @olivia/pwa
+```
+
+From Xcode, select an iOS Simulator target and press **Cmd+R** to run.
+
+For iterative development, you can point Capacitor at the Vite dev server instead of
+the bundled assets. Uncomment the `server.url` line in `apps/pwa/capacitor.config.ts`,
+then run `npm run dev` and open Xcode.
+
+### One-Step Build + Sync
+```bash
+npm run cap:build -w @olivia/pwa
+```
+
+### CI
+The `ios.yml` GitHub Actions workflow builds the iOS project on every PR that touches
+`apps/pwa/`, `packages/`, or `package-lock.json`.
+
 ## Documentation Map
 
 ### Start Here

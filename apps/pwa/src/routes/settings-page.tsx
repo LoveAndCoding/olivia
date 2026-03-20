@@ -41,6 +41,7 @@ export function SettingsPage() {
   }, [role]);
 
   const installed = useMemo(() => window.matchMedia('(display-mode: standalone)').matches, []);
+  const isIOS = useMemo(() => /iPad|iPhone|iPod/.test(navigator.userAgent), []);
 
   const handleTheme = (mode: ThemeMode) => {
     applyTheme(mode);
@@ -82,7 +83,9 @@ export function SettingsPage() {
 
   const oliviaNotifMessage = useMemo(() => {
     if (browserPermission === 'denied') {
-      return 'Notifications are blocked in your browser. I can\'t send you alerts until you re-enable them in your browser settings.';
+      return isIOS
+        ? 'Notifications are blocked in your device settings. I can\'t send you alerts until you re-enable them in Settings → Safari.'
+        : 'Notifications are blocked in your browser. I can\'t send you alerts until you re-enable them in your browser settings.';
     }
     if (!masterEnabled) {
       return 'Reminders always surface in-app even with push off. I\'ll never notify you without your permission.';
@@ -95,7 +98,7 @@ export function SettingsPage() {
       return 'Push notifications are on, but all notification types are off. Enable one to start receiving alerts.';
     }
     return parts.join('. ') + '.';
-  }, [browserPermission, masterEnabled, dueEnabled, summaryEnabled]);
+  }, [browserPermission, masterEnabled, dueEnabled, summaryEnabled, isIOS]);
 
   return (
     <div className="screen">
@@ -187,15 +190,36 @@ export function SettingsPage() {
 
             {browserPermission === 'denied' && (
               <div className="notif-denied-banner" role="alert">
-                <div className="notif-denied-title">Notifications blocked by browser</div>
+                <div className="notif-denied-title">Notifications blocked by {isIOS ? 'device settings' : 'browser'}</div>
                 <div className="notif-denied-body">
-                  Your browser is blocking notifications. To re-enable:
-                  <ol className="notif-denied-steps">
-                    <li>Click the lock or info icon in your browser's address bar</li>
-                    <li>Find <strong>Notifications</strong> and change it to <strong>Allow</strong></li>
-                    <li>Reload this page</li>
-                  </ol>
+                  {isIOS ? (
+                    <>
+                      Your device is blocking notifications. To re-enable:
+                      <ol className="notif-denied-steps">
+                        <li>Open your device <strong>Settings</strong> app</li>
+                        <li>Scroll to <strong>Safari</strong> → <strong>Settings for Websites</strong> → <strong>Notifications</strong></li>
+                        <li>Find this site and set it to <strong>Allow</strong></li>
+                        <li>Return here and reload the page</li>
+                      </ol>
+                      <p className="notif-ios-homescreen-hint">On iOS, Olivia must be added to your Home Screen for push notifications to work.</p>
+                    </>
+                  ) : (
+                    <>
+                      Your browser is blocking notifications. To re-enable:
+                      <ol className="notif-denied-steps">
+                        <li>Click the lock or info icon in your browser's address bar</li>
+                        <li>Find <strong>Notifications</strong> and change it to <strong>Allow</strong></li>
+                        <li>Reload this page</li>
+                      </ol>
+                    </>
+                  )}
                 </div>
+              </div>
+            )}
+
+            {isIOS && !installed && (
+              <div className="notif-ios-note" role="note">
+                On iOS, Olivia must be added to your Home Screen for push notifications to work.
               </div>
             )}
 

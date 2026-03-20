@@ -3067,6 +3067,13 @@ input[type="date"].rem-form-input {
   border-color: rgba(245, 158, 11, 0.45);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .notif-denied-banner {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.45);
+  }
+}
+
 .notif-denied-title {
   font-size: 13px;
   font-weight: 700;
@@ -3076,6 +3083,12 @@ input[type="date"].rem-form-input {
 
 [data-theme="dark"] .notif-denied-title {
   color: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .notif-denied-title {
+    color: #fbbf24;
+  }
 }
 
 .notif-denied-body {
@@ -3088,6 +3101,50 @@ input[type="date"].rem-form-input {
   margin: 6px 0 0 16px;
   padding: 0;
   line-height: 1.7;
+}
+
+.notif-ios-homescreen-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--warn-text, #b45309);
+}
+
+[data-theme="dark"] .notif-ios-homescreen-hint {
+  color: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .notif-ios-homescreen-hint {
+    color: #fbbf24;
+  }
+}
+
+/* ── iOS HOME SCREEN NOTE ─────────────────────────── */
+
+.notif-ios-note {
+  background: var(--info-bg, #eff6ff);
+  border: 1.5px solid var(--info-border, #3b82f6);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--info-text, #1e40af);
+  line-height: 1.5;
+}
+
+[data-theme="dark"] .notif-ios-note {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.45);
+  color: #93c5fd;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .notif-ios-note {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.45);
+    color: #93c5fd;
+  }
 }
 
 /* ── REMINDER GROUP HEADERS ────────────────────────── */
@@ -5454,59 +5511,6 @@ input[type="date"].rem-form-input {
   .push-opt-in-actions button {
     transition: none;
   }
-}
-
-/* ── UPDATE TOAST ──────────────────────────────────── */
-.update-toast {
-  position: fixed;
-  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--surface);
-  border: 1.5px solid var(--violet-border);
-  border-radius: 16px;
-  padding: 10px 16px;
-  box-shadow: var(--shadow-md);
-  animation: fadeUp 0.3s ease-out;
-  max-width: calc(100% - 32px);
-}
-
-.update-toast-text {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ink);
-  white-space: nowrap;
-}
-
-.update-toast-action {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--violet);
-  background: none;
-  border: none;
-  cursor: pointer;
-  white-space: nowrap;
-  padding: 4px 8px;
-  border-radius: 8px;
-}
-
-.update-toast-action:active {
-  background: var(--violet-dim);
-}
-
-.update-toast-dismiss {
-  font-size: 18px;
-  line-height: 1;
-  color: var(--ink-3);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  margin-left: -4px;
 }
 
 /* ── OFFLINE INDICATOR ─────────────────────────────── */

@@ -8,6 +8,13 @@ export type NotificationRulesConfig = {
   digestEnabled: boolean;
 };
 
+export type PaperclipConfig = {
+  apiUrl: string | null;
+  apiKey: string | null;
+  companyId: string | null;
+  sreAgentId: string | null;
+};
+
 export type AppConfig = {
   port: number;
   dbPath: string;
@@ -24,6 +31,7 @@ export type AppConfig = {
   nudgePushIntervalMs: number;
   pwaOrigin: string;
   householdTimezone: string;
+  paperclip: PaperclipConfig;
 };
 
 export function loadConfig(): AppConfig {
@@ -48,5 +56,11 @@ export function loadConfig(): AppConfig {
     pwaOrigin: process.env.OLIVIA_PWA_ORIGIN ?? 'http://localhost:4173',
     householdTimezone: process.env.OLIVIA_HOUSEHOLD_TIMEZONE
       ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+    paperclip: {
+      apiUrl: process.env.OLIVIA_PAPERCLIP_API_URL ?? null,
+      apiKey: process.env.OLIVIA_PAPERCLIP_API_KEY ?? null,
+      companyId: process.env.OLIVIA_PAPERCLIP_COMPANY_ID ?? null,
+      sreAgentId: process.env.OLIVIA_PAPERCLIP_SRE_AGENT_ID ?? null,
+    },
   };
 }

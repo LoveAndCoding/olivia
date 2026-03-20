@@ -169,6 +169,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAiProvider, type RitualSummaryInput } from './ai';
 import { streamChat, streamOnboardingChat, getTopicPrompt, getNextOnboardingTopic } from './chat';
 import type { AppConfig } from './config';
+import { createErrorReporter, errorReportSchema } from './error-reporter';
 import { createDatabase } from './db/client';
 import { DraftStore } from './drafts';
 import { startBackgroundJobs } from './jobs';
@@ -254,6 +255,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   const drafts = new DraftStore();
   const aiProvider = createAiProvider(config.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY, app.log);
   const push = createPushProvider(config);
+  const errorReporter = createErrorReporter(config.paperclip, app.log);
   const stopJobs = startBackgroundJobs(repository, push, config, app.log);
   app.addHook('onClose', async () => stopJobs());
 
@@ -2490,10 +2492,38 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     return reply.send({ success: true });
   });
 
-  app.setErrorHandler((error, _request, reply) => {
+  // ─── Error Reporting Routes ──────────────────────────────────────────────────
+
+  app.post('/api/errors', async (request, reply) => {
+    const body = errorReportSchema.parse(request.body);
+    errorReporter.report(body).catch((err) => {
+      app.log.error({ err }, 'Unexpected error in error reporter');
+    });
+    return reply.status(202).send({ accepted: true });
+  });
+
+  // ─── Error Handler ──────────────────────────────────────────────────────────
+
+  app.setErrorHandler((error, request, reply) => {
     const statusCode = (error as Error & { statusCode?: number }).statusCode ?? 400;
     const code = (error as Error & { code?: string }).code ?? 'BAD_REQUEST';
     const message = error instanceof Error ? error.message : 'Request failed.';
+
+    // Report server errors (5xx) to Paperclip
+    if (statusCode >= 500) {
+      errorReporter.report({
+        message,
+        stack: error instanceof Error ? error.stack : undefined,
+        source: 'be',
+        route: request.url,
+        method: request.method,
+        statusCode,
+        timestamp: new Date().toISOString(),
+      }).catch((err) => {
+        app.log.error({ err }, 'Unexpected error in error reporter');
+      });
+    }
+
     reply.status(statusCode).send({ code, message });
   });
 

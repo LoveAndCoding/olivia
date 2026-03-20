@@ -26,7 +26,8 @@ const createConfig = (dbPath: string): AppConfig => ({
   notificationIntervalMs: 3_600_000,
   nudgePushIntervalMs: 1_800_000,
   pwaOrigin: 'http://localhost:4173',
-  householdTimezone: 'UTC'
+  householdTimezone: 'UTC',
+  paperclip: { apiUrl: null, apiKey: null, companyId: null, sreAgentId: null },
 });
 
 const validPushPayload = {
@@ -2608,6 +2609,52 @@ describe('onboarding api (OLI-119)', () => {
     // State should reflect entity count
     const stateRes = await app.inject({ method: 'GET', url: '/api/onboarding/state' });
     expect(stateRes.json().entityCount).toBe(1);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+// ─── Error Reporting Endpoint ───────────────────────────────────────────────
+
+describe('POST /api/errors', () => {
+  function makeDir() {
+    const dir = mkdtempSync(join(tmpdir(), 'olivia-errors-'));
+    return { dir, dbPath: join(dir, 'test.sqlite') };
+  }
+
+  it('accepts a valid error report and returns 202', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/errors',
+      payload: {
+        message: 'Test error',
+        source: 'fe',
+        stack: 'Error: Test error\n  at test.ts:1',
+      },
+    });
+
+    expect(res.statusCode).toBe(202);
+    expect(res.json()).toEqual({ accepted: true });
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('rejects invalid payload with 400', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/errors',
+      payload: { message: '' },
+    });
+
+    expect(res.statusCode).toBe(400);
 
     await app.close();
     rmSync(dir, { recursive: true, force: true });

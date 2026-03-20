@@ -23,7 +23,8 @@ const createConfig = (dbPath: string): AppConfig => ({
   notificationIntervalMs: 3_600_000,
   nudgePushIntervalMs: 1_800_000,
   pwaOrigin: 'http://localhost:4173',
-  householdTimezone: 'UTC'
+  householdTimezone: 'UTC',
+  paperclip: { apiUrl: null, apiKey: null, companyId: null, sreAgentId: null },
 });
 
 const makeLogger = () =>
