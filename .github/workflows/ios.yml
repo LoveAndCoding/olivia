@@ -1,6 +1,7 @@
 name: iOS Build & TestFlight
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main, master]
     paths:
