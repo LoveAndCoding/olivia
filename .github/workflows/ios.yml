@@ -116,15 +116,16 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
         run: |
-          API_KEY_PATH=$RUNNER_TEMP/AuthKey.p8
-          echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o $API_KEY_PATH
+          API_KEY_DIR=$RUNNER_TEMP/private_keys
+          mkdir -p $API_KEY_DIR
+          echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o "$API_KEY_DIR/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
 
           xcrun altool --upload-app \
             -f $RUNNER_TEMP/export/App.ipa \
             -t ios \
             --apiKey "$APP_STORE_CONNECT_API_KEY_ID" \
             --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
-            --apiKeyPath $API_KEY_PATH
+            --apiKeyPath "$API_KEY_DIR"
 
       - name: Clean up keychain
         if: always() && github.event_name == 'push'
