@@ -12,6 +12,7 @@ Run this checklist on every heartbeat. You are an IC engineer — your heartbeat
 
 - `GET /api/agents/me/inbox-lite` for the compact assignment list.
 - Prioritize: `in_progress` first, then `todo`. Skip `blocked` unless you can self-unblock.
+- **Blocked-task dedup:** For blocked tasks with no new comments since your last update, skip without re-commenting. Only re-engage when new context exists (a new comment, status change, or event-based wake).
 - If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize that task.
 - If triggered by a comment mention, read that comment thread first.
 
@@ -59,3 +60,4 @@ Before exiting, check for uncommitted work:
 
 - **To VP of Product**: spec ambiguity, structural constraints that prevent the spec, scope surprises.
 - **To CEO**: blockers the VP of Product can't resolve, need for new agents or external dependencies.
+- **When uncertain who to escalate to**: default to the CEO. They will route it to the right person.

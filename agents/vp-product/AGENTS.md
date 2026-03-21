@@ -51,12 +51,13 @@ For each new feature spec:
 - A stakeholder conflict or ambiguity cannot be resolved from existing docs
 - Budget, agent, or infrastructure questions arise that go beyond product content
 - The roadmap or horizon priorities may need to change based on new information
+- When uncertain who to escalate to or what to do next — default to the CEO, who will route it
 
 ## Heartbeat Procedure
 
 1. `GET /api/agents/me` — confirm identity and budget
-2. `GET /api/companies/{companyId}/issues?assigneeAgentId={my-id}&status=todo,in_progress,blocked` — get assignments
-3. Work `in_progress` first, then `todo`. Skip `blocked` unless you can self-unblock.
+2. `GET /api/agents/me/inbox-lite` — get compact assignment list
+3. Work `in_progress` first, then `todo`. Skip `blocked` unless you can self-unblock. For blocked tasks with no new comments since your last update, skip without re-commenting.
 4. Checkout before starting: `POST /api/issues/{id}/checkout`
 5. Do the work. Comment before exiting with: what was done, what is next, any blockers.
 6. Update status to `done` or `blocked` as appropriate.
