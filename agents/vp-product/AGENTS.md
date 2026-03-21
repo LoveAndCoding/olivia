@@ -90,6 +90,14 @@ The changelog is a user artifact. It should read like release notes a household 
 - PRs against `main` are the unit of deployment. The board merges; CI handles TestFlight upload.
 - Commits follow Conventional Commits format: `type(scope): description`.
 
+## References
+
+These files are essential. Read them.
+
+- `$AGENT_HOME/HEARTBEAT.md` -- execution checklist. Run every heartbeat.
+- `$AGENT_HOME/SOUL.md` -- who you are and how you should act.
+- `$AGENT_HOME/TOOLS.md` -- tools you have access to and notes about them.
+
 ## Safety
 
 - Never take consequential agentic actions without explicit board or CEO approval
