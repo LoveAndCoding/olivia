@@ -2,9 +2,11 @@ import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState, useCallback, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { clientDb } from '../lib/client-db';
 import { useRole } from '../lib/role';
-import { loadNotificationState, saveDemoNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
+import { loadNotificationState, saveDemoNotificationSubscription, saveNativeNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
 import { OliviaMessage } from '../components/reminders/OliviaMessage';
 import type { ActorRole, ReminderNotificationPreferencesInput } from '@olivia/contracts';
 
@@ -42,24 +44,51 @@ export function SettingsPage() {
 
   const installed = useMemo(() => window.matchMedia('(display-mode: standalone)').matches, []);
   const isIOS = useMemo(() => /iPad|iPhone|iPod/.test(navigator.userAgent), []);
+  const isNative = useMemo(() => Capacitor.isNativePlatform(), []);
 
   const handleTheme = (mode: ThemeMode) => {
     applyTheme(mode);
     setActiveTheme(mode);
   };
 
-  const [browserPermission, setBrowserPermission] = useState<NotificationPermission | 'unavailable'>(() =>
-    typeof Notification !== 'undefined' ? Notification.permission : 'unavailable'
-  );
+  // Unified permission state: 'granted' | 'denied' | 'default' | 'unavailable'
+  const [browserPermission, setBrowserPermission] = useState<NotificationPermission | 'unavailable'>('unavailable');
 
   useEffect(() => {
+    if (isNative) {
+      // Check Capacitor push notification permission
+      void PushNotifications.checkPermissions().then((result) => {
+        if (result.receive === 'prompt' || result.receive === 'prompt-with-rationale') {
+          setBrowserPermission('default');
+        } else {
+          setBrowserPermission(result.receive as NotificationPermission);
+        }
+      });
+      return;
+    }
+    // Web fallback
     if (typeof Notification === 'undefined') return;
-    // Keep permission state in sync if the user changes it while on the page
+    setBrowserPermission(Notification.permission);
     const interval = setInterval(() => {
       setBrowserPermission(Notification.permission);
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isNative]);
+
+  // Listen for Capacitor push registration events to capture APNs token
+  useEffect(() => {
+    if (!isNative) return;
+    const registrationListener = PushNotifications.addListener('registration', (token) => {
+      void saveNativeNotificationSubscription(role, token.value);
+    });
+    const errorListener = PushNotifications.addListener('registrationError', (error) => {
+      console.error('Push registration error:', error);
+    });
+    return () => {
+      void registrationListener.then((h) => h.remove());
+      void errorListener.then((h) => h.remove());
+    };
+  }, [isNative, role]);
 
   const prefs = reminderSettingsQuery.data?.preferences;
   const masterEnabled = prefs?.enabled ?? false;
@@ -83,7 +112,9 @@ export function SettingsPage() {
 
   const oliviaNotifMessage = useMemo(() => {
     if (browserPermission === 'denied') {
-      return isIOS
+      return isNative
+        ? 'Notifications are blocked in your device settings. I can\'t send you alerts until you re-enable them in Settings → Olivia → Notifications.'
+        : isIOS
         ? 'Notifications are blocked in your device settings. I can\'t send you alerts until you re-enable them in Settings → Safari.'
         : 'Notifications are blocked in your browser. I can\'t send you alerts until you re-enable them in your browser settings.';
     }
@@ -98,7 +129,7 @@ export function SettingsPage() {
       return 'Push notifications are on, but all notification types are off. Enable one to start receiving alerts.';
     }
     return parts.join('. ') + '.';
-  }, [browserPermission, masterEnabled, dueEnabled, summaryEnabled, isIOS]);
+  }, [browserPermission, masterEnabled, dueEnabled, summaryEnabled, isIOS, isNative]);
 
   return (
     <div className="screen">
@@ -177,11 +208,28 @@ export function SettingsPage() {
                   disabled={browserPermission === 'denied'}
                   onClick={() => {
                     const next = !masterEnabled;
-                    void savePrefs({
-                      enabled: next,
-                      dueRemindersEnabled: next ? dueEnabled : false,
-                      dailySummaryEnabled: next ? summaryEnabled : false,
-                    });
+                    void (async () => {
+                      // Request permission + register if enabling
+                      if (next && browserPermission === 'default') {
+                        if (isNative) {
+                          const permResult = await PushNotifications.requestPermissions();
+                          const granted = permResult.receive === 'granted';
+                          setBrowserPermission(granted ? 'granted' : 'denied');
+                          if (!granted) return;
+                          // Register will fire the 'registration' event handled below
+                          await PushNotifications.register();
+                        } else if (typeof Notification !== 'undefined') {
+                          const perm = await Notification.requestPermission();
+                          setBrowserPermission(perm);
+                          if (perm !== 'granted') return;
+                        }
+                      }
+                      await savePrefs({
+                        enabled: next,
+                        dueRemindersEnabled: next ? dueEnabled : false,
+                        dailySummaryEnabled: next ? summaryEnabled : false,
+                      });
+                    })();
                   }}
                   aria-label="Toggle push notifications"
                 />
@@ -190,9 +238,19 @@ export function SettingsPage() {
 
             {browserPermission === 'denied' && (
               <div className="notif-denied-banner" role="alert">
-                <div className="notif-denied-title">Notifications blocked by {isIOS ? 'device settings' : 'browser'}</div>
+                <div className="notif-denied-title">Notifications blocked by {isNative ? 'device settings' : isIOS ? 'device settings' : 'browser'}</div>
                 <div className="notif-denied-body">
-                  {isIOS ? (
+                  {isNative ? (
+                    <>
+                      Your device is blocking notifications for Olivia. To re-enable:
+                      <ol className="notif-denied-steps">
+                        <li>Open your device <strong>Settings</strong> app</li>
+                        <li>Scroll to <strong>Olivia</strong></li>
+                        <li>Tap <strong>Notifications</strong> and enable <strong>Allow Notifications</strong></li>
+                        <li>Return here</li>
+                      </ol>
+                    </>
+                  ) : isIOS ? (
                     <>
                       Your device is blocking notifications. To re-enable:
                       <ol className="notif-denied-steps">
@@ -217,7 +275,7 @@ export function SettingsPage() {
               </div>
             )}
 
-            {isIOS && !installed && (
+            {isIOS && !installed && !isNative && (
               <div className="notif-ios-note" role="note">
                 On iOS, Olivia must be added to your Home Screen for push notifications to work.
               </div>
@@ -260,14 +318,22 @@ export function SettingsPage() {
             <div className="section-header">
               <h3 className="card-title">Installability</h3>
             </div>
-            <p className="muted">Installed as app: <strong>{installed ? 'Yes' : 'No'}</strong></p>
-            <p className="muted">Notification permission: <strong>{typeof Notification !== 'undefined' ? Notification.permission : 'unavailable'}</strong></p>
+            <p className="muted">Installed as app: <strong>{isNative ? 'Native (Capacitor)' : installed ? 'Yes' : 'No'}</strong></p>
+            <p className="muted">Notification permission: <strong>{browserPermission}</strong></p>
             <button
               type="button"
               className="secondary-button"
               onClick={async () => {
-                if (typeof Notification !== 'undefined' && Notification.permission === 'default') await Notification.requestPermission();
-                await saveDemoNotificationSubscription(role);
+                if (isNative) {
+                  const permResult = await PushNotifications.requestPermissions();
+                  setBrowserPermission(permResult.receive === 'granted' ? 'granted' : permResult.receive === 'denied' ? 'denied' : 'default');
+                  if (permResult.receive === 'granted') {
+                    await PushNotifications.register();
+                  }
+                } else {
+                  if (typeof Notification !== 'undefined' && Notification.permission === 'default') await Notification.requestPermission();
+                  await saveDemoNotificationSubscription(role);
+                }
                 await queryClient.invalidateQueries({ queryKey: ['notification-subscriptions', role] });
               }}
             >

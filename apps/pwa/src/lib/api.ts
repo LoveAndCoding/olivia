@@ -201,6 +201,18 @@ export async function saveNotificationSubscription(role: ActorRole) {
   });
 }
 
+export async function saveNativeNotificationSubscriptionApi(role: ActorRole, apnsToken: string) {
+  return request<{ subscription: unknown }>('/api/notifications/subscriptions', {
+    method: 'POST',
+    body: JSON.stringify({
+      actorRole: role,
+      type: 'apns',
+      token: apnsToken,
+      payload: { platform: 'ios', userAgent: navigator.userAgent, storedAt: new Date().toISOString() }
+    })
+  });
+}
+
 export async function listNotificationSubscriptions(role: ActorRole) {
   return request<{ subscriptions: unknown[] }>(`/api/notifications/subscriptions?actorRole=${role}`);
 }

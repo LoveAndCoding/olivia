@@ -181,6 +181,7 @@ import {
   restoreRoutine as restoreRoutineApi,
   resumeRoutine as resumeRoutineApi,
   saveNotificationSubscription,
+  saveNativeNotificationSubscriptionApi,
   saveReminderSettings,
   snoozeReminder as snoozeReminderApi,
   uncheckListItem as uncheckListItemApi,
@@ -711,6 +712,11 @@ export async function loadNotificationState(role: ActorRole) {
 
 export async function saveDemoNotificationSubscription(role: ActorRole) {
   await saveNotificationSubscription(role);
+  return loadNotificationState(role);
+}
+
+export async function saveNativeNotificationSubscription(role: ActorRole, apnsToken: string) {
+  await saveNativeNotificationSubscriptionApi(role, apnsToken);
   return loadNotificationState(role);
 }
 

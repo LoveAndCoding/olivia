@@ -368,16 +368,24 @@ export const saveReminderNotificationPreferencesResponseSchema = reminderSetting
 export const notificationSubscriptionSchema = z.object({
   id: z.string().uuid(),
   actorRole: actorRoleSchema,
-  endpoint: z.string().url(),
+  endpoint: z.string(),
   payload: z.record(z.string(), z.unknown()),
   createdAt: z.string().datetime()
 });
 
-export const saveNotificationSubscriptionRequestSchema = z.object({
-  actorRole: actorRoleSchema,
-  endpoint: z.string().url(),
-  payload: z.record(z.string(), z.unknown())
-});
+export const saveNotificationSubscriptionRequestSchema = z.union([
+  z.object({
+    actorRole: actorRoleSchema,
+    type: z.literal('apns'),
+    token: z.string().min(1),
+    payload: z.record(z.string(), z.unknown())
+  }),
+  z.object({
+    actorRole: actorRoleSchema,
+    endpoint: z.string().url(),
+    payload: z.record(z.string(), z.unknown())
+  })
+]);
 
 export const saveNotificationSubscriptionResponseSchema = z.object({
   subscription: notificationSubscriptionSchema

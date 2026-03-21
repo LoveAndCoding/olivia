@@ -736,14 +736,29 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   app.post('/api/notifications/subscriptions', async (request, reply) => {
     const body = saveNotificationSubscriptionRequestSchema.parse(request.body);
-    if (!isPushSubscriptionPayload(body.payload) || body.payload.endpoint !== body.endpoint) {
-      return reply.status(400).send({
-        code: 'INVALID_PUSH_SUBSCRIPTION',
-        message: 'A real Web Push subscription payload with matching endpoint and keys is required.'
-      });
+
+    let endpoint: string;
+    let payload: Record<string, unknown>;
+
+    if ('token' in body) {
+      // APNs native push token from Capacitor
+      endpoint = `apns://${body.token}`;
+      payload = { ...body.payload, type: 'apns', token: body.token };
+      request.log.info({ actorRole: body.actorRole, type: 'apns' }, 'saved APNs notification subscription');
+    } else {
+      // Web Push subscription
+      if (!isPushSubscriptionPayload(body.payload) || body.payload.endpoint !== body.endpoint) {
+        return reply.status(400).send({
+          code: 'INVALID_PUSH_SUBSCRIPTION',
+          message: 'A real Web Push subscription payload with matching endpoint and keys is required.'
+        });
+      }
+      endpoint = body.endpoint;
+      payload = body.payload;
+      request.log.info({ actorRole: body.actorRole, type: 'web-push' }, 'saved Web Push notification subscription');
     }
-    const subscription = repository.saveNotificationSubscription(body.actorRole, body.endpoint, body.payload);
-    request.log.info({ actorRole: body.actorRole }, 'saved notification subscription');
+
+    const subscription = repository.saveNotificationSubscription(body.actorRole, endpoint, payload);
     return reply.send(saveNotificationSubscriptionResponseSchema.parse({ subscription }));
   });
 
