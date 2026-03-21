@@ -23,4 +23,15 @@ describe('resolveApiUrl', () => {
       'https://olivia.local/api/inbox/items/preview-create'
     );
   });
+
+  it('resolves correctly with a Tailscale host base URL (native iOS build)', () => {
+    expect(resolveApiUrl('/api/chat/messages', 'http://100.64.0.5/api')).toBe(
+      'http://100.64.0.5/api/chat/messages'
+    );
+  });
+
+  it('falls back to default when baseUrl is empty string', () => {
+    const result = resolveApiUrl('/api/health', '');
+    expect(result).toBe('/api/health');
+  });
 });

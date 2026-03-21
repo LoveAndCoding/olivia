@@ -248,7 +248,13 @@ function resolveReminderUpdateChange(
 
 export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
-  await app.register(cors, { origin: true });
+  await app.register(cors, {
+    origin: [
+      config.pwaOrigin,
+      'capacitor://localhost',
+      'http://localhost:4173',
+    ],
+  });
 
   const db = createDatabase(config.dbPath);
   const repository = new InboxRepository(db);

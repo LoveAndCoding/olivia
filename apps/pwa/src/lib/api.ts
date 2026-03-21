@@ -87,6 +87,19 @@ import {
 
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:3001';
 
+/** True when running inside a Capacitor native shell (iOS/Android). */
+export const isNativePlatform = typeof window !== 'undefined'
+  && window.Capacitor?.isNativePlatform?.() === true;
+
+if (isNativePlatform && !import.meta.env.VITE_API_BASE_URL) {
+  console.warn(
+    '[Olivia] Running in Capacitor without VITE_API_BASE_URL. ' +
+    'API calls will fall back to %s which is unreachable from a device. ' +
+    'Set the IOS_API_BASE_URL secret in CI.',
+    DEFAULT_API_BASE_URL,
+  );
+}
+
 function normalizeBasePath(basePath: string): string {
   const trimmedBasePath = basePath.trim();
   if (!trimmedBasePath || trimmedBasePath === '/') {
@@ -112,7 +125,7 @@ function stripDuplicatePrefix(pathname: string, basePath: string): string {
   return pathname;
 }
 
-export function resolveApiUrl(path: string, baseUrl = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL): string {
+export function resolveApiUrl(path: string, baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL): string {
   const requestUrl = new URL(path.startsWith('/') ? path : `/${path}`, 'http://olivia.local');
 
   if (/^https?:\/\//i.test(baseUrl)) {
