@@ -4,6 +4,19 @@ All notable changes to Olivia are documented here. This changelog is curated for
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-03-21
+
+### Added
+- Native push notifications via Apple Push Notification service — notifications now arrive even when the app is closed
+- Tapping a notification opens the relevant screen directly instead of just launching the app
+- Background and foreground lifecycle handling — the app reconnects and refreshes data when you switch back to it
+- Connection health monitor — Olivia now detects when the server is unreachable and shows a clear status indicator
+
+### Fixed
+- Chat conversation no longer breaks or goes blank when the connection drops temporarily
+- Onboarding screen no longer shows a blank page when starting the app without internet
+- Resolved the root cause of the AI chat being unable to connect on the native app
+
 ## [0.2.0] - 2026-03-21
 
 ### Added
