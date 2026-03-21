@@ -6,6 +6,8 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
 import { flushOutbox } from '../lib/sync';
 import { abortActiveOperations, resetActiveOperations } from '../lib/app-lifecycle';
+import { checkConnectivityNow } from '../lib/connectivity';
+import { OfflineIndicator } from './OfflineIndicator';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -33,6 +35,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     const listener = App.addListener('appStateChange', ({ isActive }) => {
       if (isActive) {
         resetActiveOperations();
+        checkConnectivityNow();
         void (async () => {
           try { await flushOutbox(); } catch { /* keep stale state visible */ }
           void queryClient.invalidateQueries();
@@ -107,6 +110,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="ambient ambient-1" aria-hidden="true" />
       <div className="ambient ambient-2" aria-hidden="true" />
       <div className="ambient ambient-3" aria-hidden="true" />
+      <OfflineIndicator />
       {children}
     </div>
   );

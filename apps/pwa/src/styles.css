@@ -5513,25 +5513,31 @@ input[type="date"].rem-form-input {
   }
 }
 
-/* ── OFFLINE INDICATOR ─────────────────────────────── */
-.offline-indicator {
-  display: inline-flex;
+/* ── CONNECTIVITY BANNER ──────────────────────────── */
+.connectivity-banner {
+  display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 8px;
   font-size: 13px;
   color: var(--ink-2);
-  padding: 6px 12px;
+  padding: 8px 16px;
   background: var(--surface-2);
-  border-radius: 10px;
+  border-radius: 12px;
+  margin: 8px 16px 0;
   animation: fadeUp 0.25s ease-out;
 }
 
-.offline-indicator-dot {
+.connectivity-banner-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--peach);
   flex-shrink: 0;
+}
+
+.connectivity-banner-dot--warn {
+  background: var(--amber, #f59e0b);
 }
 
 /* ── LANDSCAPE ORIENTATION SUPPORT ────────────────────── */
