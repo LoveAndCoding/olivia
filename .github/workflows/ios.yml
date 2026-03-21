@@ -94,8 +94,6 @@ jobs:
           <dict>
             <key>method</key>
             <string>app-store-connect</string>
-            <key>destination</key>
-            <string>upload</string>
           </dict>
           </plist>
           PLIST
@@ -113,14 +111,21 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
         run: |
-          # Write to ~/private_keys/ — one of altool's default search paths.
-          # --apiKeyPath is unreliable on newer Xcode versions.
-          API_KEY_DIR=~/private_keys
-          mkdir -p "$API_KEY_DIR"
-          echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o "$API_KEY_DIR/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+          # Write API key to ~/private_keys/ (altool default search path)
+          mkdir -p ~/private_keys
+          echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o ~/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
+
+          # Find the exported IPA (name may vary by scheme/product)
+          IPA_PATH=$(find $RUNNER_TEMP/export -name "*.ipa" -print -quit)
+          if [ -z "$IPA_PATH" ]; then
+            echo "ERROR: No IPA found in export directory"
+            ls -la $RUNNER_TEMP/export/ 2>/dev/null || echo "Export directory does not exist"
+            exit 1
+          fi
+          echo "Found IPA: $IPA_PATH"
 
           xcrun altool --upload-app \
-            -f $RUNNER_TEMP/export/App.ipa \
+            -f "$IPA_PATH" \
             -t ios \
             --apiKey "$APP_STORE_CONNECT_API_KEY_ID" \
             --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
