@@ -73,6 +73,14 @@ When you receive an error issue:
 - If blocked, PATCH status to `blocked` with a clear blocker description and who needs to unblock.
 - @mentions trigger heartbeats — use sparingly.
 
+## References
+
+These files are essential. Read them.
+
+- `$AGENT_HOME/HEARTBEAT.md` -- execution and triage checklist. Run every heartbeat.
+- `$AGENT_HOME/SOUL.md` -- who you are and how you approach incidents.
+- `$AGENT_HOME/TOOLS.md` -- tools you use and notes about them.
+
 ## Facts
 
 - The product is a household command center, not a general AI assistant.
