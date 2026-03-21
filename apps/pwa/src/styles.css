@@ -5533,3 +5533,75 @@ input[type="date"].rem-form-input {
   background: var(--peach);
   flex-shrink: 0;
 }
+
+/* ── LANDSCAPE ORIENTATION SUPPORT ────────────────────── */
+
+/* Smooth transitions on rotation — applied globally so portrait↔landscape
+   feels seamless rather than snapping. Only transition layout properties
+   that change between orientations. */
+.app-frame {
+  transition: max-width 0.3s ease;
+}
+
+.bottom-nav {
+  transition: height 0.3s ease, padding 0.3s ease;
+}
+
+.sheet-container {
+  transition: max-width 0.3s ease, max-height 0.3s ease;
+}
+
+/* ── Landscape: all devices ───────────────────────────── */
+
+@media (orientation: landscape) {
+
+  /* App frame — widen to use available horizontal space */
+  .app-frame {
+    max-width: clamp(430px, 85vw, 720px);
+  }
+
+  /* Bottom sheets — cap height so they don't consume the shorter screen */
+  .sheet-container {
+    max-width: clamp(430px, 85vw, 720px);
+    max-height: 80vh;
+  }
+
+  /* Chat bubbles — prevent uncomfortable stretching in wide layout */
+  .msg {
+    max-width: 70%;
+  }
+}
+
+/* ── Landscape: phone-sized screens only ──────────────── */
+
+@media (orientation: landscape) and (max-height: 500px) {
+
+  /* Bottom nav — reduce height on phones where vertical space is scarce */
+  .bottom-nav {
+    height: calc(52px + env(safe-area-inset-bottom, 0px));
+    padding: 4px 4px env(safe-area-inset-bottom, 0px);
+  }
+
+  .nav-btn {
+    gap: 1px;
+    padding: 4px 16px;
+  }
+
+  .nav-icon {
+    font-size: 17px;
+  }
+
+  .nav-label {
+    font-size: 9px;
+  }
+
+  /* Bottom sheets — even tighter cap on small landscape phones */
+  .sheet-container {
+    max-height: 75vh;
+  }
+
+  /* Sheet scroll — reduce bottom padding for shorter viewport */
+  .sheet-scroll {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+}
