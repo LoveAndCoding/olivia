@@ -4,9 +4,11 @@ import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { flushOutbox } from '../lib/sync';
 import { abortActiveOperations, resetActiveOperations } from '../lib/app-lifecycle';
 import { checkConnectivityNow } from '../lib/connectivity';
+import { router } from '../router';
 import { OfflineIndicator } from './OfflineIndicator';
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -46,6 +48,25 @@ export function AppLayout({ children }: { children: ReactNode }) {
     });
     return () => { void listener.then((h) => h.remove()); };
   }, [queryClient]);
+
+  // Navigate to the URL embedded in the push notification when the user taps it.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listener = PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+      const url = action.notification.data?.url as string | undefined;
+      if (!url) return;
+      try {
+        // The url field is a full URL (e.g. https://app.olivia.com/re-entry?reason=...).
+        // Extract the pathname + search to navigate within the app.
+        const parsed = new URL(url);
+        void router.navigate({ to: parsed.pathname + parsed.search });
+      } catch {
+        // If url is already a relative path, use it directly.
+        void router.navigate({ to: url });
+      }
+    });
+    return () => { void listener.then((h) => h.remove()); };
+  }, []);
 
   // Configure the native status bar so the web view extends behind it and
   // env(safe-area-inset-top) reports correct values on iOS.
