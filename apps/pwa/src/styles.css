@@ -455,7 +455,7 @@ p { margin: 0; }
 /* ── HOME SCREEN ────────────────────────────────────── */
 
 .home-header {
-  padding: 16px 22px 18px;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 22px 18px;
 }
 
 .home-header-row {
@@ -4614,7 +4614,7 @@ input[type="date"].rem-form-input {
   top: 0;
   z-index: 10;
   background: var(--bg);
-  padding: 12px 22px 16px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 22px 16px;
   border-bottom: 1px solid var(--ink-4);
 }
 .onb-back {

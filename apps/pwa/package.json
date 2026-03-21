@@ -16,6 +16,7 @@
   "dependencies": {
     "@capacitor/core": "^8.2.0",
     "@capacitor/ios": "^8.2.0",
+    "@capacitor/status-bar": "^8.0.1",
     "@olivia/contracts": "0.1.0",
     "@olivia/domain": "0.1.0",
     "@phosphor-icons/react": "^2.1.10",

@@ -1,5 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { flushOutbox } from '../lib/sync';
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -20,6 +22,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
   }, [queryClient]);
+
+  // Configure the native status bar so the web view extends behind it and
+  // env(safe-area-inset-top) reports correct values on iOS.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    void StatusBar.setOverlaysWebView({ overlay: true });
+    void StatusBar.setStyle({ style: Style.Light });
+  }, []);
 
   // Track the visual viewport height so the layout shrinks when the virtual
   // keyboard opens, keeping bottom inputs visible above the keyboard.
