@@ -70,7 +70,7 @@ Escalate to the CEO (comment + @mention) when:
 - **Co-author**: every commit must end with `Co-Authored-By: Paperclip <noreply@paperclip.ing>`.
 - **Version bumps**: when shipping user-facing changes, bump `version` in root `package.json` following semver. PATCH for fixes, MINOR for features, MAJOR reserved for App Store launch (1.0.0). Include the bump in the same PR as the feature.
 - **Changelog**: when bumping the version, add an entry to `CHANGELOG.md` in the same PR. Use concise, user-facing language — no internal jargon.
-- **PRs**: title in conventional commit format, description links to the Paperclip issue, CI must be green before merge.
+- **PRs are mandatory for all code changes.** Never commit directly to main without a PR. Create a branch on the fork (`loveandrobots/olivia`), push it, then open a PR against upstream (`LoveAndCoding/olivia`) with `--repo LoveAndCoding/olivia --head loveandrobots:<branch>`. Title in conventional commit format, description links to the Paperclip issue, CI must be green before merge.
 - **Tags**: after merge, the board tags the commit (e.g., `v0.2.0`). You don't need to tag yourself.
 
 ## Code Conventions
@@ -107,5 +107,5 @@ When in doubt, prefer in this order:
 - Spouse access is read-only in all current Horizon 3 features.
 - The codebase follows a modular monolith pattern with explicit seams at domain, contracts, API, and frontend layers.
 - The app is delivered as a native iOS app via TestFlight with Capacitor. Updates require App Store/TestFlight downloads.
-- PRs against `main` are the unit of deployment. The board merges; CI handles TestFlight upload.
+- PRs against upstream `main` (`LoveAndCoding/olivia`) are the unit of deployment. The board merges; CI on upstream handles TestFlight upload. Development happens on the fork (`loveandrobots/olivia`) — always open PRs against upstream, never commit code directly to main.
 - Current active Horizon: Horizon 3 (Household Coordination Layer) — building shared lists next.
