@@ -103,20 +103,25 @@ When in doubt, prefer in this order:
 
 ## Git Workflow (Fork Model)
 
-We use a fork model: `origin` = `loveandrobots/olivia` (fork), `upstream` = `LoveAndCoding/olivia` (canonical). The board merges PRs on upstream.
+We use a fork model: `origin` = `loveandrobots/olivia` (fork), `upstream` = `LoveAndCoding/olivia` (canonical). `origin/main` is our development source of truth. PRs to `upstream/main` are releases.
 
-**Creating feature branches:**
-1. `git fetch upstream` — always sync before branching
-2. `git checkout -b feat/oli-XXX-description upstream/main` — branch from upstream, never from local main
-3. Push to origin: `git push -u origin feat/oli-XXX-description`
-4. PR targets upstream: `gh pr create --repo LoveAndCoding/olivia --head loveandrobots:feat/oli-XXX-description --base main`
+**Development flow:**
+1. `git fetch upstream && git merge upstream/main` — sync `origin/main` with upstream before starting work
+2. `git checkout -b feat/oli-XXX-description` — branch from local main (which is synced with upstream)
+3. Do the work, commit, push the branch to origin
+4. Merge the branch into `origin/main` when ready: `git checkout main && git merge feat/oli-XXX-description && git push origin main`
 
-**After a PR merges on upstream:**
-1. `git fetch upstream`
-2. `git checkout main && git merge upstream/main` — keep local main in sync
-3. `git push origin main` — keep fork main in sync
+**Release flow (PRs to upstream):**
+1. Accumulate changes on `origin/main` until a release is warranted
+2. Founding Engineer bumps the version number before the release PR
+3. Open PR from `origin/main` to `upstream/main`: `gh pr create --repo LoveAndCoding/olivia --head loveandrobots:main --base main`
+4. Board merges the PR; CI handles TestFlight upload
+5. After merge: `git fetch upstream && git merge upstream/main && git push origin main` — close the loop
 
-**Why this matters:** If you branch from a local `main` that has drifted from `upstream/main`, your PR will include unrelated commits and may have merge conflicts. Always branch from `upstream/main`.
+**Key principles:**
+- `origin/main` is ours. We control it and develop against it.
+- Everything gets upstreamed — the only divergence is timing (we batch changes into releases).
+- PRs to upstream = deployments. Only open one when we have enough changes to justify a release.
 
 ## Paperclip Operations
 
@@ -133,5 +138,5 @@ We use a fork model: `origin` = `loveandrobots/olivia` (fork), `upstream` = `Lov
 - Spouse access is read-only in all current Horizon 3 features.
 - The codebase follows a modular monolith pattern with explicit seams at domain, contracts, API, and frontend layers.
 - The app is delivered as a native iOS app via TestFlight with Capacitor. Updates require App Store/TestFlight downloads.
-- PRs against upstream `main` (`LoveAndCoding/olivia`) are the unit of deployment. The board merges; CI on upstream handles TestFlight upload. Development happens on the fork (`loveandrobots/olivia`) — always open PRs against upstream, never commit code directly to main.
+- Development happens on the fork (`loveandrobots/olivia`). `origin/main` is our working main. PRs from `origin/main` to `upstream/main` (`LoveAndCoding/olivia`) are releases — batch changes until a release is warranted. The board merges; CI on upstream handles TestFlight upload.
 - Current active Horizon: Horizon 3 (Household Coordination Layer) — building shared lists next.
