@@ -73,12 +73,17 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
-          # Extract team ID and profile UUID from provisioning profile for xcodebuild
-          TEAM_ID=$(security cms -D -i $PP_PATH | plutil -extract TeamIdentifier.0 raw -)
-          PP_UUID=$(security cms -D -i $PP_PATH | plutil -extract UUID raw -)
+          # Extract signing metadata from provisioning profile
+          PP_PLIST=$(security cms -D -i $PP_PATH)
+          TEAM_ID=$(echo "$PP_PLIST" | plutil -extract TeamIdentifier.0 raw -)
+          PP_UUID=$(echo "$PP_PLIST" | plutil -extract UUID raw -)
+          PP_NAME=$(echo "$PP_PLIST" | plutil -extract Name raw -)
+          BUNDLE_ID=$(echo "$PP_PLIST" | plutil -extract Entitlements.application-identifier raw - | sed "s/^${TEAM_ID}\\.//")
           echo "team_id=$TEAM_ID" >> $GITHUB_OUTPUT
           echo "pp_uuid=$PP_UUID" >> $GITHUB_OUTPUT
-          echo "Extracted Team ID: $TEAM_ID, Profile UUID: $PP_UUID"
+          echo "pp_name=$PP_NAME" >> $GITHUB_OUTPUT
+          echo "bundle_id=$BUNDLE_ID" >> $GITHUB_OUTPUT
+          echo "Signing: Team=$TEAM_ID Profile=$PP_NAME ($PP_UUID) Bundle=$BUNDLE_ID"
 
       - name: Archive for distribution
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
@@ -98,13 +103,22 @@ jobs:
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         working-directory: apps/pwa/ios/App
         run: |
-          cat > $RUNNER_TEMP/ExportOptions.plist << 'PLIST'
+          cat > $RUNNER_TEMP/ExportOptions.plist << PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>method</key>
             <string>app-store-connect</string>
+            <key>teamID</key>
+            <string>${{ steps.signing.outputs.team_id }}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${{ steps.signing.outputs.bundle_id }}</key>
+              <string>${{ steps.signing.outputs.pp_name }}</string>
+            </dict>
           </dict>
           </plist>
           PLIST
@@ -112,8 +126,7 @@ jobs:
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -exportPath $RUNNER_TEMP/export \
-            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
-            | tail -20
+            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist
 
       - name: Upload to TestFlight
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
