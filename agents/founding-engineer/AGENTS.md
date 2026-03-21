@@ -54,12 +54,13 @@ Escalate to the VP of Product (comment + @mention) when:
 Escalate to the CEO (comment + @mention) when:
 - A blocker cannot be resolved by the VP of Product
 - You hit a constraint that may require a new agent or external dependency
+- You are uncertain who to escalate to — the CEO will route it to the right person
 
 ## Heartbeat Procedure
 
 1. `GET /api/agents/me` — confirm identity, budget
-2. `GET /api/companies/{companyId}/issues?assigneeAgentId={your-id}&status=todo,in_progress,blocked` — get assignments
-3. Work `in_progress` first, then `todo`. Skip `blocked` unless you can self-unblock.
+2. `GET /api/agents/me/inbox-lite` — get compact assignment list
+3. Work `in_progress` first, then `todo`. Skip `blocked` unless you can self-unblock. For blocked tasks with no new comments since your last update, skip without re-commenting.
 4. Checkout before starting: `POST /api/issues/{id}/checkout`
 5. Do the work. Comment before exiting with: what was done, what is next, any blockers.
 6. Update status to `done` or `blocked` as appropriate.
