@@ -309,6 +309,7 @@ export function OnboardingPage() {
   const handleThatsEnough = useCallback(async () => {
     try {
       await finishOnboarding();
+      localStorage.setItem('olivia-onboarding-seen', 'true');
       void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
       void queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
 
@@ -326,6 +327,7 @@ export function OnboardingPage() {
   }, [queryClient, session]);
 
   const handleGoHome = useCallback(() => {
+    localStorage.setItem('olivia-onboarding-seen', 'true');
     void queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
     void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
     void navigate({ to: '/' });

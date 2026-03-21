@@ -411,8 +411,16 @@ export function HomePage() {
   const onboardingQuery = useQuery({
     queryKey: ['onboarding-state'],
     queryFn: fetchOnboardingState,
+    retry: 1,
   });
   const onboardingState: OnboardingState | undefined = onboardingQuery.data;
+
+  // Client-side first-launch detection: if the API is unreachable on a fresh
+  // install, we still want to show the onboarding welcome card. The localStorage
+  // flag is set after the user completes or skips onboarding. On a brand-new
+  // Capacitor install there is no flag and no cached data, so the card appears.
+  const isFirstLaunch = useMemo(() => !localStorage.getItem('olivia-onboarding-seen'), []);
+  const showOnboardingFallback = isFirstLaunch && !onboardingState && (onboardingQuery.isError || onboardingQuery.failureCount > 0);
 
   const healthCheckQuery = useQuery({
     queryKey: ['health-check-state'],
@@ -574,7 +582,8 @@ export function HomePage() {
         />
 
         {/* Onboarding: Welcome Card (new user, no session yet) */}
-        {onboardingState && onboardingState.needsOnboarding && !onboardingState.session && (
+        {/* Shows when API confirms needsOnboarding OR when API is unreachable on first launch */}
+        {((onboardingState && onboardingState.needsOnboarding && !onboardingState.session) || showOnboardingFallback) && (
           <div className="onb-welcome-card" role="region" aria-label="Welcome to Olivia">
             <div className="nudge-deco nudge-deco-1" aria-hidden="true" />
             <div className="nudge-deco nudge-deco-2" aria-hidden="true" />
@@ -605,10 +614,11 @@ export function HomePage() {
                 try {
                   await startOnboarding();
                   await finishOnboarding();
-                  void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
                 } catch {
-                  // ignore
+                  // API unreachable — just set the local flag
                 }
+                localStorage.setItem('olivia-onboarding-seen', 'true');
+                void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
               }}
             >
               Skip for now
@@ -651,10 +661,11 @@ export function HomePage() {
                 onClick={async () => {
                   try {
                     await finishOnboarding();
-                    void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
                   } catch {
                     // ignore
                   }
+                  localStorage.setItem('olivia-onboarding-seen', 'true');
+                  void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
                 }}
               >
                 I{'\u2019'}m good {'\u2713'}
