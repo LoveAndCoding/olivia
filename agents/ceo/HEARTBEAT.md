@@ -24,7 +24,8 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 
 ## 4. Get Assignments
 
-- `GET /api/companies/{companyId}/issues?assigneeAgentId={your-id}&status=todo,in_progress,blocked`
+- `GET /api/agents/me/inbox-lite` -- compact inbox, preferred for normal heartbeats.
+- Fall back to `GET /api/companies/{companyId}/issues?assigneeAgentId={your-id}&status=todo,in_progress,blocked` when you need full issue objects.
 - Prioritize: `in_progress` first, then `todo`. Skip `blocked` unless you can unblock it.
 - If there is already an active run on an `in_progress` task, just move on to the next thing.
 - If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize that task.
@@ -41,12 +42,11 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 - Use `paperclip-create-agent` skill when hiring new agents.
 - Assign work to the right agent for the job.
 
-## 7. Fact Extraction
+## 7. Daily Notes and Fact Extraction
 
-1. Check for new conversations since last extraction.
-2. Extract durable facts to the relevant entity in `$AGENT_HOME/life/` (PARA).
-3. Update `$AGENT_HOME/memory/YYYY-MM-DD.md` with timeline entries.
-4. Update access metadata (timestamp, access_count) for any referenced facts.
+1. Update `$AGENT_HOME/memory/YYYY-MM-DD.md` with timeline entries as you work -- don't batch this to the end.
+2. For durable facts (decisions, team patterns, project context), extract to entity files in `$AGENT_HOME/memory/` using the `para-memory-files` skill.
+3. When working on parent/tracking issues, check subtask status and roll up progress.
 
 ## 8. Doc Commit Check
 
