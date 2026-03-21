@@ -9,6 +9,7 @@ import { buildApp } from '../src/app';
 import type { AppConfig } from '../src/config';
 import { createDatabase } from '../src/db/client';
 import { evaluateDailySummaryRule, evaluateDueReminderRule } from '../src/jobs';
+import { DisabledApnsPushProvider } from '../src/push';
 import { InboxRepository } from '../src/repository';
 import { createReminder } from '@olivia/domain';
 
@@ -27,6 +28,7 @@ const createConfig = (dbPath: string): AppConfig => ({
   nudgePushIntervalMs: 1_800_000,
   pwaOrigin: 'http://localhost:4173',
   householdTimezone: 'UTC',
+  apns: { keyId: null, teamId: null, privateKey: null, bundleId: 'com.loveandcoding.olivia', useSandbox: true },
   paperclip: { apiUrl: null, apiKey: null, companyId: null, sreAgentId: null },
 });
 
@@ -38,8 +40,9 @@ const validPushPayload = {
   }
 };
 
+const noApns = new DisabledApnsPushProvider();
 const makeLogger = () =>
-  ({ info: () => {}, warn: () => {}, debug: () => {}, error: () => {} }) as unknown as Parameters<typeof evaluateDueReminderRule>[3];
+  ({ info: () => {}, warn: () => {}, debug: () => {}, error: () => {} }) as unknown as Parameters<typeof evaluateDueReminderRule>[4];
 
 async function createInboxItemViaApi(app: Awaited<ReturnType<typeof buildApp>>, title: string) {
   const preview = await app.inject({
@@ -584,7 +587,7 @@ describe('reminder notification jobs', () => {
     };
 
     const config = { ...createConfig(dbPath), notificationsEnabled: true };
-    await evaluateDueReminderRule(repository, trackingPush, config, makeLogger(), now);
+    await evaluateDueReminderRule(repository, trackingPush, noApns, config, makeLogger(), now);
     expect(attempted).toHaveLength(0);
     expect(repository.listNotificationDeliveries('stakeholder', 'due_reminder')).toHaveLength(0);
 
@@ -595,8 +598,8 @@ describe('reminder notification jobs', () => {
     });
     repository.saveNotificationSubscription('stakeholder', validPushPayload.endpoint, validPushPayload);
 
-    await evaluateDueReminderRule(repository, trackingPush, config, makeLogger(), now);
-    await evaluateDueReminderRule(repository, trackingPush, config, makeLogger(), now);
+    await evaluateDueReminderRule(repository, trackingPush, noApns, config, makeLogger(), now);
+    await evaluateDueReminderRule(repository, trackingPush, noApns, config, makeLogger(), now);
 
     expect(attempted).toHaveLength(1);
     expect(attempted[0]).toContain('due-reminder-');
@@ -640,9 +643,9 @@ describe('reminder notification jobs', () => {
     };
 
     const config = { ...createConfig(dbPath), notificationsEnabled: true };
-    await evaluateDailySummaryRule(repository, trackingPush, config, makeLogger(), outsideWindow);
-    await evaluateDailySummaryRule(repository, trackingPush, config, makeLogger(), summaryWindowNow);
-    await evaluateDailySummaryRule(repository, trackingPush, config, makeLogger(), summaryWindowNow);
+    await evaluateDailySummaryRule(repository, trackingPush, noApns, config, makeLogger(), outsideWindow);
+    await evaluateDailySummaryRule(repository, trackingPush, noApns, config, makeLogger(), summaryWindowNow);
+    await evaluateDailySummaryRule(repository, trackingPush, noApns, config, makeLogger(), summaryWindowNow);
 
     expect(attempted).toEqual(['daily-summary-2026-03-14']);
     expect(repository.listNotificationDeliveries('stakeholder', 'daily_summary')).toHaveLength(1);

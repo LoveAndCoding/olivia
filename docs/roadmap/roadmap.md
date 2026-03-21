@@ -51,7 +51,7 @@ Recommended product shape:
 - advisory-only behavior
 - local-first data handling
 - text-first interaction
-- an installable mobile-first PWA as the near-term canonical surface
+- a mobile-first app surface (originally PWA, now native iOS via Capacitor as of v0.1.0)
 - explicit ownership, status, reminders, and next-step visibility
 - a primary-operator model for the stakeholder, with spouse visibility or lightweight participation allowed but full collaboration deferred
 
@@ -228,19 +228,18 @@ Phase 4 candidate tracks (to be decided by M29 usage signal):
 - **Track D: Increase autonomy** — rule-based automation, push action buttons, Layer 2 LLM timing
 
 ## Near-Term Product Bets
-- The first enduring value will come from reducing coordination overhead, not from maximizing AI novelty.
-- The inbox implementation gives Olivia a stable product center; Horizon 3 should compound on that rather than reopening the MVP wedge.
-- Shared state and follow-through should now expand into reminders, recurring routines, and shared lists before broader assistant behaviors.
-- Meal planning is promising, but should follow only after recurring and list primitives prove they fit the household coordination model.
-- Household usefulness should continue to shape expansion, but the next horizon can now be scoped from a real product baseline rather than a greenfield concept.
+- Enduring value comes from reducing coordination overhead, not from maximizing AI novelty. This remains true even with the chat interface and AI-assisted features now shipped.
+- The inbox, reminders, shared lists, recurring routines, and meal planning together form a coherent household coordination platform (L-011, L-012). Future expansion should compound on this rather than fragmenting it.
+- The advisory-only trust model has held cleanly through three phases of H5. Automation should be earned through validated household usage (M29), not assumed.
+- Household usefulness should shape expansion. M29 is the active validation gate — observe real usage before committing to the next build direction.
 
 ## Expansion Areas To Revisit Later
-- broader multi-user roles and permissions
+- broader multi-user roles and permissions (spouse write access)
 - richer spouse-specific experiences
 - voice interaction
-- proactive planning rituals
-- selective low-risk automation
-- more than one interface surface if justified by usage
+- Android or other platform support
+- selective low-risk automation (rule-based, Phase 3+)
+- Layer 2 LLM-based nudge timing
 
 ## What The Roadmap Deliberately Does Not Do
 - It does not define artifact-level completion criteria.
@@ -253,22 +252,23 @@ Phase 4 candidate tracks (to be decided by M29 usage signal):
 - Full autonomy is not a near-term goal.
 
 ## Assumptions
-- A narrow MVP will create more durable value than attempting broad assistant capabilities early.
+- A narrow MVP will create more durable value than attempting broad assistant capabilities early. (Validated — the coordination platform now spans five horizons built on the original wedge.)
 - Shared list workflows are behaviorally distinct from inbox items and deserve their own product model. (Validated — A-007)
 - Recurring schedule infrastructure can be shared across reminders, routines, and planning workflows without each feature inventing its own scheduling logic. (Validated — A-008)
-- Long-term interface decisions can remain flexible beyond the chosen PWA MVP surface until product usage reveals whether native clients or other surfaces deserve to become primary.
+- The advisory-only trust model is appropriate through H5. (Active — A-002; M29 usage observation will inform whether the household wants less friction.)
 
 ## Open Questions
 - ~~What is the minimum first-class reminder model that improves on the inbox without creating a second overlapping workflow?~~ — Answered: hybrid standalone-or-linked model (D-014, `docs/specs/first-class-reminders.md`)
 - ~~How much recurrence should be defined inside the first reminder spec versus deferred to a later recurring-routines spec?~~ — Answered: shared recurrence infrastructure validated across both specs (A-008)
 - ~~Which behaviors should be shared across inbox items, reminders, recurring routines, and lists, and which deserve separate workflow rules?~~ — Answered: separate workflow models with shared scheduling primitives; each workflow has distinct lifecycle rules (D-016, A-007, A-008)
 - ~~How should grocery and shopping lists relate to meal planning without forcing both into the same feature too early?~~ — Answered: meal planning generates grocery lists via the Shared Lists primitive (D-021, `docs/specs/meal-planning.md`)
-- What evidence should justify moving beyond the PWA to native clients or a shared-display mode?
+- ~~What evidence should justify moving beyond the PWA to native clients or a shared-display mode?~~ — Answered: push notifications, product surface breadth, and TestFlight distribution needs justified the Capacitor native transition (v0.1.0, 2026-03-21)
+- What M29 usage signal should determine the next build direction (Track A: deepen chat, Track B: broaden household, Track C: complete H3, Track D: increase autonomy)?
 - When should spouse-specific collaborative flows become first-class rather than secondary?
 
 ## Deferred Decisions
-- Detailed multi-user roles and permissions.
-- Detailed cross-workflow recurrence architecture.
-- Voice and proactive automation strategy.
-- Exact meal-planning product shape.
-- Final architecture and deployment model.
+- Detailed multi-user roles and permissions (spouse write access).
+- Voice interaction strategy.
+- Rule-based automation and increased autonomy (H5 Phase 3+).
+- Android or other platform support.
+- Final deployment model beyond single-household local-first.

@@ -116,5 +116,8 @@ A data point derived from household activity patterns that influences when Olivi
 ### User Action
 An action explicitly and directly commanded by the user. Non-destructive user actions execute immediately — no confirmation step is needed, since they can be reversed through the normal UI (e.g., status changed again, ownership reassigned). Destructive user actions (archive, permanent delete) always require explicit confirmation regardless of source.
 
+### Chat
+Olivia's conversational AI interface (H5 Phase 3). Users can ask about household state, request task creation, set reminders, add list items, and interact with the full H2-H5 feature surface through natural conversation. Olivia suggests and drafts but never auto-executes; all state changes require explicit user confirmation. Chat complements rather than replaces structured workflow screens.
+
 ### Workflow
 A concrete sequence of user and system interactions that delivers value around a specific household task or need.

@@ -14,6 +14,7 @@ import {
   type OnboardingSession,
   type ChatStreamEvent,
 } from '../lib/api';
+import { getActiveSignal } from '../lib/app-lifecycle';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -195,7 +196,7 @@ export function OnboardingPage() {
     let fullText = '';
     const toolCalls: ChatToolCall[] = [];
 
-    for await (const evt of streamOnboardingMessage(text)) {
+    for await (const evt of streamOnboardingMessage(text, getActiveSignal())) {
       if (evt.event === 'text') {
         fullText += (evt as ChatStreamEvent & { event: 'text' }).data.delta;
         setStreamingText(fullText);
@@ -344,6 +345,34 @@ export function OnboardingPage() {
   const completedTopics = session?.topicsCompleted ?? [];
   const currentTopic = session?.currentTopic ?? null;
   const placeholder = currentTopic ? (TOPIC_PLACEHOLDERS[currentTopic] ?? 'Tell me more\u2026') : 'Tell me more\u2026';
+
+  // Safety net: if state loaded but no session exists, show error instead of blank page
+  const noSession = stateQuery.isFetched && !session;
+
+  if (noSession) {
+    return (
+      <div className="onb-page">
+        <header className="onb-header">
+          <button type="button" className="onb-back" onClick={() => void navigate({ to: '/' })}>
+            <ArrowLeft size={18} /> Back
+          </button>
+          <div className="onb-header-content">
+            <div className="onb-orb olivia-orb" aria-hidden="true" />
+            <div className="onb-header-text">
+              <div className="onb-title">Getting set up</div>
+              <div className="onb-subtitle">Your household, organized</div>
+            </div>
+          </div>
+        </header>
+        <div className="onb-error-state">
+          <p>Olivia{'\u2019'}s AI is temporarily unavailable, so onboarding can{'\u2019'}t start right now.</p>
+          <button type="button" className="btn-primary onb-btn" onClick={() => void navigate({ to: '/' })}>
+            Back to home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="onb-page">

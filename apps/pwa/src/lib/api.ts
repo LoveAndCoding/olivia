@@ -87,6 +87,19 @@ import {
 
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:3001';
 
+/** True when running inside a Capacitor native shell (iOS/Android). */
+export const isNativePlatform = typeof window !== 'undefined'
+  && window.Capacitor?.isNativePlatform?.() === true;
+
+if (isNativePlatform && !import.meta.env.VITE_API_BASE_URL) {
+  console.warn(
+    '[Olivia] Running in Capacitor without VITE_API_BASE_URL. ' +
+    'API calls will fall back to %s which is unreachable from a device. ' +
+    'Set the IOS_API_BASE_URL secret in CI.',
+    DEFAULT_API_BASE_URL,
+  );
+}
+
 function normalizeBasePath(basePath: string): string {
   const trimmedBasePath = basePath.trim();
   if (!trimmedBasePath || trimmedBasePath === '/') {
@@ -112,7 +125,7 @@ function stripDuplicatePrefix(pathname: string, basePath: string): string {
   return pathname;
 }
 
-export function resolveApiUrl(path: string, baseUrl = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL): string {
+export function resolveApiUrl(path: string, baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL): string {
   const requestUrl = new URL(path.startsWith('/') ? path : `/${path}`, 'http://olivia.local');
 
   if (/^https?:\/\//i.test(baseUrl)) {
@@ -701,11 +714,84 @@ export type ChatStreamEvent =
   | { event: 'done'; data: { messageId: string; conversationId: string } }
   | { event: 'error'; data: { message: string } };
 
-export async function* streamChatMessage(content: string): AsyncGenerator<ChatStreamEvent> {
-  const response = await fetch(resolveApiUrl('/api/chat/messages'), {
+/**
+ * Parse an SSE response body into ChatStreamEvents.
+ *
+ * WKWebView can buffer SSE chunks differently from desktop browsers, so this
+ * parser uses a read timeout to detect stalled streams and surface an error
+ * rather than hanging indefinitely.
+ */
+async function* parseSSEStream(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<ChatStreamEvent> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  // 60s timeout per chunk — if WKWebView buffers beyond this, surface an error
+  const STREAM_READ_TIMEOUT_MS = 60_000;
+
+  try {
+    while (true) {
+      const readPromise = reader.read();
+
+      // Race the read against a timeout to catch stalled WKWebView streams
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('SSE stream read timed out')), STREAM_READ_TIMEOUT_MS);
+      });
+
+      let result: ReadableStreamReadResult<Uint8Array>;
+      try {
+        result = await Promise.race([readPromise, timeoutPromise]);
+      } catch {
+        // Stream timed out — yield an error event instead of throwing
+        yield { event: 'error', data: { message: 'The response took too long. Try sending your message again.' } } as ChatStreamEvent;
+        return;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (result.done) break;
+
+      buffer += decoder.decode(result.value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      let currentEvent = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7);
+        } else if (line.startsWith('data: ') && currentEvent) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            yield { event: currentEvent, data } as ChatStreamEvent;
+          } catch {
+            // skip unparseable data
+          }
+          currentEvent = '';
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/**
+ * Initiate an SSE streaming POST request and parse the response.
+ * Handles non-ok responses with user-friendly error events.
+ */
+async function* streamSSE(
+  url: string,
+  content: string,
+  signal?: AbortSignal,
+): AsyncGenerator<ChatStreamEvent> {
+  const response = await fetch(resolveApiUrl(url), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content })
+    body: JSON.stringify({ content }),
+    signal,
   });
 
   if (!response.ok) {
@@ -717,35 +803,13 @@ export async function* streamChatMessage(content: string): AsyncGenerator<ChatSt
     return;
   }
 
-  const reader = response.body?.getReader();
-  if (!reader) return;
+  if (!response.body) return;
 
-  const decoder = new TextDecoder();
-  let buffer = '';
+  yield* parseSSEStream(response.body);
+}
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-
-    let currentEvent = '';
-    for (const line of lines) {
-      if (line.startsWith('event: ')) {
-        currentEvent = line.slice(7);
-      } else if (line.startsWith('data: ') && currentEvent) {
-        try {
-          const data = JSON.parse(line.slice(6));
-          yield { event: currentEvent, data } as ChatStreamEvent;
-        } catch {
-          // skip unparseable data
-        }
-        currentEvent = '';
-      }
-    }
-  }
+export async function* streamChatMessage(content: string, signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
+  yield* streamSSE('/api/chat/messages', content, signal);
 }
 
 export async function clearChatConversation(): Promise<void> {
@@ -794,51 +858,8 @@ export async function fetchOnboardingConversation(limit = 50, before?: string): 
   return request<ChatConversationResponse>(`/api/onboarding/conversation?${params.toString()}`);
 }
 
-export async function* streamOnboardingMessage(content: string): AsyncGenerator<ChatStreamEvent> {
-  const response = await fetch(resolveApiUrl('/api/onboarding/messages'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content })
-  });
-
-  if (!response.ok) {
-    if (response.status === 503) {
-      yield { event: 'error', data: { message: 'Olivia is unavailable right now. You can still use the app to manage your household.' } };
-      return;
-    }
-    yield { event: 'error', data: { message: 'Something unexpected happened. Try sending your message again.' } };
-    return;
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) return;
-
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-
-    let currentEvent = '';
-    for (const line of lines) {
-      if (line.startsWith('event: ')) {
-        currentEvent = line.slice(7);
-      } else if (line.startsWith('data: ') && currentEvent) {
-        try {
-          const data = JSON.parse(line.slice(6));
-          yield { event: currentEvent, data } as ChatStreamEvent;
-        } catch {
-          // skip unparseable data
-        }
-        currentEvent = '';
-      }
-    }
-  }
+export async function* streamOnboardingMessage(content: string, signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
+  yield* streamSSE('/api/onboarding/messages', content, signal);
 }
 
 export async function advanceOnboardingTopic(): Promise<{

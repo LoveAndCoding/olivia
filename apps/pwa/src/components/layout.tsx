@@ -1,9 +1,15 @@
 import { useEffect, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { flushOutbox } from '../lib/sync';
+import { abortActiveOperations, resetActiveOperations } from '../lib/app-lifecycle';
+import { checkConnectivityNow } from '../lib/connectivity';
+import { router } from '../router';
+import { OfflineIndicator } from './OfflineIndicator';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -23,6 +29,44 @@ export function AppLayout({ children }: { children: ReactNode }) {
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
   }, [queryClient]);
+
+  // Handle Capacitor app lifecycle: flush outbox + invalidate on resume,
+  // abort in-flight streams on background.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listener = App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        resetActiveOperations();
+        checkConnectivityNow();
+        void (async () => {
+          try { await flushOutbox(); } catch { /* keep stale state visible */ }
+          void queryClient.invalidateQueries();
+        })();
+      } else {
+        abortActiveOperations();
+      }
+    });
+    return () => { void listener.then((h) => h.remove()); };
+  }, [queryClient]);
+
+  // Navigate to the URL embedded in the push notification when the user taps it.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listener = PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+      const url = action.notification.data?.url as string | undefined;
+      if (!url) return;
+      try {
+        // The url field is a full URL (e.g. https://app.olivia.com/re-entry?reason=...).
+        // Extract the pathname + search to navigate within the app.
+        const parsed = new URL(url);
+        void router.navigate({ to: parsed.pathname + parsed.search });
+      } catch {
+        // If url is already a relative path, use it directly.
+        void router.navigate({ to: url });
+      }
+    });
+    return () => { void listener.then((h) => h.remove()); };
+  }, []);
 
   // Configure the native status bar so the web view extends behind it and
   // env(safe-area-inset-top) reports correct values on iOS.
@@ -87,6 +131,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="ambient ambient-1" aria-hidden="true" />
       <div className="ambient ambient-2" aria-hidden="true" />
       <div className="ambient ambient-3" aria-hidden="true" />
+      <OfflineIndicator />
       {children}
     </div>
   );

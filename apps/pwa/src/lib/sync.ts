@@ -1,3 +1,4 @@
+import { isEffectivelyOnline } from './connectivity';
 import {
   addListItem,
   addMealEntry as addMealEntryDomain,
@@ -199,7 +200,7 @@ import {
   skipRoutineOccurrenceApi
 } from './api';
 
-const isOffline = () => !window.navigator.onLine;
+const isOffline = () => !window.navigator.onLine || !isEffectivelyOnline();
 let inFlightFlush: Promise<void> | null = null;
 
 function defaultReminderSettings(role: ActorRole): ReminderSettingsResponse {

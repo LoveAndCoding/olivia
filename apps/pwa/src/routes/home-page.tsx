@@ -404,6 +404,7 @@ export function HomePage() {
   const [snoozeTarget, setSnoozeTarget] = useState<Reminder | null>(null);
   const [banner, setBanner] = useState<{ message: string; variant: 'mint' | 'sky' } | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [onboardingStartError, setOnboardingStartError] = useState(false);
 
   const { nudges, dismiss: dismissNudge, removeNudge } = useNudges(role);
 
@@ -596,12 +597,12 @@ export function HomePage() {
               className="onb-welcome-btn-primary"
               onClick={async () => {
                 try {
+                  setOnboardingStartError(false);
                   await startOnboarding();
                   void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
                   void navigate({ to: '/onboarding' });
                 } catch {
-                  // AI unavailable — navigate anyway, page will handle the error
-                  void navigate({ to: '/onboarding' });
+                  setOnboardingStartError(true);
                 }
               }}
             >
@@ -623,6 +624,11 @@ export function HomePage() {
             >
               Skip for now
             </button>
+            {onboardingStartError && (
+              <p className="onb-welcome-error" role="alert">
+                Olivia{'\u2019'}s AI is temporarily unavailable. Try again in a moment.
+              </p>
+            )}
           </div>
         )}
 

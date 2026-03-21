@@ -173,7 +173,7 @@ import { createErrorReporter, errorReportSchema } from './error-reporter';
 import { createDatabase } from './db/client';
 import { DraftStore } from './drafts';
 import { startBackgroundJobs } from './jobs';
-import { createPushProvider, type PushSubscriptionPayload } from './push';
+import { createPushProvider, createApnsPushProvider, type PushSubscriptionPayload } from './push';
 import { InboxRepository } from './repository';
 
 type BuildAppOptions = {
@@ -248,15 +248,22 @@ function resolveReminderUpdateChange(
 
 export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
-  await app.register(cors, { origin: true });
+  await app.register(cors, {
+    origin: [
+      config.pwaOrigin,
+      'capacitor://localhost',
+      'http://localhost:4173',
+    ],
+  });
 
   const db = createDatabase(config.dbPath);
   const repository = new InboxRepository(db);
   const drafts = new DraftStore();
   const aiProvider = createAiProvider(config.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY, app.log);
   const push = createPushProvider(config);
+  const apns = createApnsPushProvider(config.apns);
   const errorReporter = createErrorReporter(config.paperclip, app.log);
-  const stopJobs = startBackgroundJobs(repository, push, config, app.log);
+  const stopJobs = startBackgroundJobs(repository, push, apns, config, app.log);
   app.addHook('onClose', async () => stopJobs());
 
   app.get('/api/health', async () => ({ ok: true }));

@@ -1,5 +1,7 @@
 # Feature Spec: Monthly Check-In Design Update
 
+> **Historical document.** This was a one-time styling task (OLI-128), not a feature spec. Work is complete. Preserved for reference only.
+
 ## Status
 - Implemented (OLI-128, commit 2a82e5e). Health check card and review screen styled per visual spec.
 

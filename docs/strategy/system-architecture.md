@@ -13,9 +13,9 @@ It is intended to narrow the architecture space for M3 planning while preserving
 - `docs/specs/shared-household-inbox.md`
 
 ## Status
-Proposed recommendation for technical direction and implementation planning.
+Active. Originally written for M3 planning; updated 2026-03-21 to reflect the implemented architecture through H5 Phase 3.
 
-This document narrows the architecture space for discussion and M3 planning, but it does not supersede the higher-level deferred stack and infrastructure decisions recorded in `docs/vision/product-vision.md`.
+The architecture described here has been validated through five horizons of product development. Principles remain sound; specific technology and delivery path sections have been updated to reflect current state.
 
 ## Architecture North Star
 Olivia should be built as a `household-owned, local-first coordination system` with a `deterministic workflow core`, `sync-capable device surfaces`, and `AI assistance only at the advisory edge`.
@@ -23,7 +23,7 @@ Olivia should be built as a `household-owned, local-first coordination system` w
 In practical terms, that means:
 - the household's durable records live in a household-controlled store
 - the canonical product logic is rules-driven and auditable
-- the installable PWA is the first-class surface, not a thin wrapper around chat
+- the native iOS app (Capacitor WebView) is the first-class surface; the web layer is the product, not a thin wrapper around chat
 - every device should remain useful when temporarily offline
 - external AI providers may help interpret or summarize, but they must never become Olivia's system of record
 
@@ -60,7 +60,7 @@ The part of Olivia that records, updates, validates, schedules, and reconciles h
 - AI may parse natural language, summarize state, and draft phrasing, but it does not bypass workflow rules
 
 ### 3. Offline-tolerant capture and review
-The installable PWA must remain useful when a phone is offline, on weak connectivity, or opening from a notification.
+The app must remain useful when a phone is offline, on weak connectivity, or opening from a notification.
 
 **Application:**
 - maintain a device-local cache of active household state
@@ -68,7 +68,7 @@ The installable PWA must remain useful when a phone is offline, on weak connecti
 - prefer explicit versioned sync over assuming constant connectivity or live sessions
 
 ### 4. One canonical product model, multiple future surfaces
-The PWA is the canonical surface for the MVP, but the core system should be able to support later native shells, capture bridges, or shared-display modes without a domain rewrite.
+The native iOS app is the canonical surface, but the core system should be able to support additional platforms, capture bridges, or shared-display modes without a domain rewrite.
 
 **Application:**
 - keep domain models, commands, and query views surface-agnostic
@@ -87,7 +87,7 @@ Olivia should avoid deep coupling to any AI vendor, notification provider, auth 
 
 ```mermaid
 flowchart LR
-    pwa[PWA Client]
+    pwa[iOS App / Web Client]
     cache[IndexedDB Cache And Outbox]
     api[Local API And Domain Services]
     jobs[Notification And Sync Jobs]
@@ -105,8 +105,8 @@ flowchart LR
 
 ## Architectural Recommendation
 
-### Client layer: installable mobile-first PWA
-The client should be an installable PWA optimized for:
+### Client layer: native iOS app (Capacitor + React)
+The client is a native iOS app built with Capacitor wrapping a React + Vite web layer, optimized for:
 - very fast capture
 - structured review
 - offline cache
@@ -119,7 +119,7 @@ The first implementation should use a single application runtime with clear inte
 - `domain`: inbox items, ownership, status, history, reminder metadata, validation rules
 - `application`: commands, approval flow, summaries, stale-item checks, sync orchestration
 - `infrastructure`: database access, notification delivery, AI adapters, logging
-- `interface`: HTTP API, background jobs, PWA asset serving, future admin or maintenance endpoints
+- `interface`: HTTP API, background jobs, asset serving, future admin or maintenance endpoints
 
 This is intentionally a modular monolith, not a microservice system. Separate modules matter now; separate deployables do not.
 
@@ -166,16 +166,16 @@ AI should not:
 | Area | Recommendation | Why |
 |---|---|---|
 | Primary language | TypeScript end-to-end | One language across client, API, domain logic, and typing reduces handoff cost for agents and keeps surface-specific logic aligned. |
-| PWA client | React + Vite | Fast iteration, strong PWA support, clean separation from backend concerns, and no unnecessary server-rendering complexity for the current workflow. |
+| Client | React + Vite + Capacitor | Fast iteration, clean separation from backend, native iOS distribution via Capacitor WebView. |
 | Client routing and data fetching | TanStack Router + TanStack Query | Explicit state boundaries, offline-friendly client patterns, and minimal lock-in. |
 | Browser persistence | IndexedDB via Dexie | Mature offline storage abstraction without inventing a browser persistence layer. |
 | API/runtime | Node.js + Fastify | Strong TypeScript ergonomics, low overhead, mature plugin ecosystem, and straightforward structured logging. |
 | Validation | Zod | Shared schemas at API boundaries and command validation points. |
 | Database | SQLite + Drizzle ORM | Local-first fit, simple operations, typed schema management, and enough structure without heavyweight abstraction. |
-| PWA/service worker | `vite-plugin-pwa` with Workbox underneath | Commodity installability, caching, and update behavior should be bought, not written from scratch. |
+| Service worker | `vite-plugin-pwa` with `injectManifest` strategy | Custom Service Worker for push event + notificationclick handlers; VitePWA handles precache manifest injection. |
 | Dates and natural language time parsing | `date-fns` + `chrono-node` | Household reminder workflows need reliable date handling without building a date parser. |
-| Notifications | Web Push with a thin provider wrapper | Web push fits the PWA direction and keeps provider choice reversible. |
-| AI integration | Provider SDK behind an internal `AiProvider` interface | Olivia needs replaceability and clear control of what data crosses the boundary; a large agent framework is unnecessary now. |
+| Notifications | Web Push + VAPID via native Capacitor delivery | In-process 30-min scheduler, 2-hour dedup window, completion-window timing optimization. |
+| AI integration | Anthropic SDK behind an internal `AiProvider` interface (D-008) | `ClaudeAiProvider` for ritual summaries and chat; `DisabledAiProvider` fallback when API key absent. Replaceability and data boundary control preserved. |
 | Logging | Pino structured logs | Durable, low-overhead logs for sync, approval, and notification debugging. |
 
 ## Why Not Use A Single More Complete Stack
@@ -249,39 +249,34 @@ Do not start with:
 
 Those tools solve problems Olivia does not yet have and would make the first implementation harder to reason about.
 
-## Near-Term Delivery Path
+## Delivery Path
 
-### Phase 1: Single household runtime, PWA first
-Start with one household-controlled runtime serving:
-- the API
-- the PWA assets
-- the SQLite store
-- background notification and sync jobs
+### Current state: Single household runtime, native iOS app
+The current deployment serves:
+- the Fastify API
+- the native iOS app via Capacitor (React + Vite in WebView)
+- the SQLite store (better-sqlite3)
+- background jobs (push notification scheduler, nudge evaluation)
+- AI provider integration (Claude API via D-008 adapter boundary)
 
-This could run on a stakeholder-controlled machine for early validation and later move to a small always-on household host without changing the application shape.
+The runtime runs on a stakeholder-controlled machine. The native iOS app is distributed via TestFlight.
 
-### Phase 2: Household-accessible deployment
-Once real use validates the workflow, make the runtime reliably household-accessible across devices. The architecture should support this without reworking domain logic or persistence.
+### Future: Household-accessible deployment
+Once real use validates the workflow further, make the runtime reliably household-accessible across devices. The architecture supports this without reworking domain logic or persistence.
 
-This document intentionally does not lock the remote access method. The current recommendation is to preserve a self-hosted posture and defer the exact remote-access mechanism until implementation planning.
+### Future: Additional platforms if usage proves the need
+Android, tablet, or shared-display surfaces could be added on top of the same APIs and domain model. The Capacitor architecture makes cross-platform builds feasible without codebase divergence.
 
-### Phase 3: Additional clients only if usage proves the need
-If the PWA proves insufficient for notifications, widgets, capture flows, or shared-display needs, add a native shell or secondary surface on top of the same APIs and domain model.
+## How The Architecture Supports The Product
 
-## How The North Star Applies To The Roadmap
+### Horizons 2-3: MVP and Coordination Layer (complete)
+The architecture supported the shared household inbox and all four H3 coordination workflows (reminders, shared lists, recurring routines, meal planning) with fast mobile capture, durable local-first storage, deterministic approval-gated writes, and shared scheduling primitives.
 
-### Horizon 2: Useful MVP
-The architecture directly supports the shared household inbox spec with:
-- fast mobile capture
-- durable local-first storage
-- deterministic approval-gated writes
-- calm notification loops
+### Horizon 4: Household Memory And Planning (complete)
+The temporal layer (unified weekly view, activity history, planning ritual) was built with zero new entity types and one new table — confirming that the architecture supports synthesis over existing data without proliferation.
 
-### Horizon 3: Household Coordination Layer
-The same domain and sync core can expand into richer ownership, spouse participation, and stronger review workflows without a storage rewrite.
-
-### Horizon 4: Household Memory And Planning
-The audit history, durable records, and summary layer create the right substrate for later recall, planning rituals, and longitudinal household memory.
+### Horizon 5: Selective Trusted Agency (Phase 3 complete)
+AI-assisted content generation, proactive nudges, push notifications, completion-window timing, and conversational chat were all built within the existing architectural boundaries. The D-008 AI adapter boundary held cleanly. The advisory-only trust model remains intact.
 
 ### Horizon 5: Selective Trusted Agency
 If Olivia later earns limited automation, the approval pipeline and adapter boundaries provide a legible place to introduce bounded execution rules without replacing the core architecture.
@@ -295,40 +290,37 @@ Rejected for now because it conflicts with the current local-first and privacy-f
 Rejected because it would make spouse visibility, multi-device continuity, and durable household-shared state too fragile.
 
 ### Native-mobile-first architecture
-Rejected as a first commitment because the workflow does not yet require native-only capabilities and the project benefits more from faster validation and reversible choices.
+Originally rejected as a first commitment. Now adopted via Capacitor, which wraps the existing web layer in a native iOS shell — achieving native distribution without a native rewrite.
 
 ### Event-sourced or CRDT-heavy local-first stack
 Rejected for now because the product's current concurrency model is simple and the domain is not yet proven enough to justify advanced sync machinery.
 
 ## Facts
-- Olivia's canonical near-term surface is an installable mobile-first PWA.
-- Olivia's trust model is advisory-only in the first major phase.
-- Household data is sensitive and should remain household-controlled.
-- The first implementation target is the shared household inbox workflow.
-- The project is still early enough that reversibility is more valuable than platform maximalism.
+- Olivia's canonical surface is a native iOS app via Capacitor (React + Vite in WebView), distributed via TestFlight.
+- The system shape is a TypeScript modular monolith: `@olivia/domain`, `@olivia/contracts`, `apps/api` (Fastify + SQLite), `apps/pwa` (React + Vite + Capacitor).
+- Olivia's trust model is advisory-only. AI (Claude API) is behind the D-008 adapter boundary and has no write authority.
+- Household data is sensitive and remains household-controlled in a SQLite database on a stakeholder-controlled runtime.
+- Push notifications use Web Push + VAPID via native Capacitor delivery. In-process scheduler runs every 30 minutes.
 
 ## Decisions
-Within this recommendation, the following decisions are proposed for near-term planning:
-- The near-term system shape should be a TypeScript modular monolith with clear internal boundaries rather than microservices.
-- The first canonical durable store should be SQLite on a household-controlled runtime.
-- AI should remain outside the write-authority path and behind an internal adapter boundary.
-- The first sync model should be explicit pull/push with versioning, not CRDT-first or peer-to-peer.
-- Commodity infrastructure should be bought with focused libraries; Olivia-specific workflow and trust logic should be built in-house.
+- The system shape is a TypeScript modular monolith with clear internal boundaries rather than microservices. (Active, validated through H5.)
+- The canonical durable store is SQLite on a household-controlled runtime. (Active, validated through H5.)
+- AI remains outside the write-authority path and behind the D-008 adapter boundary. (Active, validated through three H5 phases.)
+- The sync model is explicit pull/push with versioning. (Active.)
+- Commodity infrastructure is bought with focused libraries; Olivia-specific workflow and trust logic is built in-house. (Active.)
 
 ## Assumptions
-- A household-controlled runtime is acceptable for early use even if the exact remote-access method is still undecided.
-- Web Push will be sufficient for the first notification posture on the chosen PWA surface.
-- The first household workflow will have low enough concurrency that versioned sync is enough without CRDTs.
-- A single TypeScript stack will improve delivery speed and reduce agent handoff friction more than a mixed-language architecture would.
+- A household-controlled runtime is acceptable for early use even if the exact remote-access method is still undecided. (Active.)
+- The current concurrency model (versioned sync) is sufficient for household-scale usage. (Active — A-006.)
+- A single TypeScript stack improves delivery speed and reduces agent handoff friction. (Validated through H5.)
 
 ## Open Questions
 - What remote access model best balances local-first control with low-friction household usage outside the home?
-- Is Web Push reliable enough for the stakeholder's actual notification needs, or will that force a native shell sooner?
 - What lightweight authentication model is appropriate once spouse usage moves beyond a tightly controlled prototype?
 - At what point does spouse participation require conflict handling stronger than versioned command sync?
 
 ## Deferred Decisions
 - Exact remote-access mechanism for the household-controlled runtime.
 - Exact authentication implementation and account lifecycle.
-- Whether a native shell is needed after real PWA usage.
+- Android or other platform support.
 - Whether later workflows justify richer sync or background-processing infrastructure.

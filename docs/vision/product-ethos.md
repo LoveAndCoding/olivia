@@ -81,9 +81,9 @@ When evaluating a feature, document, or technical proposal, ask:
 - Human approval should remain visible and central while the product proves its usefulness.
 
 ## Open Questions
-- What level of proactive nudging will feel helpful rather than intrusive?
+- ~~What level of proactive nudging will feel helpful rather than intrusive?~~ — Addressed: proactive nudges shipped with display cap, calm tone, daily-reset dismiss, and completion-window timing (H5 Phase 1-2). M29 household usage will validate whether the posture feels right.
 - How should Olivia balance shared household visibility with individual privacy?
-- What kinds of low-risk automation, if any, might later be acceptable?
+- What kinds of low-risk automation, if any, might later be acceptable? (Explicitly deferred to H5 Phase 3+ — see roadmap.)
 
 ## Deferred Decisions
 - Exact product tone guidelines and interaction style.

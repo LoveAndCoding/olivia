@@ -1,5 +1,7 @@
 # First Workflow Candidates
 
+> **Historical document.** This was an early exploration doc used during M1 (Product Definition) to evaluate candidate workflows for the first implementation. The shared household inbox was selected and built. All four Horizon 3 workflows and beyond are now complete. This doc is preserved for historical context only.
+
 ## Purpose
 This document defines the candidate workflows for Olivia's first implementation-ready spec. Its role is to make the next product choice durable and explicit so future agents do not have to reconstruct the option set from conversation history.
 

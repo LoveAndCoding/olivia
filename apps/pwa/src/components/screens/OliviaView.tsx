@@ -8,6 +8,7 @@ import type { ChatMessage, ChatToolCall, QuickChip } from '../../types/display';
 import {
   streamChatMessage, confirmChatAction, dismissChatAction, clearChatConversation
 } from '../../lib/api';
+import { getActiveSignal } from '../../lib/app-lifecycle';
 import { ChatMarkdown } from '../ChatMarkdown';
 
 // ─── Action Card Labels ───────────────────────────────────────────────────────
@@ -127,7 +128,7 @@ export function OliviaView({
         const toolCalls: ChatToolCall[] = [];
         let finalMessageId = '';
 
-        for await (const evt of streamChatMessage(text.trim())) {
+        for await (const evt of streamChatMessage(text.trim(), getActiveSignal())) {
           if (evt.event === 'text') {
             fullText += (evt as { event: 'text'; data: { delta: string } }).data.delta;
             setMessages(prev =>

@@ -35,18 +35,22 @@ Olivia should help the household:
 - preserve important household context in a retrievable form
 - feel more organized and less mentally fragmented
 
-## Recommended First Wedge
-The first wedge should be `shared household state and follow-through`.
+## Product Wedge
+The product wedge is `shared household state and follow-through`.
 
-That wedge is broad enough to create value across tasks, reminders, planning, and memory, but narrow enough to avoid becoming an unfocused "AI for everything" project. In practice, this means Olivia should first be designed around helping the household answer:
+That wedge is broad enough to create value across tasks, reminders, planning, and memory, but narrow enough to avoid becoming an unfocused "AI for everything" project. In practice, Olivia helps the household answer:
 - What needs doing?
 - What is coming up soon?
 - What should we remember?
 - What needs a nudge or decision?
 
-That first wedge has now been implemented through the shared household inbox workflow. The next product step is not to replace that wedge, but to expand it into adjacent coordination capabilities such as first-class reminders, recurring routines, and shared household lists.
+This wedge has been implemented and expanded across five horizons:
+- **H2 (MVP):** shared household inbox workflow
+- **H3 (Coordination Layer):** first-class reminders, shared lists, recurring routines, meal planning — all four workflows built and available
+- **H4 (Memory & Planning):** unified weekly view, activity history, planning ritual support — temporal layer complete
+- **H5 (Selective Trusted Agency):** AI-assisted planning ritual summaries, proactive nudges, push notifications, completion-window timing, conversational chat — three phases of trusted agency shipped
 
-The next feature-spec target should be `first-class reminders`, using only the minimum recurrence model needed to support reminder-driven follow-through before broader recurring-routine design is specified.
+The current active milestone is M29 (Post-Chat Household Validation), which focuses on observing real household usage before deciding the next build direction.
 
 ## What Olivia Is
 - A local-first household coordination system with AI-assisted support where useful.
@@ -69,26 +73,25 @@ Early product success should look like:
 
 ## Facts
 - The product is intended to help manage the household lives of the stakeholder and spouse.
-- Olivia has a working MVP implementing the shared household inbox workflow across the PWA, API, domain layer, and shared contracts.
-- Logic and sensitive information should be stored locally.
-- External AI providers may be used where helpful, but are not the system of record.
-- The current trust model direction is advisory-only.
-- The recommended MVP surface is an installable mobile-first PWA.
-- The next product-definition step is to define the Horizon 3 coordination layer that expands the inbox into first-class reminders, recurring routines, and adjacent household workflows.
+- Olivia is a native iOS app (Capacitor) distributed via TestFlight, with a web fallback. Version 0.1.0 released 2026-03-21.
+- The product spans five horizons of features: shared household inbox (H2), coordination layer with four workflow types (H3), temporal memory and planning (H4), and selective trusted agency including AI chat (H5).
+- Logic and sensitive information are stored locally in a household-controlled SQLite database.
+- External AI providers (Claude API) are used for advisory content generation and chat, but are not the system of record.
+- The current trust model direction is advisory-only: Olivia proposes, the user decides.
 
 ## Assumptions
 - A household command center is a stronger first product shape than a general assistant.
 - The project owner will be the most active early user and evaluator.
-- Shared household state was the right first wedge and should remain the foundation for adjacent coordination workflows.
-- Text interaction is sufficient for early value, even if richer interfaces arrive later.
+- Shared household state was the right first wedge and remains the foundation for all coordination workflows (validated through H3-H5).
+- The advisory-only trust model is appropriate for the current phase; automation should be earned through validated usage.
 
 ## Open Questions
-- What is the minimum first-class reminder model that creates useful signal without creating overlap or noise?
-- How should shared lists and recurring routines relate to the existing inbox model?
-- What evidence would justify moving beyond the PWA to a native shell or shared-display mode?
-- What level of spouse visibility or lightweight interaction is most useful in the next coordination-layer workflows without requiring full collaboration parity?
+- What evidence from M29 household validation should determine the next build direction (Track A-D)?
+- When should spouse-specific collaborative flows become first-class rather than secondary?
+- What would justify an Android build alongside iOS?
 
 ## Deferred Decisions
-- Whether native clients or a dedicated shared-display surface are warranted beyond the PWA.
-- Deployment model beyond local-first constraints.
-- Specific implementation stack and infrastructure choices.
+- Android or other platform support.
+- Spouse write access and multi-user roles.
+- Rule-based automation and increased autonomy beyond advisory.
+- Deployment model beyond single-household local-first.
