@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-061: Landscape orientation spec approved — CEO resolved open questions and added no-FOUC criterion
+- Date: 2026-03-21
+- Area: feature spec / layout
+- Decision: Approve the landscape orientation support spec (OLI-183) with three resolved open questions: (1) Side rail nav on iPad landscape deferred — bottom nav in landscape is fine for first pass. (2) App frame landscape max-width uses a fluid `clamp()` approach — e.g., `clamp(430px, 85vw, 720px)` on phones; Founding Engineer has discretion on exact values, optimizing for readability over filling every pixel. (3) iPad testing scope is verify-no-breakage only; no iPad-specific optimization in this phase. Additionally, a 14th acceptance criterion was added: orientation change must not cause a visible layout flash or FOUC, requiring CSS transitions on width/max-width properties to smooth the adaptation.
+- Rationale: graceful adaptation, not a redesign. Portrait remains the primary design surface. The `clamp()` approach gives FE flexibility to tune values without requiring a spec amendment. The no-FOUC requirement ensures the adaptation feels polished.
+- Alternatives considered: fixed breakpoint values (rejected — `clamp()` is more fluid and requires less media-query scaffolding); side rail nav for iPad (rejected — deferred to keep scope tight).
+- Trade-offs: deferring iPad-specific optimization means iPad landscape will work but won't feel native. Acceptable for Phase 1.
+- Status: active
+- Related docs: `docs/specs/landscape-orientation-support.md`, OLI-183, OLI-184
+
 ### D-060: Adopt spec-level CSS completeness checklist to prevent unstyled components from shipping
 - Date: 2026-03-17
 - Area: process / quality / UI delivery

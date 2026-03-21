@@ -1,7 +1,7 @@
 # Feature Spec: Landscape Orientation Support
 
 ## Status
-- Draft
+- Approved (2026-03-21)
 
 ## Summary
 Olivia currently renders well only in portrait orientation despite iOS declaring landscape as a supported orientation. When the device rotates to landscape, the 430px max-width app frame sits centered in a wide viewport with unused space on both sides, the bottom nav becomes disproportionately tall relative to the narrower content, and bottom sheets may clip or overflow awkwardly. This spec defines how Olivia should behave in landscape so that users who rotate their device — intentionally or incidentally — get a usable, comfortable experience rather than a broken-feeling one.
@@ -49,7 +49,7 @@ This is not a user-initiated workflow — it is a responsive layout behavior. Th
 
 ### App Frame
 - In portrait: current behavior (max-width 430px, centered).
-- In landscape: the app frame should expand to use more of the available width. Recommendation: increase max-width to a value appropriate for landscape phone viewports (e.g., 720px or remove the cap entirely and let content containers constrain width). The app should remain centered if the viewport exceeds the max-width.
+- In landscape: the app frame should expand to use more of the available width using a fluid `clamp()` approach — e.g., `clamp(430px, 85vw, 720px)` on phones. Founding Engineer has discretion on exact values; optimize for readability, not filling every pixel. The app should remain centered if the viewport exceeds the max-width.
 
 ### Bottom Navigation
 - In landscape on phone-sized screens, the bottom nav's vertical height becomes more costly (screen height is reduced). Consider reducing nav bar height slightly in landscape (e.g., drop from 66px to 52px + safe area, reduce icon size or remove labels).
@@ -112,6 +112,7 @@ This is not a user-initiated workflow — it is a responsive layout behavior. Th
 11. The `--vvh` CSS variable updates correctly on orientation change.
 12. All component class names introduced for landscape-specific styles have corresponding CSS rules (per D-060).
 13. `npm run typecheck` passes with zero errors.
+14. Orientation change does not cause a visible layout flash or FOUC — CSS transitions on width/max-width properties smooth the adaptation.
 
 ## Validation And Testing
 - **Manual validation**: rotate a test device (or simulator) through portrait → landscape → portrait on key screens: home, tasks, Olivia (chat), lists, memory, and the weekly view. Verify each acceptance criterion.
@@ -125,9 +126,7 @@ This is not a user-initiated workflow — it is a responsive layout behavior. Th
 - Capacitor config has no explicit orientation lock — no native configuration change needed.
 
 ## Open Questions
-1. **Should the bottom nav switch to a side rail on iPad landscape?** — Recommendation: defer to a future iPad-specific spec. Bottom nav in landscape is fine for Phase 1.
-2. **What specific max-width should the app frame use in landscape?** — Founding Engineer decision. Suggestion: 720px on phones, uncapped (with content-level max-widths) on iPad. Could also use a fluid approach with `clamp()`.
-3. **Should landscape be tested on iPad as part of this spec?** — Recommendation: yes, at least verify it doesn't break, but iPad-specific layout optimization is deferred.
+All resolved — see Facts, Assumptions, And Decisions below.
 
 ## Facts, Assumptions, And Decisions
 - **Fact**: iOS Info.plist already includes landscape orientation support for both iPhone and iPad.
@@ -137,6 +136,10 @@ This is not a user-initiated workflow — it is a responsive layout behavior. Th
 - **Assumption**: most users will primarily use portrait, so landscape is a graceful-degradation target, not a co-equal design surface.
 - **Assumption**: the existing `visualViewport` resize listener will correctly fire on orientation change, keeping `--vvh` accurate.
 - **Decision**: bottom nav remains as bottom nav in landscape (no side rail conversion in this phase).
+- **Decision**: app frame landscape max-width uses fluid `clamp()` approach — e.g., `clamp(430px, 85vw, 720px)` on phones. FE has discretion on exact values; optimize for readability. (D-061)
+- **Decision**: side rail nav on iPad landscape deferred — not worth the complexity for a first pass. (D-061)
+- **Decision**: iPad testing scope is verify-no-breakage only; no iPad-specific optimization in this phase. (D-061)
+- **Decision**: orientation change must not cause a visible layout flash or FOUC — CSS transitions on width/max-width required. (D-061)
 
 ## Deferred Decisions
 - iPad-specific layout optimizations (sidebar nav, split view, multitasking).
