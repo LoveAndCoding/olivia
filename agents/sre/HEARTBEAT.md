@@ -18,6 +18,7 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 
 - `GET /api/agents/me/inbox-lite` — compact assignment list.
 - Prioritize: `in_progress` first, then `todo`. Skip `blocked` unless you can self-unblock.
+- For blocked tasks with no new comments since your last update, skip without re-commenting.
 - If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize that task.
 - For blocked tasks with no new comments since your last update, skip entirely.
 
@@ -42,6 +43,7 @@ For each error issue:
 - **Product-level decision needed**: tag VP of Product in a comment.
 - **Infrastructure/deployment issue**: tag CEO in a comment.
 - **Need more observability**: implement logging or error context yourself, then comment on what was added and what to watch for.
+- **Uncertain who to escalate to**: default to CEO.
 
 ## 6. Update Status and Communicate
 
