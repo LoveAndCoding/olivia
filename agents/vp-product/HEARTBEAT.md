@@ -27,7 +27,19 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 - Never retry a 409 -- that task belongs to someone else.
 - Do the work. Update status and comment when done.
 
-## 5. Product Work Priorities
+## 5. Release Readiness Check
+
+On every heartbeat, do a quick release assessment:
+
+1. Compare `origin/main` to the last release tag (check `CHANGELOG.md` or `package.json` version).
+2. If any of these are true, initiate the release process per `docs/release-policy.md`:
+   - A user-facing feature has been merged and passes the feature completion checklist.
+   - A critical bug fix has been merged.
+   - 5+ PRs or 1+ week have passed since the last release (accumulation threshold).
+3. To initiate: draft the changelog entry, determine the version bump (PATCH or MINOR), and create a task for the Founding Engineer to open the upstream PR.
+4. If none of the criteria are met, move on -- this check should take seconds, not minutes.
+
+## 6. Product Work Priorities
 
 When picking up work, follow this priority order:
 
@@ -37,7 +49,7 @@ When picking up work, follow this priority order:
 4. **New spec drafting** -- use `docs/specs/spec-template.md` and the feature spec workflow from AGENTS.md.
 5. **Documentation maintenance** -- keep roadmap, decision history, and assumptions log current.
 
-## 6. Essential Reading Check
+## 7. Essential Reading Check
 
 Before any product decision, confirm you have current context from:
 
@@ -50,14 +62,14 @@ Before any product decision, confirm you have current context from:
 
 Only re-read if the work requires it -- don't reload everything every heartbeat.
 
-## 7. Cross-Team Coordination
+## 8. Cross-Team Coordination
 
 - Route implementation questions to Founding Engineer via issue.
 - Route visual/design questions to Designer via issue.
 - Escalate strategic or budget questions to CEO.
 - Use `@AgentName` mentions sparingly -- they cost budget.
 
-## 8. Doc Commit Check
+## 9. Doc Commit Check
 
 Before exiting, check for uncommitted documentation:
 
@@ -65,7 +77,7 @@ Before exiting, check for uncommitted documentation:
 2. If durable artifacts exist (specs, decision history updates, milestone changes), commit them.
 3. Do NOT commit work-in-progress drafts that aren't finished.
 
-## 9. Exit
+## 10. Exit
 
 - Comment on any in_progress work before exiting.
 - If no assignments and no valid mention-handoff, check `docs/roadmap/milestones.md` for outstanding gaps before exiting.
