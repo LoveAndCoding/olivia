@@ -5542,7 +5542,7 @@ input[type="date"].rem-form-input {
   padding: 8px 16px;
   background: var(--surface-2);
   border-radius: 12px;
-  margin: 8px 16px 0;
+  margin: calc(8px + env(safe-area-inset-top, 0px)) 16px 0;
   animation: fadeUp 0.25s ease-out;
 }
 
@@ -5556,6 +5556,19 @@ input[type="date"].rem-form-input {
 
 .connectivity-banner-dot--warn {
   background: var(--amber, #f59e0b);
+}
+
+/* When the connectivity banner is visible it already accounts for
+   safe-area-inset-top, so strip the duplicate inset from page headers
+   that follow it to avoid extra vertical space. */
+.connectivity-banner ~ * .home-header {
+  padding-top: 16px;
+}
+.connectivity-banner ~ * .screen-header {
+  padding-top: 16px;
+}
+.connectivity-banner ~ * .onb-header {
+  padding-top: 12px;
 }
 
 /* ── LANDSCAPE ORIENTATION SUPPORT ────────────────────── */
