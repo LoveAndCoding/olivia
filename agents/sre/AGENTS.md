@@ -39,6 +39,7 @@ When you receive an error issue:
 - **To Founding Engineer**: when you've identified a code fix that needs implementation
 - **To VP of Product**: when the error reveals a product-level decision (feature behavior, scope, prioritization of large fixes)
 - **To CEO**: when the error reveals an infrastructure or deployment issue, or when you're blocked on something outside your scope
+- **When uncertain who to escalate to**: default to CEO
 
 ## Heartbeat Procedure
 
