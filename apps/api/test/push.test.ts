@@ -7,6 +7,7 @@ import type { AppConfig } from '../src/config';
 import { createDatabase } from '../src/db/client';
 import { evaluateNudgePushRule } from '../src/jobs';
 import type { PushProvider, NotificationPayload, PushSubscriptionPayload } from '../src/push';
+import { isApnsSubscriptionPayload, DisabledApnsPushProvider } from '../src/push';
 import { InboxRepository } from '../src/repository';
 
 const createConfig = (dbPath: string): AppConfig => ({
@@ -24,6 +25,7 @@ const createConfig = (dbPath: string): AppConfig => ({
   nudgePushIntervalMs: 1_800_000,
   pwaOrigin: 'http://localhost:4173',
   householdTimezone: 'UTC',
+  apns: { keyId: null, teamId: null, privateKey: null, bundleId: 'com.loveandcoding.olivia', useSandbox: true },
   paperclip: { apiUrl: null, apiKey: null, companyId: null, sreAgentId: null },
 });
 
@@ -406,5 +408,38 @@ describe('completion window push timing', () => {
     // Second cycle: 7:30pm → within window → delivered
     await evaluateNudgePushRule(repository, push, config, makeLogger(), new Date('2026-03-15T19:30:00Z'));
     expect(push.sends).toHaveLength(1);
+  });
+});
+
+describe('isApnsSubscriptionPayload', () => {
+  it('returns true for valid APNs payloads', () => {
+    expect(isApnsSubscriptionPayload({ type: 'apns', token: 'abc123' })).toBe(true);
+  });
+
+  it('returns false for web push payloads', () => {
+    expect(isApnsSubscriptionPayload({
+      endpoint: 'https://push.example.com/sub',
+      keys: { p256dh: 'key1', auth: 'key2' },
+    })).toBe(false);
+  });
+
+  it('returns false when token is missing', () => {
+    expect(isApnsSubscriptionPayload({ type: 'apns' })).toBe(false);
+  });
+
+  it('returns false when type is not apns', () => {
+    expect(isApnsSubscriptionPayload({ type: 'web', token: 'abc' })).toBe(false);
+  });
+});
+
+describe('DisabledApnsPushProvider', () => {
+  it('reports not configured', () => {
+    const provider = new DisabledApnsPushProvider();
+    expect(provider.isConfigured()).toBe(false);
+  });
+
+  it('send is a no-op', async () => {
+    const provider = new DisabledApnsPushProvider();
+    await expect(provider.send('token', { title: 'Test', body: 'Body', url: '/', tag: 'test' })).resolves.toBeUndefined();
   });
 });

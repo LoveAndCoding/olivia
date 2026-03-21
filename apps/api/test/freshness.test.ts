@@ -23,6 +23,7 @@ const createConfig = (dbPath: string): AppConfig => ({
   nudgePushIntervalMs: 1_800_000,
   pwaOrigin: 'http://localhost:4173',
   householdTimezone: 'UTC',
+  apns: { keyId: null, teamId: null, privateKey: null, bundleId: 'com.loveandcoding.olivia', useSandbox: true },
   paperclip: { apiUrl: null, apiKey: null, companyId: null, sreAgentId: null },
 });
 

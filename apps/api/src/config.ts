@@ -8,6 +8,14 @@ export type NotificationRulesConfig = {
   digestEnabled: boolean;
 };
 
+export type ApnsConfig = {
+  keyId: string | null;
+  teamId: string | null;
+  privateKey: string | null;
+  bundleId: string;
+  useSandbox: boolean;
+};
+
 export type PaperclipConfig = {
   apiUrl: string | null;
   apiKey: string | null;
@@ -31,6 +39,7 @@ export type AppConfig = {
   nudgePushIntervalMs: number;
   pwaOrigin: string;
   householdTimezone: string;
+  apns: ApnsConfig;
   paperclip: PaperclipConfig;
 };
 
@@ -54,6 +63,13 @@ export function loadConfig(): AppConfig {
     notificationIntervalMs: Number(process.env.OLIVIA_NOTIFICATION_INTERVAL_MS ?? 3_600_000),
     nudgePushIntervalMs: Number(process.env.OLIVIA_NUDGE_PUSH_INTERVAL_MS ?? 1_800_000),
     pwaOrigin: process.env.OLIVIA_PWA_ORIGIN ?? 'http://localhost:4173',
+    apns: {
+      keyId: process.env.OLIVIA_APNS_KEY_ID ?? null,
+      teamId: process.env.OLIVIA_APNS_TEAM_ID ?? null,
+      privateKey: process.env.OLIVIA_APNS_PRIVATE_KEY ?? null,
+      bundleId: process.env.OLIVIA_APNS_BUNDLE_ID ?? 'com.loveandcoding.olivia',
+      useSandbox: process.env.OLIVIA_APNS_SANDBOX === 'true',
+    },
     householdTimezone: process.env.OLIVIA_HOUSEHOLD_TIMEZONE
       ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
     paperclip: {

@@ -3,7 +3,8 @@ import { buildSuggestions, computeCompletionWindow, getCurrentLocalHour, groupRe
 import { COMPLETION_WINDOW_MAX_HOLD_DAYS, COMPLETION_WINDOW_SAMPLE_SIZE } from '@olivia/contracts';
 import type { Nudge, Reminder } from '@olivia/contracts';
 import type { AppConfig } from './config';
-import type { PushProvider, NotificationPayload, PushSubscriptionPayload } from './push';
+import type { PushProvider, ApnsPushProvider, NotificationPayload, PushSubscriptionPayload } from './push';
+import { isApnsSubscriptionPayload } from './push';
 import type { InboxRepository, NotificationDeliveryRecord } from './repository';
 
 type NotificationRecord = {
@@ -30,6 +31,7 @@ function isPushSubscriptionPayload(payload: Record<string, unknown>): payload is
 async function deliverToStakeholderSubscriptions(
   repository: InboxRepository,
   push: PushProvider,
+  apns: ApnsPushProvider,
   notification: { title: string; body: string; url: string; tag: string },
   logger: FastifyBaseLogger
 ): Promise<NotificationRecord[]> {
@@ -37,11 +39,6 @@ async function deliverToStakeholderSubscriptions(
   const results: NotificationRecord[] = [];
 
   for (const subscription of subscriptions) {
-    if (!isPushSubscriptionPayload(subscription.payload)) {
-      logger.warn({ subscriptionId: subscription.id }, 'notification subscription payload is missing Web Push keys; skipping');
-      continue;
-    }
-
     const record: NotificationRecord = {
       rule: notification.tag.startsWith('digest') ? 'digest' : notification.tag.startsWith('stale') ? 'stale_item' : 'due_soon',
       itemId: undefined,
@@ -51,7 +48,18 @@ async function deliverToStakeholderSubscriptions(
     };
 
     try {
-      await push.send(subscription.payload, notification);
+      if (isApnsSubscriptionPayload(subscription.payload)) {
+        if (!apns.isConfigured()) {
+          logger.warn({ subscriptionId: subscription.id }, 'APNs subscription found but APNs provider is not configured; skipping');
+          continue;
+        }
+        await apns.send(subscription.payload.token, notification);
+      } else if (isPushSubscriptionPayload(subscription.payload)) {
+        await push.send(subscription.payload, notification);
+      } else {
+        logger.warn({ subscriptionId: subscription.id }, 'notification subscription has unknown payload type; skipping');
+        continue;
+      }
       record.delivered = true;
       logger.info({ subscriptionId: subscription.id, tag: notification.tag }, 'notification delivered');
     } catch (error) {
@@ -100,6 +108,7 @@ function buildDailySummaryBody(grouped: ReturnType<typeof groupReminders>): stri
 export async function evaluateDueReminderRule(
   repository: InboxRepository,
   push: PushProvider,
+  apns: ApnsPushProvider,
   config: AppConfig,
   logger: FastifyBaseLogger,
   now: Date = new Date()
@@ -134,6 +143,7 @@ export async function evaluateDueReminderRule(
     const results = await deliverToStakeholderSubscriptions(
       repository,
       push,
+      apns,
       {
         title,
         body,
@@ -153,6 +163,7 @@ export async function evaluateDueReminderRule(
 export async function evaluateDailySummaryRule(
   repository: InboxRepository,
   push: PushProvider,
+  apns: ApnsPushProvider,
   config: AppConfig,
   logger: FastifyBaseLogger,
   now: Date = new Date()
@@ -183,6 +194,7 @@ export async function evaluateDailySummaryRule(
   const results = await deliverToStakeholderSubscriptions(
     repository,
     push,
+    apns,
     {
       title: 'Daily reminder summary — Olivia',
       body: buildDailySummaryBody(grouped),
@@ -201,6 +213,7 @@ export async function evaluateDailySummaryRule(
 export async function evaluateDueSoonRule(
   repository: InboxRepository,
   push: PushProvider,
+  apns: ApnsPushProvider,
   config: AppConfig,
   logger: FastifyBaseLogger
 ): Promise<void> {
@@ -224,6 +237,7 @@ export async function evaluateDueSoonRule(
     await deliverToStakeholderSubscriptions(
       repository,
       push,
+      apns,
       {
         title: 'Item due soon — Olivia',
         body: suggestion.message,
@@ -238,6 +252,7 @@ export async function evaluateDueSoonRule(
 export async function evaluateStaleItemRule(
   repository: InboxRepository,
   push: PushProvider,
+  apns: ApnsPushProvider,
   config: AppConfig,
   logger: FastifyBaseLogger
 ): Promise<void> {
@@ -261,6 +276,7 @@ export async function evaluateStaleItemRule(
     await deliverToStakeholderSubscriptions(
       repository,
       push,
+      apns,
       {
         title: 'Stale household item — Olivia',
         body: suggestion.message,
@@ -275,6 +291,7 @@ export async function evaluateStaleItemRule(
 export async function evaluateDigestRule(
   repository: InboxRepository,
   push: PushProvider,
+  apns: ApnsPushProvider,
   config: AppConfig,
   logger: FastifyBaseLogger
 ): Promise<void> {
@@ -293,6 +310,7 @@ export async function evaluateDigestRule(
   await deliverToStakeholderSubscriptions(
     repository,
     push,
+    apns,
     {
       title: 'Household inbox digest — Olivia',
       body: `You have ${active.length} active item${active.length === 1 ? '' : 's'} in your household inbox.`,
@@ -409,6 +427,7 @@ export async function evaluateNudgePushRule(
 export function startBackgroundJobs(
   repository: InboxRepository,
   push: PushProvider,
+  apns: ApnsPushProvider,
   config: AppConfig,
   logger: FastifyBaseLogger
 ): () => void {
@@ -425,11 +444,11 @@ export function startBackgroundJobs(
 
   const runOnce = async () => {
     try {
-      await evaluateDueSoonRule(repository, push, config, logger);
-      await evaluateStaleItemRule(repository, push, config, logger);
-      await evaluateDigestRule(repository, push, config, logger);
-      await evaluateDueReminderRule(repository, push, config, logger);
-      await evaluateDailySummaryRule(repository, push, config, logger);
+      await evaluateDueSoonRule(repository, push, apns, config, logger);
+      await evaluateStaleItemRule(repository, push, apns, config, logger);
+      await evaluateDigestRule(repository, push, apns, config, logger);
+      await evaluateDueReminderRule(repository, push, apns, config, logger);
+      await evaluateDailySummaryRule(repository, push, apns, config, logger);
     } catch (error) {
       logger.error({ error }, 'notification job run failed');
     }
@@ -448,5 +467,6 @@ export function startBackgroundJobs(
   return () => {
     clearInterval(intervalId);
     clearInterval(nudgeIntervalId);
+    apns.close();
   };
 }
