@@ -1,13 +1,13 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './apps/pwa/e2e',
   timeout: 45_000,
   use: {
+    ...devices['Desktop Chrome'],
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
     launchOptions: {
-      executablePath: '/usr/local/bin/google-chrome',
       args: ['--no-sandbox', '--disable-dev-shm-usage']
     }
   },

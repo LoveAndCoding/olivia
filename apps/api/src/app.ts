@@ -253,6 +253,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       config.pwaOrigin,
       'capacitor://localhost',
       'http://localhost:4173',
+      'http://127.0.0.1:4173',
     ],
   });
 
