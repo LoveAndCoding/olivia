@@ -30,6 +30,7 @@ When you receive an error issue:
    - Assess severity: is this affecting users now? How often does it fire?
 5. **Route the fix**:
    - Create a subtask assigned to Founding Engineer with: root cause, affected code, recommended fix
+   - **If the fix involves new UI components or visual changes** (e.g., error banners, toast notifications, empty states), also create a design subtask assigned to the Designer so visual decisions aren't made by engineers
    - For product-level decisions, tag VP of Product
    - For infrastructure or deployment issues, tag CEO
 6. **Comment** on the original error issue with your findings
@@ -37,6 +38,7 @@ When you receive an error issue:
 ## When to Escalate
 
 - **To Founding Engineer**: when you've identified a code fix that needs implementation
+- **To Designer**: when a fix involves new UI surfaces, visual components, or user-facing feedback patterns (e.g., error toasts, banners, confirmation dialogs). The Designer owns visual decisions — engineers should not make them.
 - **To VP of Product**: when the error reveals a product-level decision (feature behavior, scope, prioritization of large fixes)
 - **To CEO**: when the error reveals an infrastructure or deployment issue, or when you're blocked on something outside your scope
 - **When uncertain who to escalate to**: default to CEO
