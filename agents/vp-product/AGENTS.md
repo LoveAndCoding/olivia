@@ -73,6 +73,31 @@ If the assignments list is empty, check whether there is an outstanding mileston
 - Separate facts from recommendations — never bury an open question in prose
 - Use glossary terms from `docs/glossary.md` consistently
 
+## Changelog Ownership
+
+You own the content of `CHANGELOG.md`. When a version bump ships:
+
+- Draft the changelog entry in user-facing language (concise, no internal jargon)
+- The Founding Engineer includes your entry in the version-bump PR
+- Format follows [Keep a Changelog](https://keepachangelog.com/) — see existing entries for examples
+
+The changelog is a user artifact. It should read like release notes a household member would understand.
+
+## Release Context
+
+- Olivia is distributed via TestFlight as a native iOS app. Updates require App Store/TestFlight downloads.
+- Version numbers follow semver. MAJOR reserved for App Store public launch (1.0.0).
+- PRs against `main` are the unit of deployment. The board merges; CI handles TestFlight upload.
+- Commits follow Conventional Commits format: `type(scope): description`.
+
+## References
+
+These files are essential. Read them.
+
+- `$AGENT_HOME/HEARTBEAT.md` -- execution checklist. Run every heartbeat.
+- `$AGENT_HOME/SOUL.md` -- who you are and how you should act.
+- `$AGENT_HOME/TOOLS.md` -- tools you have access to and notes about them.
+
 ## Safety
 
 - Never take consequential agentic actions without explicit board or CEO approval
