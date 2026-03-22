@@ -771,6 +771,49 @@ export class InboxRepository {
     })();
   }
 
+  clearCompletedItems(listId: string, historyEntry: ListItemHistoryEntry): number {
+    const deleteChecked = this.db.prepare('DELETE FROM list_items WHERE list_id = ? AND checked = 1');
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    return this.db.transaction(() => {
+      const result = deleteChecked.run(listId);
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+      return result.changes;
+    })();
+  }
+
+  uncheckAllItems(listId: string, historyEntry: ListItemHistoryEntry): number {
+    const now = new Date().toISOString();
+    const uncheckAll = this.db.prepare(
+      'UPDATE list_items SET checked = 0, checked_at = NULL, updated_at = ?, version = version + 1 WHERE list_id = ? AND checked = 1'
+    );
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    return this.db.transaction(() => {
+      const result = uncheckAll.run(now, listId);
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+      return result.changes;
+    })();
+  }
+
   getNextListItemPosition(listId: string): number {
     const row = this.db
       .prepare('SELECT COALESCE(MAX(position) + 1, 0) AS next_position FROM list_items WHERE list_id = ?')

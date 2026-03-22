@@ -303,6 +303,7 @@ p { margin: 0; }
   position: relative;
   z-index: 1;
   animation: screenIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .screen-scroll {
@@ -455,7 +456,7 @@ p { margin: 0; }
 /* ── HOME SCREEN ────────────────────────────────────── */
 
 .home-header {
-  padding: calc(16px + env(safe-area-inset-top, 0px)) 22px 18px;
+  padding: 16px 22px 18px;
 }
 
 .home-header-row {
@@ -827,7 +828,7 @@ p { margin: 0; }
 /* ── TASKS SCREEN HEADER ────────────────────────────── */
 
 .screen-header {
-  padding: calc(16px + env(safe-area-inset-top, 0px)) 22px 16px;
+  padding: 16px 22px 16px;
 }
 
 .screen-title {
@@ -2348,7 +2349,7 @@ textarea:focus, input:focus, select:focus {
   position: relative;
   width: 100%;
   max-width: 430px;
-  max-height: 92vh;
+  max-height: calc(92vh - var(--keyboard-height, 0px));
   background: var(--surface);
   border-radius: 28px 28px 0 0;
   box-shadow: 0 -8px 40px rgba(26,16,51,0.12);
@@ -3801,6 +3802,44 @@ input[type="date"].rem-form-input {
   line-height: 1.6;
 }
 
+/* ── LIST COMPLETED SECTION ─────────────────────────── */
+
+.list-completed-section {
+  margin-top: 8px;
+  padding-bottom: 8px;
+}
+
+.list-completed-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
+}
+
+.list-completed-chevron {
+  display: flex;
+  align-items: center;
+  color: var(--ink-3);
+}
+
+.list-completed-label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.list-completed-items {
+  opacity: 0.7;
+}
+
 /* ── UNIFIED WEEKLY VIEW ────────────────────────────── */
 
 .wv-title {
@@ -4672,13 +4711,14 @@ input[type="date"].rem-form-input {
   flex-direction: column;
   height: 100dvh;
   background: var(--bg);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 .onb-header {
   position: sticky;
   top: 0;
   z-index: 10;
   background: var(--bg);
-  padding: calc(12px + env(safe-area-inset-top, 0px)) 22px 16px;
+  padding: 12px 22px 16px;
   border-bottom: 1px solid var(--ink-4);
 }
 .onb-back {
@@ -5616,16 +5656,11 @@ input[type="date"].rem-form-input {
 }
 
 /* When the connectivity banner is visible it already accounts for
-   safe-area-inset-top, so strip the duplicate inset from page headers
-   that follow it to avoid extra vertical space. */
-.connectivity-banner ~ * .home-header {
-  padding-top: 16px;
-}
-.connectivity-banner ~ * .screen-header {
-  padding-top: 16px;
-}
-.connectivity-banner ~ * .onb-header {
-  padding-top: 12px;
+   safe-area-inset-top, so strip the duplicate inset from .screen
+   to avoid extra vertical space. */
+.connectivity-banner ~ .screen,
+.connectivity-banner ~ .onb-page {
+  padding-top: 0;
 }
 
 /* ── LANDSCAPE ORIENTATION SUPPORT ────────────────────── */

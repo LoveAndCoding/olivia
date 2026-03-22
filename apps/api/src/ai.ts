@@ -73,9 +73,11 @@ export class DisabledAiProvider implements AiProvider {
 export class ClaudeAiProvider implements AiProvider {
   private readonly client: Anthropic;
   private readonly model = 'claude-haiku-4-5-20251001';
+  private readonly log?: { warn: (obj: Record<string, unknown>, msg: string) => void };
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, log?: { warn: (obj: Record<string, unknown>, msg: string) => void }) {
     this.client = new Anthropic({ apiKey });
+    this.log = log;
   }
 
   async parseDraft(inputText: string): Promise<ParseDraftResult> {
@@ -126,8 +128,9 @@ export class ClaudeAiProvider implements AiProvider {
         return block.text;
       }
       return null;
-    } catch {
+    } catch (err) {
       clearTimeout(timeout);
+      this.log?.warn({ err: err as Record<string, unknown> }, 'AI generation failed');
       return null;
     }
   }
@@ -208,10 +211,10 @@ export class ClaudeAiProvider implements AiProvider {
 
 export function createAiProvider(
   apiKey: string | undefined,
-  log?: { warn: (msg: string) => void }
+  log?: { warn: (...args: unknown[]) => void }
 ): AiProvider {
   if (apiKey && apiKey.trim().length > 0) {
-    return new ClaudeAiProvider(apiKey.trim());
+    return new ClaudeAiProvider(apiKey.trim(), log as ClaudeAiProvider['log']);
   }
   log?.warn(
     'ANTHROPIC_API_KEY is not set — falling back to DisabledAiProvider. AI-assisted summaries will return placeholder text.'

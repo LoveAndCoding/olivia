@@ -17,6 +17,51 @@ Use this structure for future entries:
 
 ## Current Learnings
 
+### L-033: In-app friction reporting is more valuable than external bug tracking for household products
+- Date: 2026-03-22
+- Area: product operations / feedback loop
+- Learning: The household reports spending significant time in Paperclip (the coordination tool) rather than the app itself to report friction and issues. When something breaks the user's flow, the desire to report it is immediate but the path to do so is external. This creates a feedback gap where only the most motivated reports get filed, and the friction of switching contexts suppresses signal.
+- Why it matters: a household app that requires an external system for feedback will always undercount problems. The feedback loop is a product feature, not just a process concern.
+- Implication: a lightweight in-app feedback mechanism (e.g., shake-to-report, long-press feedback, or a persistent "report issue" entry point) should be considered as infrastructure, not a feature. It compounds the value of every other feature by making friction visible.
+- Source: M29 first-week household feedback (OLI-245)
+- Related docs: D-065
+
+### L-032: AI chat that creates actions without user confirmation erodes trust faster than no AI at all
+- Date: 2026-03-22
+- Area: product behavior / AI trust model
+- Learning: The household tried the AI chat interface multiple times and found it "too aggressive with task creation" — suggesting 8-9 irrelevant example tasks without enough conversational engagement to understand the actual need. Combined with a chat UI too simple to undo or clear unwanted suggestions, this created negative value: the user had to delete chats and manually clean up AI-generated artifacts. The board explicitly stated that "trust and automation is maybe a better immediate fix" over chat UI investment.
+- Why it matters: this is direct household evidence that the advisory-only trust model (D-002) needs to be applied more strictly to the chat surface. Creating draft items the user didn't ask for violates the "suggest, don't act" principle even when the items are technically drafts.
+- Implication: AI chat should default to conversational engagement (ask clarifying questions, understand context) before proposing any entity creation. When it does propose creation, it should propose fewer items with clearer relevance, and the UI must provide a clear way to reject or undo suggestions. The chat prompt and behavior should be recalibrated before investing in chat UI features.
+- Source: M29 first-week household feedback (OLI-245)
+- Related docs: D-002, D-053, D-065
+
+### L-031: Feature breadth without depth produces "barebones" perception — each feature needs a completeness threshold for daily use
+- Date: 2026-03-22
+- Area: product strategy / feature completeness
+- Learning: The household reported that "all features contain the barebones of what I want, but don't contain enough of the actual functionality I need to be helpful." Specific friction points: lists don't clear completed items (forcing new list creation for multi-run grocery shopping), reminders lack a proper date/time picker (text-based entry is cumbersome), routines only support fixed intervals ("every X days") and can't handle ad-hoc tracking like dishes or laundry status. The board noted: "maybe we need to invest more in one area before moving on."
+- Why it matters: shipping many features at minimum viable depth creates a product that demonstrates capability but doesn't deliver daily utility. Each feature needs enough depth to be genuinely useful for its primary use case, not just present.
+- Implication: M30 should prioritize depth over breadth. For each feature, identify the specific friction points that prevent daily use and address those before adding new features. The "completeness threshold" is: can a household member use this feature for its primary purpose without workarounds?
+- Source: M29 first-week household feedback (OLI-245)
+- Related docs: D-065, D-012
+
+### L-030: Reliability erosion is the top adoption blocker — errors and regressions compound into "feels incomplete and unreliable"
+- Date: 2026-03-22
+- Area: product quality / adoption
+- Learning: The household identified reliability as "the biggest blocker day after day." Errors, regressions, and visual bugs create a compounding trust deficit where each new issue reinforces the perception that the system is incomplete. This erodes desire to use the app, regardless of feature completeness. Steps taken (SRE error reporting) have helped but haven't fully resolved the pattern.
+- Why it matters: reliability is not a feature — it's a prerequisite for feature value. No amount of new features will drive adoption if the existing surface feels unreliable. The error reporting pipeline (OLI-167, OLI-174) was a good investment, but the household is still experiencing enough issues to call it the #1 blocker.
+- Implication: M30 must treat reliability as the highest priority, above feature depth and new features. This means: (1) invest in regression prevention (expand E2E coverage for daily-use paths), (2) reduce time-to-fix for reported errors, (3) ensure the error reporting pipeline catches issues before the household encounters them.
+- Source: M29 first-week household feedback (OLI-245)
+- Related docs: OLI-219, OLI-167, OLI-174, D-065
+
+### L-029: Push notifications and native integration are prerequisites for "seamless" — without them the app remains "something to check"
+- Date: 2026-03-22
+- Area: product adoption / integration
+- Learning: The household reported that the app "still feels like an app to check" rather than something integrated into daily flow. Push notifications haven't been functional until very recently, and due to the native migration the household still hasn't been able to test them. Reminders without working push notifications have limited utility. The household explicitly stated this friction "is preventing full adoption."
+- Why it matters: the product's value proposition depends on Olivia surfacing the right information at the right time. Without reliable push delivery, the app is passive — the household must remember to open it, which defeats the purpose of a proactive household assistant.
+- Implication: getting push notifications fully working and validated on the native app is a prerequisite for meaningful adoption. This should be prioritized in M30 alongside reliability work.
+- Source: M29 first-week household feedback (OLI-245)
+- Related docs: D-046, OLI-163, OLI-200, D-065
+
 ### L-028: UI components must ship with styles — splitting TSX and CSS across tasks creates unstyled content risk
 - Date: 2026-03-17
 - Area: process / UI delivery

@@ -15,6 +15,7 @@ import {
   type CompleteRitualResponse,
   type ReviewRecord,
   type RitualSummaryResponse,
+  bulkListActionResponseSchema,
   activeListIndexResponseSchema,
   activeRoutineIndexResponseSchema,
   archivedListIndexResponseSchema,
@@ -43,6 +44,7 @@ import {
   routineMutationResponseSchema,
   saveReminderNotificationPreferencesResponseSchema,
   snoozeReminderResponseSchema,
+  type BulkListActionResponse,
   type ActiveListIndexResponse,
   type ActiveRoutineIndexResponse,
   type ActorRole,
@@ -439,6 +441,24 @@ export async function removeListItem(role: ActorRole, listId: string, itemId: st
     method: 'DELETE',
     body: JSON.stringify({ actorRole: role, confirmed: true })
   });
+}
+
+export async function clearCompletedItems(role: ActorRole, listId: string): Promise<BulkListActionResponse> {
+  return bulkListActionResponseSchema.parse(
+    await request<BulkListActionResponse>(`/api/lists/${listId}/clear-completed`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, confirmed: true })
+    })
+  );
+}
+
+export async function uncheckAllItems(role: ActorRole, listId: string): Promise<BulkListActionResponse> {
+  return bulkListActionResponseSchema.parse(
+    await request<BulkListActionResponse>(`/api/lists/${listId}/uncheck-all`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, confirmed: true })
+    })
+  );
 }
 
 // ─── Routine API clients ───────────────────────────────────────────────────────

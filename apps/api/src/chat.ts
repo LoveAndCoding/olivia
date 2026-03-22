@@ -385,7 +385,8 @@ export async function* streamChat(
   config: AppConfig,
   conversationId: string,
   _userContent: string,
-  now: Date
+  now: Date,
+  log?: { warn: (obj: Record<string, unknown>, msg: string) => void }
 ): AsyncGenerator<ChatStreamEvent> {
   const householdContext = assembleHouseholdContext(repository, config, now);
   const systemPrompt = buildSystemPrompt(householdContext);
@@ -447,7 +448,7 @@ export async function* streamChat(
           try {
             parsedInput = JSON.parse(currentToolInput || '{}');
           } catch {
-            // leave empty
+            log?.warn({ toolName: currentToolName, rawInput: currentToolInput?.slice(0, 500) }, 'Malformed JSON in AI tool call');
           }
           const toolCall: ChatToolCall = {
             id: randomUUID(),
@@ -482,6 +483,7 @@ export async function* streamChat(
     yield { event: 'done', data: { messageId: assistantMsgId, conversationId } };
   } catch (err) {
     clearTimeout(timeout);
+    log?.warn({ err: err as Record<string, unknown> }, 'Chat stream failed');
     const message = err instanceof Error && err.name === 'AbortError'
       ? 'I\'m taking longer than usual to think this through. Give me another moment, or try asking in a different way.'
       : 'Something unexpected happened on my end. Try sending your message again.';
@@ -497,7 +499,8 @@ export async function* streamOnboardingChat(
   config: AppConfig,
   conversationId: string,
   session: OnboardingSessionRow,
-  now: Date
+  now: Date,
+  log?: { warn: (obj: Record<string, unknown>, msg: string) => void }
 ): AsyncGenerator<ChatStreamEvent> {
   const householdContext = assembleHouseholdContext(repository, config, now);
   const systemPrompt = buildOnboardingSystemPrompt(householdContext, session);
@@ -554,7 +557,7 @@ export async function* streamOnboardingChat(
           try {
             parsedInput = JSON.parse(currentToolInput || '{}');
           } catch {
-            // leave empty
+            log?.warn({ toolName: currentToolName, rawInput: currentToolInput?.slice(0, 500) }, 'Malformed JSON in onboarding AI tool call');
           }
           const toolCall: ChatToolCall = {
             id: randomUUID(),
@@ -588,6 +591,7 @@ export async function* streamOnboardingChat(
     yield { event: 'done', data: { messageId: assistantMsgId, conversationId } };
   } catch (err) {
     clearTimeout(timeout);
+    log?.warn({ err: err as Record<string, unknown> }, 'Onboarding chat stream failed');
     const message = err instanceof Error && err.name === 'AbortError'
       ? 'I\'m taking longer than usual to think this through. Give me another moment, or try asking in a different way.'
       : 'Something unexpected happened on my end. Try sending your message again.';

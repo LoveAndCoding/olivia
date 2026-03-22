@@ -36,10 +36,10 @@ Use this structure for future entries:
 - Statement: Olivia should begin by suggesting, organizing, and drafting rather than taking consequential actions autonomously.
 - Confidence: high
 - Why it matters: this assumption shapes permissions, workflows, risk posture, and product ethos.
-- Evidence so far: stakeholder direction favors local control, explicit approvals, and low-risk household support.
-- Validation path: evaluate whether advisory behavior is useful enough on its own to create household value without premature automation.
-- Status: active
-- Related docs: `docs/vision/product-ethos.md`, `docs/vision/product-vision.md`
+- Evidence so far: stakeholder direction favors local control, explicit approvals, and low-risk household support. M29 household feedback (2026-03-22) reinforced this: the chat interface violated advisory-only by creating 8-9 unsolicited tasks, producing negative value. The board explicitly stated "trust and automation is maybe a better immediate fix" over expanding AI capabilities. Advisory-only is validated, but the chat surface needs to be brought into compliance with it.
+- Validation path: completed for the trust model itself. Ongoing validation: ensure all AI surfaces (especially chat) enforce advisory-only behavior consistently.
+- Status: validated
+- Related docs: `docs/vision/product-ethos.md`, `docs/vision/product-vision.md`, L-032
 
 ### A-003: Early interaction can remain channel-agnostic
 - Date: 2026-03-08
@@ -67,12 +67,12 @@ Use this structure for future entries:
 - Date: 2026-03-09
 - Area: system architecture
 - Statement: The installable PWA plus Web Push will be reliable enough for Olivia's first notification scope, which is currently limited to calm, primary-operator prompts such as due-soon, stale-item, and optional digest notifications.
-- Confidence: medium
+- Confidence: low
 - Why it matters: this assumption helps determine whether the PWA remains the right MVP surface or whether a native shell becomes necessary earlier for notification quality alone.
-- Evidence so far: the current inbox workflow has a narrow notification scope, and the interface strategy already limits notification ambition to a calm, primary-operator model.
-- Validation path: implement the first notification slice and observe whether delivery reliability, open behavior, and user response are good enough in actual household use. If notifications are unreliable or too constrained, revisit the native-shell threshold.
-- Status: active
-- Related docs: `docs/strategy/interface-direction.md`, `docs/strategy/system-architecture.md`, `docs/specs/shared-household-inbox.md`
+- Evidence so far: the current inbox workflow has a narrow notification scope, and the interface strategy already limits notification ambition to a calm, primary-operator model. M29 household feedback (2026-03-22) indicates push notifications have not been reliably functional — the native migration means the household hasn't been able to test push at all. The board called integration a top blocker: "reminders haven't really been functional until very recently and due to the native migration I still haven't even been able to test push notifications."
+- Validation path: get push notifications working on the native (Capacitor) app and validate delivery reliability in actual household use. This is now a prerequisite for M30.
+- Status: active (challenged — needs native validation)
+- Related docs: `docs/strategy/interface-direction.md`, `docs/strategy/system-architecture.md`, `docs/specs/shared-household-inbox.md`, L-029
 
 ### A-006: Versioned command sync is sufficient for early household concurrency
 - Date: 2026-03-09
@@ -124,7 +124,18 @@ Use this structure for future entries:
 - Statement: Allowing lightweight standalone reminders alongside linked reminders will reduce the need to represent pure "surface this later" prompts as inbox work, without creating a second full task-management workflow.
 - Confidence: medium
 - Why it matters: this assumption shapes the reminder spec boundary, the relationship between reminders and inbox items, and whether Olivia can support reminder-only use cases without product drift.
-- Evidence so far: first-class reminders are now built and available in the PWA. The hybrid model (standalone + linked) was implemented as designed. Validation of actual household impact requires real usage observations — not yet collected as of 2026-03-15.
-- Validation path: observe reminder usage after M7. If standalone reminders remain narrow and reduce inbox misuse, mark validated. If they become duplicative or confusing, narrow the workflow or push more reminder cases back toward linked reminders.
+- Evidence so far: first-class reminders are now built and available in the PWA. The hybrid model (standalone + linked) was implemented as designed. M29 household feedback (2026-03-22) indicates reminders are used "in theory" but the UX friction (cumbersome date/time entry, snooze keeping items on home screen) limits practical value. The standalone vs. linked distinction was not mentioned as confusing — the friction is in the interaction mechanics, not the model.
+- Validation path: improve reminder UX (date/time picker, snooze behavior) and re-evaluate. If reminders become useful after UX fixes, mark validated.
 - Status: active
-- Related docs: `docs/specs/first-class-reminders.md`, `docs/learnings/decision-history.md`
+- Related docs: `docs/specs/first-class-reminders.md`, `docs/learnings/decision-history.md`, L-031
+
+### A-011: Feature breadth across H3 workflows creates compound daily utility
+- Date: 2026-03-22
+- Area: product strategy
+- Statement: Building all four H3 workflows (reminders, shared lists, recurring routines, meal planning) creates compound household value greater than any single deep workflow.
+- Confidence: low
+- Why it matters: this assumption drove the decision to build breadth across H3 before deepening any single workflow.
+- Evidence so far: M29 household feedback (2026-03-22) challenges this assumption. The board reported that "all features contain the barebones of what I want, but don't contain enough of the actual functionality I need to be helpful." Each feature has specific friction points preventing daily use. The compound value theory is undermined when no individual feature crosses the usability threshold.
+- Validation path: M30 should deepen the most-used features (lists, reminders, routines) to the daily-use threshold and then re-evaluate whether breadth + depth creates the expected compound value.
+- Status: active (challenged)
+- Related docs: L-031, D-012, D-065

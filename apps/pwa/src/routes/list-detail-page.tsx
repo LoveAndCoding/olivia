@@ -13,6 +13,8 @@ import {
   checkListItemCommand,
   uncheckListItemCommand,
   removeListItemCommand,
+  clearCompletedItemsCommand,
+  uncheckAllItemsCommand,
 } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
 import { ListItemRow } from '../components/lists/ListItemRow';
@@ -25,7 +27,9 @@ import { ArchiveListSheet } from '../components/lists/ArchiveListSheet';
 import { DeleteListSheet } from '../components/lists/DeleteListSheet';
 import { DeleteItemSheet } from '../components/lists/DeleteItemSheet';
 import { OverflowMenuSheet } from '../components/lists/OverflowMenuSheet';
+import { BottomSheet } from '../components/reminders/BottomSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
+import { CaretDown, CaretRight } from '@phosphor-icons/react';
 import { showErrorToast } from '../lib/error-toast';
 
 export function ListDetailPage() {
@@ -45,6 +49,9 @@ export function ListDetailPage() {
   const [omsgDismissed, setOmsgDismissed] = useState(false);
   const [banner, setBanner] = useState<{ message: string; variant: 'mint' | 'sky' } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [completedExpanded, setCompletedExpanded] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showUncheckAllConfirm, setShowUncheckAllConfirm] = useState(false);
 
   const detailQuery = useQuery({
     queryKey: ['list-detail', role, params.listId],
@@ -55,9 +62,11 @@ export function ListDetailPage() {
   const items: ListItem[] = detailQuery.data?.items ?? [];
 
   const sortedItems = useMemo(() => [...items].sort((a, b) => a.position - b.position), [items]);
+  const uncheckedItems = useMemo(() => sortedItems.filter((i) => !i.checked), [sortedItems]);
+  const checkedItems = useMemo(() => sortedItems.filter((i) => i.checked), [sortedItems]);
 
   const totalItems = sortedItems.length;
-  const checkedCount = sortedItems.filter((i) => i.checked).length;
+  const checkedCount = checkedItems.length;
   const allChecked = totalItems > 0 && checkedCount === totalItems;
   const isArchived = list?.status === 'archived';
   const isOffline = !window.navigator.onLine;
@@ -178,16 +187,51 @@ export function ListDetailPage() {
     }
   }, [list, deleteItemTarget, role, invalidate]);
 
+  const handleClearCompleted = useCallback(async () => {
+    if (!list) return;
+    setShowClearConfirm(false);
+    setBusy(true);
+    try {
+      await clearCompletedItemsCommand(role, list.id);
+      await invalidate();
+      showBanner('Cleared', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not clear completed items');
+    } finally {
+      setBusy(false);
+    }
+  }, [list, role, invalidate, showBanner]);
+
+  const handleUncheckAll = useCallback(async () => {
+    if (!list) return;
+    setShowUncheckAllConfirm(false);
+    setBusy(true);
+    try {
+      await uncheckAllItemsCommand(role, list.id);
+      await invalidate();
+      showBanner('Items unchecked', 'mint');
+      setCompletedExpanded(false);
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not uncheck items');
+    } finally {
+      setBusy(false);
+    }
+  }, [list, role, invalidate, showBanner]);
+
   const listOverflowActions = useMemo(() => {
     if (!list) return [];
     const actions = [];
     if (!isArchived) {
       actions.push({ label: 'Rename', onClick: () => setShowEditTitleSheet(true) });
+      if (checkedCount > 0 && !isSpouse) {
+        actions.push({ label: 'Clear completed', onClick: () => setShowClearConfirm(true) });
+        actions.push({ label: 'Uncheck all', onClick: () => setShowUncheckAllConfirm(true) });
+      }
       actions.push({ label: 'Archive', onClick: () => setShowArchiveSheet(true) });
     }
     actions.push({ label: 'Delete', danger: true, onClick: () => setShowDeleteListSheet(true) });
     return actions;
-  }, [list, isArchived]);
+  }, [list, isArchived, checkedCount, isSpouse]);
 
   const subtitle = totalItems === 0
     ? 'No items'
@@ -267,7 +311,7 @@ export function ListDetailPage() {
           )}
 
           <div className="list-detail-items">
-            {sortedItems.map((item) => (
+            {uncheckedItems.map((item) => (
               <ListItemRow
                 key={item.id}
                 item={item}
@@ -279,6 +323,39 @@ export function ListDetailPage() {
               />
             ))}
           </div>
+
+          {checkedCount > 0 && (
+            <div className="list-completed-section">
+              <button
+                type="button"
+                className="list-completed-header"
+                onClick={() => setCompletedExpanded((v) => !v)}
+                aria-expanded={completedExpanded}
+              >
+                <span className="list-completed-chevron">
+                  {completedExpanded ? <CaretDown size={14} /> : <CaretRight size={14} />}
+                </span>
+                <span className="list-completed-label">
+                  Completed ({checkedCount})
+                </span>
+              </button>
+              {completedExpanded && (
+                <div className="list-detail-items list-completed-items">
+                  {checkedItems.map((item) => (
+                    <ListItemRow
+                      key={item.id}
+                      item={item}
+                      onCheck={() => void handleCheckItem(item)}
+                      onUncheck={() => void handleUncheckItem(item)}
+                      onOverflow={() => setItemOverflowTarget(item)}
+                      isSpouse={isSpouse}
+                      disabled={busy}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {allChecked && !omsgDismissed && !isSpouse && !isArchived && (
             <OliviaListMessage
@@ -356,6 +433,66 @@ export function ListDetailPage() {
           ]}
         />
       )}
+
+      <BottomSheet
+        open={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        title="Clear completed?"
+      >
+        <div style={{ padding: '0 0 24px' }}>
+          <p style={{ fontSize: 14, color: 'var(--ink-2)', margin: '0 0 16px' }}>
+            Remove {checkedCount} completed {checkedCount === 1 ? 'item' : 'items'}? This cannot be undone.
+          </p>
+          <div className="rem-actions-row">
+            <button
+              type="button"
+              className="rem-btn rem-btn-primary"
+              style={{ flex: 1, background: 'var(--rose)', borderColor: 'var(--rose)' }}
+              onClick={() => void handleClearCompleted()}
+            >
+              Clear completed
+            </button>
+            <button
+              type="button"
+              className="rem-btn rem-btn-ghost"
+              style={{ flex: 1 }}
+              onClick={() => setShowClearConfirm(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet
+        open={showUncheckAllConfirm}
+        onClose={() => setShowUncheckAllConfirm(false)}
+        title="Uncheck all?"
+      >
+        <div style={{ padding: '0 0 24px' }}>
+          <p style={{ fontSize: 14, color: 'var(--ink-2)', margin: '0 0 16px' }}>
+            Uncheck all {checkedCount} completed {checkedCount === 1 ? 'item' : 'items'}? They'll move back to the list.
+          </p>
+          <div className="rem-actions-row">
+            <button
+              type="button"
+              className="rem-btn rem-btn-primary"
+              style={{ flex: 1 }}
+              onClick={() => void handleUncheckAll()}
+            >
+              Uncheck all
+            </button>
+            <button
+              type="button"
+              className="rem-btn rem-btn-ghost"
+              style={{ flex: 1 }}
+              onClick={() => setShowUncheckAllConfirm(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </BottomSheet>
 
       <BottomNav activeTab="lists" />
     </div>

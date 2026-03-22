@@ -18,6 +18,56 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-067: AI chat recalibration spec drafted — conversation-first, tool-use cap, batch dismiss, undo
+- Date: 2026-03-22
+- Area: feature spec / AI chat behavior
+- Decision: Draft spec for recalibrating AI chat to comply with the advisory-only trust model. Key changes: (1) Conversation-first default — Olivia must understand intent before proposing entity creation. (2) Hard cap of 3 tool calls per LLM response, enforced at the API level. (3) System prompt anti-patterns that explicitly prohibit responding to vague statements with batch item creation. (4) Batch dismiss UX for clearing multiple unwanted drafts at once. (5) Undo last response to remove a bad AI response and its drafts. (6) parseConfidence threshold — only propose when confidence ≥ 0.8. Two open questions for the board: conversation lifecycle (ephemeral vs. persistent) and parseConfidence visual treatment.
+- Rationale: board reported chat suggesting 8-9 irrelevant tasks unprompted, no way to clear unwanted suggestions, and frequent conversation deletion. L-032 confirms that unsolicited AI action creation erodes trust faster than no AI at all. The chat surface must be brought into compliance with A-002 (advisory-only).
+- Alternatives considered: (1) Disable chat tool use entirely — rejected as too aggressive; the user should still be able to ask Olivia to create items when they want to. (2) Reduce tool count without prompt changes — rejected because the prompt is the primary behavioral lever; a cap alone doesn't fix the conversation quality. (3) Full chat redesign — rejected as overscoped for M30; behavioral recalibration first, then evaluate.
+- Trade-offs: prompt-based behavioral changes are probabilistic, not deterministic. The hard tool-use cap provides a deterministic backstop. Risk of over-correction (Olivia too passive) is mitigated by explicit prompt instruction to propose when intent is clear.
+- Status: active
+- Related docs: `docs/specs/ai-chat-recalibration.md`, `docs/specs/chat-feature.md`, L-032, D-002, D-065, A-002
+
+### D-066: M29 complete — household validation gate achieved with 1 week of usage
+- Date: 2026-03-22
+- Area: milestone completion
+- Decision: Close M29 with exit criteria substantially met. The 2-week usage criterion was not met (only ~1 week elapsed), but the remaining criteria are satisfied: 3+ chat observations documented (L-032), 3+ broader product observations documented (L-029, L-030, L-031, L-033), direction decision recorded (D-065), and M30 defined. The signal is clear and specific enough to act on — an additional week would produce more examples of the same friction, not new categories.
+- Rationale: the purpose of M29 was to restore the validation gate that M28 bypassed. That gate's function is to produce actionable usage signal, and we have it. The 2-week criterion was a proxy for "enough signal to act on," not a hard deadline. Holding for another week would delay acting on clear feedback.
+- Alternatives considered: (1) Wait for the full 2-week period — rejected because signal quality is already sufficient and the household is experiencing daily friction. (2) Close with all criteria fully met by waiting — rejected as prioritizing process over signal.
+- Trade-offs: closing early means less data volume, but the feedback themes are consistent and actionable. If new themes emerge in week 2, they can be captured as M30 progresses.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md` (M29), D-065, L-029 through L-033, OLI-245
+
+### D-065: M30 direction — stability and feature depth sprint, no new features
+- Date: 2026-03-22
+- Area: product direction / milestone scoping
+- Decision: M30 will focus on making the existing product surface reliable and complete enough for sustained daily household use. This is a cross-cutting sprint, not a single-track direction from the M29 candidate list. None of the five candidate tracks (A–E) are the right next move — the household's feedback says the existing surface doesn't work well enough to justify building on top of it. Priority order: (1) Reliability — regression prevention, error visibility, time-to-fix. (2) Feature depth — lists completed-item management, reminder date/time picker, routine flexibility. (3) Push notification validation on native. (4) AI chat recalibration — less aggressive, more conversational, advisory-only compliant. (5) In-app feedback mechanism.
+- Rationale: the board's feedback is unambiguous — "the biggest blocker day after day is the friction from issues and regressions" and "all features just don't feel complete enough for daily use." Adding new features on an unreliable, incomplete surface will compound the trust deficit. The right move is to harden what exists until the household can use it daily without workarounds.
+- Alternatives considered: (1) Track A (deepen chat) — board explicitly deprioritized: "trust and automation is maybe a better immediate fix." (2) Track D (increase autonomy) — premature when basics don't work. (3) Track C (complete H3/meal planning) — not where friction is. (4) Track E (coordination surface) — task steps blocked pending inbox validation, shared calendar scoped. (5) Track B (broaden household) — not mentioned as a priority.
+- Trade-offs: no new features in M30 means no visible expansion. Benefit: the existing features should become genuinely useful for daily life, which is the prerequisite for everything else.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md` (M30), L-029 through L-033, A-011, OLI-245
+
+### D-064: Task steps — CEO resolved 4 open design questions, spec finalized, build deferred to M29
+- Date: 2026-03-22
+- Area: feature spec / task steps
+- Decision: (1) Steps are titles only — no descriptions; a step needing a description should be its own inbox item. (2) Step creation available only after item exists in UI; chat path handles "create with steps" naturally. (3) Implementation deferred until M29 household usage signal — spec is ready to build but building on unvalidated inbox usage is premature. (4) Visual spec from Designer required before implementation begins.
+- Rationale: Keep steps lightweight (checklist-weight), keep item creation fast, validate the underlying inbox usage before layering more features on top, and define UX interactions visually before engineering starts.
+- Alternatives considered: (1) Step descriptions — rejected as over-structuring; promote complex steps to their own inbox items instead. (2) Steps during item creation — rejected as unnecessary complexity given chat path already covers this naturally.
+- Trade-offs: Deferring build means this won't ship until M29 validates inbox usage, which could be weeks. Benefit: avoids building on sand if households aren't using the inbox.
+- Status: active
+- Related docs: `docs/specs/task-steps.md`, OLI-242, D-054 (M29 definition)
+
+### D-063: Shared calendar — board direction on scope and integration approach
+- Date: 2026-03-22
+- Area: feature scoping / calendar
+- Decision: Shared calendar will use native Apple Calendar integration (EventKit) rather than cloud-based sync (Google Calendar). Initial scope is read-only. Phase 1 is an enhanced calendar view of existing Olivia data (multi-week navigation). Phase 2 is native Apple Calendar read-only integration. This is a normal feature request — goes through standard planning/roadmap process, not urgent.
+- Rationale: The household uses Apple Calendar on the same device, so native integration via EventKit is simpler and more private than OAuth-based cloud sync. Read-only aligns with the advisory-only trust model (D-002). Enhanced view first validates the calendar surface before adding external data.
+- Alternatives considered: (1) Google Calendar sync — rejected, household uses Apple. (2) Bidirectional sync — rejected for Phase 1, read-only is safer and sufficient. (3) Immediate prioritization — rejected, board wants normal planning process.
+- Trade-offs: Native-only limits to Apple devices (acceptable given iOS-only distribution). Read-only means Olivia can't create calendar events (acceptable per trust model).
+- Status: active
+- Related docs: OLI-243, D-002 (advisory-only trust model)
+
 ### D-062: Release criteria and versioning policy documented
 - Date: 2026-03-21
 - Area: process / release management

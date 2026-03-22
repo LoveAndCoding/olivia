@@ -6,6 +6,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-22
+
+### Added
+- Lists now separate completed items into a collapsible section at the bottom, keeping unchecked items front and center
+- New "Clear completed" action removes all checked items from a list in one step — great for resetting a grocery list after a shopping trip
+- New "Uncheck all" action resets all checked items back to unchecked — perfect for reusing a recurring list like weekly groceries
+
+### Fixed
+- Push notifications now deliver reliably on native iOS — resolved a pipeline issue that could silently prevent notifications from arriving
+- Screen headers no longer overlap the device status bar when scrolling
+- The keyboard no longer pushes content too far up on bottom sheet dialogs
+- Background processes (nudge polling and push scheduling) now handle errors gracefully instead of silently failing
+
 ## [0.4.3] - 2026-03-22
 
 ### Added

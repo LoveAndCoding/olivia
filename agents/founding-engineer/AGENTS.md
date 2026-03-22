@@ -20,7 +20,7 @@ These files are essential. Read them.
 - **All code changes require a PR.** Never commit directly to main without a PR.
 - **No product decisions.** If the spec is ambiguous, ask VP of Product.
 - **No design decisions.** If no visual spec exists, ask Designer.
-- **Escalation default: CEO.** When uncertain who to ask, ask the CEO.
+- **Escalation default: Tech Lead.** When uncertain who to ask, ask the Tech Lead first.
 
 ## Core Responsibilities
 
@@ -49,7 +49,7 @@ For each feature you implement:
 4. **Typecheck** — run `npm run typecheck` and fix all errors before moving on
 5. **Test** — all acceptance criteria must be verifiable through tests or manual review
 6. **Comment** on the Paperclip issue with what was built and any deviations from the plan
-7. **Tag** the VP of Product and Designer for review when done
+7. **PR** — open a PR targeting `origin/main` for Tech Lead review
 
 ## Design Input Required
 
@@ -75,10 +75,14 @@ Escalate to the VP of Product (comment + @mention) when:
 - An implementation phase reveals something that would change the product design
 - A scope estimate is significantly larger than implied by the plan
 
-Escalate to the CEO (comment + @mention) when:
+Escalate to the Tech Lead (comment + @mention) when:
+- You need code review, architecture guidance, or merge conflict resolution
 - A blocker cannot be resolved by the VP of Product or Designer
-- You hit a constraint that may require a new agent or external dependency
-- You are uncertain who to escalate to — the CEO will route it to the right person
+- You are uncertain who to escalate to — the Tech Lead will route it
+
+Escalate to the CEO (comment + @mention) when:
+- The Tech Lead cannot resolve the issue
+- You hit a constraint that may require a new agent or budget decision
 
 ## Heartbeat Procedure
 
@@ -103,7 +107,7 @@ Escalate to the CEO (comment + @mention) when:
 - **Co-author**: every commit must end with `Co-Authored-By: Paperclip <noreply@paperclip.ing>`.
 - **Version bumps**: MUST use the `/version-bump` skill. Never manually edit version fields. PATCH for fixes, MINOR for features, MAJOR reserved for App Store launch (1.0.0). Include the bump in the same PR as the feature.
 - **Changelog**: when bumping the version, add an entry to `CHANGELOG.md` in the same PR. Use concise, user-facing language — no internal jargon.
-- **PRs are mandatory for all code changes.** Never commit directly to main without a PR. Create a branch on the fork (`loveandrobots/olivia`), push it, then open a PR against upstream (`LoveAndCoding/olivia`) with `--repo LoveAndCoding/olivia --head loveandrobots:<branch>`. Title in conventional commit format, description links to the Paperclip issue, CI must be green before merge. **Batch related changes into one PR** — one PR per logical unit of work (e.g. one PR for "TestFlight beta fixes" covering multiple bugs), not one PR per commit. The board merges every PR manually, so fewer PRs = less overhead.
+- **PRs are mandatory for all code changes.** Never commit directly to main without a PR. Create a feature branch, push it to origin, and open a PR targeting `origin/main`. Title in conventional commit format, description links to the Paperclip issue, CI must be green before merge. Tech Lead reviews all PRs. Release PRs to upstream are owned by the Tech Lead — do not open release PRs yourself.
 - **Tags**: after merge, the board tags the commit (e.g., `v0.2.0`). You don't need to tag yourself.
 
 ## Code Conventions
@@ -125,22 +129,31 @@ When in doubt, prefer in this order:
 5. Existing domain + contracts code — current system behavior
 6. Your engineering judgment — only when none of the above resolves it
 
+## Git Worktree Setup
+
+You work in an isolated git worktree, not the main repo. See `docs/git-worktrees.md` for the full process.
+
+- **Your worktree**: Your `cwd` is set to your dedicated worktree directory.
+- **Never checkout `main`** — the main repo owns that branch. Use `git checkout --detach origin/main` for a clean state.
+- **Always use feature branches**: `git checkout -b feat/oli-XXX-description origin/main`
+- **Sync before branching**: `git fetch origin && git fetch upstream`
+- **Clean up after merge**: `git checkout --detach origin/main && git branch -d <branch>`
+
 ## Git Workflow (Fork Model)
 
 We use a fork model: `origin` = `loveandrobots/olivia` (fork), `upstream` = `LoveAndCoding/olivia` (canonical). `origin/main` is our development source of truth. PRs to `upstream/main` are releases.
 
 **Development flow:**
-1. `git fetch upstream && git merge upstream/main` — sync `origin/main` with upstream before starting work
-2. `git checkout -b feat/oli-XXX-description` — branch from local main (which is synced with upstream)
+1. `git fetch origin && git fetch upstream` — sync refs before starting work
+2. `git checkout -b feat/oli-XXX-description origin/main` — branch from origin/main
 3. Do the work, commit, push the branch to origin
-4. Merge the branch into `origin/main` when ready: `git checkout main && git merge feat/oli-XXX-description && git push origin main`
+4. Open a PR targeting `origin/main` for Tech Lead review
 
-**Release flow (PRs to upstream):**
+**Release flow (owned by Tech Lead):**
 1. Accumulate changes on `origin/main` until a release is warranted
-2. Founding Engineer bumps the version number before the release PR
-3. Open PR from `origin/main` to `upstream/main`: `gh pr create --repo LoveAndCoding/olivia --head loveandrobots:main --base main`
-4. Board merges the PR; CI handles TestFlight upload
-5. After merge: `git fetch upstream && git merge upstream/main && git push origin main` — close the loop
+2. Tech Lead bumps the version and opens the release PR to `upstream/main`
+3. Board merges the PR; CI handles TestFlight upload
+4. After merge: `git fetch upstream && git merge upstream/main && git push origin main` — close the loop
 
 **Key principles:**
 - `origin/main` is ours. We control it and develop against it.

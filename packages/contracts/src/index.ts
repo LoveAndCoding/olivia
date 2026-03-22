@@ -405,7 +405,9 @@ export const listEventTypeSchema = z.enum([
   'item_body_updated',
   'item_checked',
   'item_unchecked',
-  'item_removed'
+  'item_removed',
+  'items_cleared',
+  'items_unchecked_all'
 ]);
 
 export const sharedListSchema = z.object({
@@ -530,6 +532,22 @@ export const removeListItemRequestSchema = z.object({
   listId: z.string().uuid(),
   itemId: z.string().uuid(),
   confirmed: z.literal(true)
+});
+
+export const clearCompletedItemsRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  listId: z.string().uuid(),
+  confirmed: z.literal(true)
+});
+
+export const uncheckAllItemsRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  listId: z.string().uuid(),
+  confirmed: z.literal(true)
+});
+
+export const bulkListActionResponseSchema = z.object({
+  affectedCount: z.number().int().nonnegative()
 });
 
 // Mutation response schemas
@@ -987,6 +1005,20 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
     confirmed: z.literal(true)
   }),
   z.object({
+    kind: z.literal('items_clear_completed'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    listId: z.string().uuid(),
+    confirmed: z.literal(true)
+  }),
+  z.object({
+    kind: z.literal('items_uncheck_all'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    listId: z.string().uuid(),
+    confirmed: z.literal(true)
+  }),
+  z.object({
     kind: z.literal('routine_create'),
     commandId: z.string().uuid(),
     actorRole: actorRoleSchema,
@@ -1161,6 +1193,9 @@ export type UpdateListItemBodyRequest = z.infer<typeof updateListItemBodyRequest
 export type CheckListItemRequest = z.infer<typeof checkListItemRequestSchema>;
 export type UncheckListItemRequest = z.infer<typeof uncheckListItemRequestSchema>;
 export type RemoveListItemRequest = z.infer<typeof removeListItemRequestSchema>;
+export type ClearCompletedItemsRequest = z.infer<typeof clearCompletedItemsRequestSchema>;
+export type UncheckAllItemsRequest = z.infer<typeof uncheckAllItemsRequestSchema>;
+export type BulkListActionResponse = z.infer<typeof bulkListActionResponseSchema>;
 export type ListMutationResponse = z.infer<typeof listMutationResponseSchema>;
 export type ListItemMutationResponse = z.infer<typeof listItemMutationResponseSchema>;
 

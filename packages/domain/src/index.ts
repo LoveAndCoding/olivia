@@ -1144,6 +1144,14 @@ export function createItemRemovedHistoryEntry(listId: string, item: ListItem, ac
   return createListHistoryEntry(listId, item.id, actorRole, 'item_removed', { body: item.body }, null, now.toISOString());
 }
 
+export function createItemsClearedHistoryEntry(listId: string, clearedCount: number, actorRole: ActorRole, now: Date = new Date()): ListItemHistoryEntry {
+  return createListHistoryEntry(listId, null, actorRole, 'items_cleared', { count: clearedCount }, null, now.toISOString());
+}
+
+export function createItemsUncheckedAllHistoryEntry(listId: string, uncheckedCount: number, actorRole: ActorRole, now: Date = new Date()): ListItemHistoryEntry {
+  return createListHistoryEntry(listId, null, actorRole, 'items_unchecked_all', { count: uncheckedCount }, null, now.toISOString());
+}
+
 // ─── Recurring Routines domain helpers ────────────────────────────────────────
 
 /**

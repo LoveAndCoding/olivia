@@ -176,7 +176,9 @@ import {
   previewCreateReminder,
   previewUpdate,
   previewUpdateReminder,
+  clearCompletedItems as clearCompletedItemsApi,
   removeListItem as removeListItemApi,
+  uncheckAllItems as uncheckAllItemsApi,
   restoreList as restoreListApi,
   restoreMealPlan as restoreMealPlanApi,
   restoreRoutine as restoreRoutineApi,
@@ -612,6 +614,10 @@ async function flushOutboxOnce() {
       } else if (command.kind === 'item_remove') {
         await removeListItemApi(command.actorRole, command.listId, command.itemId);
         await removeListItemFromCache(command.itemId);
+      } else if (command.kind === 'items_clear_completed') {
+        await clearCompletedItemsApi(command.actorRole, command.listId);
+      } else if (command.kind === 'items_uncheck_all') {
+        await uncheckAllItemsApi(command.actorRole, command.listId);
       } else if (command.kind === 'routine_create') {
         const response = await createRoutineApi(command.actorRole, command.title, command.owner, command.recurrenceRule, command.firstDueDate, command.intervalDays);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
@@ -986,6 +992,44 @@ export async function removeListItemCommand(role: ActorRole, listId: string, ite
   const command: OutboxCommand = { kind: 'item_remove', commandId: crypto.randomUUID(), actorRole: role, listId, itemId, confirmed: true };
   await enqueueCommand(command);
   await removeListItemFromCache(itemId);
+}
+
+export async function clearCompletedItemsCommand(role: ActorRole, listId: string): Promise<void> {
+  if (!isOffline()) {
+    await clearCompletedItemsApi(role, listId);
+    // Remove checked items from local cache
+    const cached = await clientDb.listItems.where('listId').equals(listId).toArray();
+    const checkedIds = cached.filter((i) => i.checked).map((i) => i.id);
+    if (checkedIds.length > 0) await clientDb.listItems.bulkDelete(checkedIds);
+    return;
+  }
+  const command: OutboxCommand = { kind: 'items_clear_completed', commandId: crypto.randomUUID(), actorRole: role, listId, confirmed: true };
+  await enqueueCommand(command);
+  // Optimistic: remove checked items from cache
+  const cached = await clientDb.listItems.where('listId').equals(listId).toArray();
+  const checkedIds = cached.filter((i) => i.checked).map((i) => i.id);
+  if (checkedIds.length > 0) await clientDb.listItems.bulkDelete(checkedIds);
+}
+
+export async function uncheckAllItemsCommand(role: ActorRole, listId: string): Promise<void> {
+  if (!isOffline()) {
+    await uncheckAllItemsApi(role, listId);
+    // Update checked items in cache to unchecked
+    const cached = await clientDb.listItems.where('listId').equals(listId).toArray();
+    const checked = cached.filter((i) => i.checked);
+    if (checked.length > 0) {
+      await clientDb.listItems.bulkPut(checked.map((i) => ({ ...i, checked: false, checkedAt: null })));
+    }
+    return;
+  }
+  const command: OutboxCommand = { kind: 'items_uncheck_all', commandId: crypto.randomUUID(), actorRole: role, listId, confirmed: true };
+  await enqueueCommand(command);
+  // Optimistic: uncheck all items in cache
+  const cached = await clientDb.listItems.where('listId').equals(listId).toArray();
+  const checked = cached.filter((i) => i.checked);
+  if (checked.length > 0) {
+    await clientDb.listItems.bulkPut(checked.map((i) => ({ ...i, checked: false, checkedAt: null })));
+  }
 }
 
 // ─── Routine sync commands ────────────────────────────────────────────────────

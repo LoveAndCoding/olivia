@@ -15,7 +15,9 @@ import {
   archivedRoutineIndexResponseSchema,
   cancelReminderRequestSchema,
   cancelReminderResponseSchema,
+  bulkListActionResponseSchema,
   checkListItemRequestSchema,
+  clearCompletedItemsRequestSchema,
   completeReminderRequestSchema,
   completeReminderResponseSchema,
   completeRoutineOccurrenceRequestSchema,
@@ -67,6 +69,7 @@ import {
   saveReminderNotificationPreferencesResponseSchema,
   snoozeReminderRequestSchema,
   snoozeReminderResponseSchema,
+  uncheckAllItemsRequestSchema,
   uncheckListItemRequestSchema,
   updateListItemBodyRequestSchema,
   updateListTitleRequestSchema,
@@ -126,6 +129,8 @@ import {
   createItemBodyUpdatedHistoryEntry,
   createItemCheckedHistoryEntry,
   createItemRemovedHistoryEntry,
+  createItemsClearedHistoryEntry,
+  createItemsUncheckedAllHistoryEntry,
   createItemUncheckedHistoryEntry,
   createListArchivedHistoryEntry,
   createListCreatedHistoryEntry,
@@ -1017,6 +1022,38 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
     }
     return reply.send(listItemMutationResponseSchema.parse({ savedItem: uncheckedItem, historyEntry, newVersion: uncheckedItem.version }));
+  });
+
+  app.post('/api/lists/:listId/clear-completed', async (request, reply) => {
+    const params = request.params as { listId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = clearCompletedItemsRequestSchema.parse({ ...rawBody, listId: params.listId });
+    assertStakeholderWrite(body.actorRole);
+    const items = repository.getListItems(params.listId);
+    const checkedItems = items.filter((i) => i.checked);
+    if (checkedItems.length === 0) {
+      return reply.status(400).send({ code: 'NO_CHECKED_ITEMS', message: 'No completed items to clear.' });
+    }
+    const historyEntry = createItemsClearedHistoryEntry(params.listId, checkedItems.length, body.actorRole);
+    const affectedCount = repository.clearCompletedItems(params.listId, historyEntry);
+    request.log.info({ listId: params.listId, affectedCount }, 'cleared completed items');
+    return reply.send(bulkListActionResponseSchema.parse({ affectedCount }));
+  });
+
+  app.post('/api/lists/:listId/uncheck-all', async (request, reply) => {
+    const params = request.params as { listId: string };
+    const rawBody = request.body as Record<string, unknown>;
+    const body = uncheckAllItemsRequestSchema.parse({ ...rawBody, listId: params.listId });
+    assertStakeholderWrite(body.actorRole);
+    const items = repository.getListItems(params.listId);
+    const checkedItems = items.filter((i) => i.checked);
+    if (checkedItems.length === 0) {
+      return reply.status(400).send({ code: 'NO_CHECKED_ITEMS', message: 'No completed items to uncheck.' });
+    }
+    const historyEntry = createItemsUncheckedAllHistoryEntry(params.listId, checkedItems.length, body.actorRole);
+    const affectedCount = repository.uncheckAllItems(params.listId, historyEntry);
+    request.log.info({ listId: params.listId, affectedCount }, 'unchecked all items');
+    return reply.send(bulkListActionResponseSchema.parse({ affectedCount }));
   });
 
   app.delete('/api/lists/:listId/items/:itemId', async (request, reply) => {
@@ -2090,7 +2127,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       'X-Accel-Buffering': 'no'
     });
 
-    const generator = streamChat(chatClient, repository, config, conversation.id, parsed.data.content, now);
+    const generator = streamChat(chatClient, repository, config, conversation.id, parsed.data.content, now, request.log);
     for await (const evt of generator) {
       reply.raw.write(`event: ${evt.event}\ndata: ${JSON.stringify(evt.data)}\n\n`);
     }
@@ -2375,7 +2412,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       'X-Accel-Buffering': 'no'
     });
 
-    const generator = streamOnboardingChat(chatClient, repository, config, conversationId, session, now);
+    const generator = streamOnboardingChat(chatClient, repository, config, conversationId, session, now, request.log);
     for await (const evt of generator) {
       reply.raw.write(`event: ${evt.event}\ndata: ${JSON.stringify(evt.data)}\n\n`);
     }
