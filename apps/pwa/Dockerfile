@@ -40,6 +40,6 @@ COPY deploy/nginx.conf /etc/nginx/conf.d/olivia.conf
 # Copy the built PWA assets.
 COPY --from=builder /build/apps/pwa/dist/ /usr/share/nginx/html/
 
-EXPOSE 80
+EXPOSE 80 443
 
 CMD ["nginx", "-g", "daemon off;"]

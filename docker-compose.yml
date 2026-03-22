@@ -5,7 +5,7 @@ services:
     environment:
       PORT: "3001"
       OLIVIA_DB_PATH: /data/olivia.sqlite
-      OLIVIA_PWA_ORIGIN: "http://${EC2_TAILSCALE_HOST}"
+      OLIVIA_PWA_ORIGIN: "https://${EC2_TAILSCALE_HOST}"
       OLIVIA_NOTIFICATIONS_ENABLED: "${OLIVIA_NOTIFICATIONS_ENABLED:-false}"
       OLIVIA_VAPID_PUBLIC_KEY: "${OLIVIA_VAPID_PUBLIC_KEY:-}"
       OLIVIA_VAPID_PRIVATE_KEY: "${OLIVIA_VAPID_PRIVATE_KEY:-}"
@@ -33,10 +33,16 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/olivia-pwa:latest
     restart: unless-stopped
     ports:
-      # Expose only on the Tailscale interface.
-      # The EC2 security group should NOT open port 80 to 0.0.0.0/0 —
+      # Expose on the Tailscale interface.
+      # The EC2 security group should NOT open these ports to 0.0.0.0/0 —
       # access is controlled entirely by Tailscale.
+      - "443:443"
       - "80:80"
+    volumes:
+      # Mount Tailscale-provisioned TLS certs from the host.
+      # Provision with: tailscale cert <hostname>.tailnet-name.ts.net
+      # Then copy the .crt and .key files to /etc/olivia/certs/ on the host.
+      - /etc/olivia/certs:/etc/nginx/certs:ro
     networks:
       - olivia-internal
     depends_on:
