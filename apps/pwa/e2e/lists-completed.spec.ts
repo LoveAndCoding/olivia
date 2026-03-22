@@ -17,7 +17,8 @@ import { expect, test } from '@playwright/test';
  * - AC12: No completed section when no items are checked
  */
 
-/** Create a list with items and check some of them, returning list name. */
+/** Create a list with items and check some of them. After creation the app
+ *  auto-navigates to the detail page, so we work directly there. */
 async function setupListWithCheckedItems(
   page: import('@playwright/test').Page,
   listName: string,
@@ -27,14 +28,12 @@ async function setupListWithCheckedItems(
   await page.goto('/lists');
   await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
-  // Create list
+  // Create list — app auto-navigates to detail page
   await page.locator('.list-new-btn-label', { hasText: 'New list' }).click();
   await page.getByPlaceholder('Grocery run, Packing list…').fill(listName);
   await page.getByRole('button', { name: 'Create list' }).click();
-  await expect(page.locator('.list-card-title', { hasText: listName })).toBeVisible({ timeout: 10_000 });
 
-  // Navigate to detail
-  await page.locator('.list-card-title', { hasText: listName }).click();
+  // Already on the detail page after creation
   const addInput = page.locator('.list-add-input');
   await expect(addInput).toBeVisible({ timeout: 10_000 });
 
@@ -65,13 +64,12 @@ test.describe('Completed-item management', () => {
     await page.goto('/lists');
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
-    // Create a list with unchecked items only
+    // Create a list — app auto-navigates to detail page
     await page.locator('.list-new-btn-label', { hasText: 'New list' }).click();
     await page.getByPlaceholder('Grocery run, Packing list…').fill('No checked items');
     await page.getByRole('button', { name: 'Create list' }).click();
-    await expect(page.locator('.list-card-title', { hasText: 'No checked items' })).toBeVisible({ timeout: 10_000 });
 
-    await page.locator('.list-card-title', { hasText: 'No checked items' }).click();
+    // Already on the detail page
     const addInput = page.locator('.list-add-input');
     await expect(addInput).toBeVisible({ timeout: 10_000 });
     await addInput.fill('Unchecked item');
@@ -125,12 +123,12 @@ test.describe('Completed-item management', () => {
     await page.goto('/lists');
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
+    // Create list — app auto-navigates to detail page
     await page.locator('.list-new-btn-label', { hasText: 'New list' }).click();
     await page.getByPlaceholder('Grocery run, Packing list…').fill('Check move test');
     await page.getByRole('button', { name: 'Create list' }).click();
-    await expect(page.locator('.list-card-title', { hasText: 'Check move test' })).toBeVisible({ timeout: 10_000 });
 
-    await page.locator('.list-card-title', { hasText: 'Check move test' }).click();
+    // Already on the detail page
     const addInput = page.locator('.list-add-input');
     await expect(addInput).toBeVisible({ timeout: 10_000 });
     await addInput.fill('Item A');
@@ -259,12 +257,12 @@ test.describe('Completed-item management', () => {
     await page.goto('/lists');
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
+    // Create list — app auto-navigates to detail page
     await page.locator('.list-new-btn-label', { hasText: 'New list' }).click();
     await page.getByPlaceholder('Grocery run, Packing list…').fill('Overflow menu test');
     await page.getByRole('button', { name: 'Create list' }).click();
-    await expect(page.locator('.list-card-title', { hasText: 'Overflow menu test' })).toBeVisible({ timeout: 10_000 });
 
-    await page.locator('.list-card-title', { hasText: 'Overflow menu test' }).click();
+    // Already on the detail page
     const addInput = page.locator('.list-add-input');
     await expect(addInput).toBeVisible({ timeout: 10_000 });
     await addInput.fill('Test item');

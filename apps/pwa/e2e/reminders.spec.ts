@@ -32,35 +32,36 @@ test.describe('Reminder lifecycle', () => {
   });
 
   test('stakeholder can complete a reminder from the detail page', async ({ page }) => {
-    // Create a reminder with a past date so it appears as "due" or "overdue".
-    // The "Today" chip schedules +1h from now (state: upcoming), so use "+ Custom date"
-    // with a past time instead.
+    // Create a reminder with "Today" chip (upcoming state)
     await page.goto('/reminders');
     await expect(page.locator('.screen-title')).toContainText('Reminders', { timeout: 10_000 });
 
     await page.locator('.add-label', { hasText: 'Add a reminder…' }).click();
     await page.getByPlaceholder('What do you want to remember?').fill('Complete me test');
-
-    // Use custom date with a past time so the reminder is immediately due/overdue
-    const pastDate = new Date(Date.now() - 60 * 60 * 1000).toLocaleString('en-US');
-    page.on('dialog', (dialog) => dialog.accept(pastDate));
-    await page.locator('.rem-chip', { hasText: '+ Custom date' }).click();
-
+    await page.locator('.rem-chip', { hasText: 'Today' }).click();
     await page.getByRole('button', { name: 'Save reminder' }).click();
     await expect(page.getByText('Reminder created')).toBeVisible({ timeout: 10_000 });
 
-    // Click on the reminder to go to detail page
+    // Navigate to detail page
     await page.locator('.rem-title', { hasText: 'Complete me test' }).click();
-
-    // Verify we're on the detail page
     await expect(page.locator('.rem-detail-title', { hasText: 'Complete me test' })).toBeVisible({ timeout: 10_000 });
 
-    // Click "Done" button (only visible for due/overdue reminders)
-    const doneBtn = page.locator('.rem-btn-done', { hasText: /Done/ });
-    await expect(doneBtn).toBeVisible({ timeout: 5_000 });
-    await doneBtn.click();
+    // Upcoming state: snooze the reminder to get it into snoozed state
+    const snoozeBtn = page.locator('.rem-btn-secondary', { hasText: 'Snooze' });
+    await expect(snoozeBtn).toBeVisible({ timeout: 5_000 });
+    await snoozeBtn.click();
 
-    // Should show "Done" confirmation banner
+    // Select the first snooze option
+    await expect(page.getByText('Snooze until…')).toBeVisible({ timeout: 5_000 });
+    await page.locator('.snooze-option').first().click();
+    await expect(page.getByText(/Snoozed until/)).toBeVisible({ timeout: 10_000 });
+
+    // Now in snoozed state — "Mark done now" button is available
+    const markDoneBtn = page.locator('.rem-btn-done', { hasText: /Mark done now/ });
+    await expect(markDoneBtn).toBeVisible({ timeout: 5_000 });
+    await markDoneBtn.click();
+
+    // Should show confirmation
     await expect(page.locator('.confirm-banner', { hasText: 'Done' })).toBeVisible({ timeout: 10_000 });
 
     // The title should get the done class (strikethrough)
@@ -102,23 +103,28 @@ test.describe('Reminder lifecycle', () => {
     await page.goto('/reminders');
     await expect(page.locator('.screen-title')).toContainText('Reminders', { timeout: 10_000 });
 
-    // Create a reminder with a past date so it's immediately due/overdue
+    // Create a reminder with "Today" chip (upcoming state)
     await page.locator('.add-label', { hasText: 'Add a reminder…' }).click();
     await page.getByPlaceholder('What do you want to remember?').fill('Done filter test');
-
-    const pastDate = new Date(Date.now() - 60 * 60 * 1000).toLocaleString('en-US');
-    page.on('dialog', (dialog) => dialog.accept(pastDate));
-    await page.locator('.rem-chip', { hasText: '+ Custom date' }).click();
-
+    await page.locator('.rem-chip', { hasText: 'Today' }).click();
     await page.getByRole('button', { name: 'Save reminder' }).click();
     await expect(page.getByText('Reminder created')).toBeVisible({ timeout: 10_000 });
 
-    // Complete it from detail page
+    // Navigate to detail and snooze to get "Mark done now" available
     await page.locator('.rem-title', { hasText: 'Done filter test' }).click();
     await expect(page.locator('.rem-detail-title')).toBeVisible({ timeout: 10_000 });
-    const doneBtnFilter = page.locator('.rem-btn-done', { hasText: /Done/ });
-    await expect(doneBtnFilter).toBeVisible({ timeout: 5_000 });
-    await doneBtnFilter.click();
+
+    const snoozeBtn = page.locator('.rem-btn-secondary', { hasText: 'Snooze' });
+    await expect(snoozeBtn).toBeVisible({ timeout: 5_000 });
+    await snoozeBtn.click();
+    await expect(page.getByText('Snooze until…')).toBeVisible({ timeout: 5_000 });
+    await page.locator('.snooze-option').first().click();
+    await expect(page.getByText(/Snoozed until/)).toBeVisible({ timeout: 10_000 });
+
+    // Now mark done from snoozed state
+    const markDoneBtn = page.locator('.rem-btn-done', { hasText: /Mark done now/ });
+    await expect(markDoneBtn).toBeVisible({ timeout: 5_000 });
+    await markDoneBtn.click();
     await expect(page.locator('.confirm-banner', { hasText: 'Done' })).toBeVisible({ timeout: 10_000 });
 
     // Go back to reminders list
