@@ -1,9 +1,9 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
-import type { RoutineDueState, RoutineRecurrenceRule } from '@olivia/contracts';
-import { computeRoutineDueState as computeDueState } from '@olivia/domain';
+import { format, formatDistanceToNow } from 'date-fns';
+import type { RoutineDueState } from '@olivia/contracts';
+import { computeRoutineDueState as computeDueState, formatRecurrenceLabel as formatRecurrenceLabelDomain } from '@olivia/domain';
 import { Check } from '@phosphor-icons/react';
 import { useRole } from '../lib/role';
 import {
@@ -19,15 +19,6 @@ import { BottomNav } from '../components/bottom-nav';
 import { BottomSheet } from '../components/reminders/BottomSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
 import { showErrorToast } from '../lib/error-toast';
-
-function formatRecurrenceLabel(rule: RoutineRecurrenceRule, intervalDays?: number | null): string {
-  switch (rule) {
-    case 'daily': return 'Daily';
-    case 'weekly': return 'Weekly';
-    case 'monthly': return 'Monthly';
-    case 'every_n_days': return `Every ${intervalDays ?? '?'} days`;
-  }
-}
 
 function formatOwnerLabel(owner: string): string {
   switch (owner) {
@@ -45,6 +36,17 @@ function dueStateBadge(state: RoutineDueState): { label: string; className: stri
     case 'completed': return { label: 'Done', className: 'rem-badge rem-badge-mint' };
     case 'paused': return { label: 'Paused', className: 'rem-badge rem-badge-sky' };
   }
+}
+
+function formatLastDone(lastCompletedAt: string | null | undefined): string {
+  if (!lastCompletedAt) return 'Not yet done';
+  const date = new Date(lastCompletedAt);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays > 30) {
+    return format(date, 'MMM d');
+  }
+  return `${formatDistanceToNow(date, { addSuffix: false })} ago`;
 }
 
 export function RoutineDetailPage() {
@@ -67,10 +69,13 @@ export function RoutineDetailPage() {
   const routine = detailQuery.data?.routine;
   const occurrences = detailQuery.data?.occurrences ?? [];
 
+  const isAdHoc = routine?.recurrenceRule === 'ad_hoc';
+
   const dueState = useMemo<RoutineDueState | null>(() => {
     if (!routine) return null;
+    if (isAdHoc) return null;
     return routine.dueState ?? computeDueState(routine, null);
-  }, [routine]);
+  }, [routine, isAdHoc]);
 
   const invalidateAndRefresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['routine-detail', role, params.routineId] });
@@ -89,13 +94,13 @@ export function RoutineDetailPage() {
     try {
       await completeRoutineOccurrenceCommand(role, routine.id, routine.version);
       await invalidateAndRefresh();
-      showBanner('Marked complete', 'mint');
+      showBanner(isAdHoc ? 'Marked as done' : 'Marked complete', 'mint');
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not complete routine');
     } finally {
       setBusy(false);
     }
-  }, [routine, role, busy, invalidateAndRefresh, showBanner]);
+  }, [routine, role, busy, invalidateAndRefresh, showBanner, isAdHoc]);
 
   const handlePause = useCallback(async () => {
     if (!routine || busy) return;
@@ -181,7 +186,7 @@ export function RoutineDetailPage() {
   const isSpouse = role === 'spouse';
   const isPaused = routine?.status === 'paused';
   const isArchived = routine?.status === 'archived';
-  const canComplete = !isSpouse && dueState && (dueState === 'due' || dueState === 'overdue');
+  const canComplete = !isSpouse && (isAdHoc || (dueState && (dueState === 'due' || dueState === 'overdue')));
 
   const recentOccurrences = occurrences.slice(0, 30);
 
@@ -206,43 +211,55 @@ export function RoutineDetailPage() {
             </div>
           )}
 
-          {routine && dueState && (
+          {routine && (dueState || isAdHoc) && (
             <>
               <div className="rem-detail-label">Routine</div>
               <div className="rem-detail-title">{routine.title}</div>
 
               {isSpouse && (
                 <div className="rem-status-banner rem-status-banner-sky" style={{ marginBottom: 16 }}>
-                  👁 View only — actions are available to Lexi
+                  View only — actions are available to Lexi
                 </div>
               )}
 
               {routine.pendingSync && (
                 <div className="rem-status-banner rem-status-banner-sky" style={{ marginBottom: 16 }}>
-                  ⏳ Pending sync
+                  Pending sync
                 </div>
               )}
 
               <div className="rem-detail-card">
                 <div className="rem-detail-field">
                   <span className="rem-detail-field-label">Status</span>
-                  <span className={dueStateBadge(dueState).className}>{dueStateBadge(dueState).label}</span>
+                  {dueState ? (
+                    <span className={dueStateBadge(dueState).className}>{dueStateBadge(dueState).label}</span>
+                  ) : (
+                    <span style={{ fontSize: 12, fontWeight: 500, fontStyle: 'italic', color: 'var(--ink-3)' }}>Track when done</span>
+                  )}
                 </div>
-                <div className="rem-detail-field">
-                  <span className="rem-detail-field-label">Next due</span>
-                  <span
-                    className="rem-detail-field-value"
-                    style={dueState === 'overdue' ? { color: 'var(--rose)' } : undefined}
-                  >
-                    {format(new Date(routine.currentDueDate), 'EEEE, MMM d')}
-                  </span>
-                </div>
+                {routine.currentDueDate && (
+                  <div className="rem-detail-field">
+                    <span className="rem-detail-field-label">Next due</span>
+                    <span
+                      className="rem-detail-field-value"
+                      style={dueState === 'overdue' ? { color: 'var(--rose)' } : undefined}
+                    >
+                      {format(new Date(routine.currentDueDate), 'EEEE, MMM d')}
+                    </span>
+                  </div>
+                )}
                 <div className="rem-detail-field">
                   <span className="rem-detail-field-label">Recurrence</span>
                   <span className="rem-detail-field-value">
                     <span className="rem-badge rem-badge-lavender">
-                      {formatRecurrenceLabel(routine.recurrenceRule, routine.intervalDays)}
+                      {formatRecurrenceLabelDomain(routine.recurrenceRule, routine.intervalDays, routine.weekdays, routine.intervalWeeks)}
                     </span>
+                  </span>
+                </div>
+                <div className="rem-detail-field">
+                  <span className="rem-detail-field-label">Last done</span>
+                  <span className="rem-detail-field-value" style={{ color: 'var(--ink-3)', fontSize: 13 }}>
+                    {formatLastDone(routine.lastCompletedAt)}
                   </span>
                 </div>
                 <div className="rem-detail-field">
@@ -263,37 +280,38 @@ export function RoutineDetailPage() {
                         disabled={busy}
                         onClick={() => void handleComplete()}
                       >
-                        <Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Mark complete
+                        <Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} />
+                        {isAdHoc ? 'Mark as done' : 'Mark complete'}
                       </button>
                     </div>
                   )}
 
-                  {dueState === 'completed' && (
+                  {!isAdHoc && dueState === 'completed' && (
                     <div className="rem-status-banner rem-status-banner-mint" style={{ marginBottom: 16 }}>
-                      <Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Completed this cycle — next due {format(new Date(routine.currentDueDate), 'MMM d')}
+                      <Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Completed this cycle — next due {routine.currentDueDate ? format(new Date(routine.currentDueDate), 'MMM d') : ''}
                     </div>
                   )}
 
                   <div className="rem-actions-row">
-                    {!isPaused ? (
+                    {!isAdHoc && !isPaused ? (
                       <button
                         type="button"
                         className="rem-btn rem-btn-ghost"
                         disabled={busy}
                         onClick={() => setShowPauseSheet(true)}
                       >
-                        ⏸ Pause
+                        Pause
                       </button>
-                    ) : (
+                    ) : !isAdHoc && isPaused ? (
                       <button
                         type="button"
                         className="rem-btn rem-btn-secondary"
                         disabled={busy}
                         onClick={() => void handleResume()}
                       >
-                        ▶ Resume
+                        Resume
                       </button>
-                    )}
+                    ) : null}
                     <button
                       type="button"
                       className="rem-btn rem-btn-ghost"
@@ -351,13 +369,15 @@ export function RoutineDetailPage() {
                         <div className="rem-timeline-text">
                           {occ.completedAt ? (
                             <>
-                              <strong>Completed</strong>
+                              <strong>{occ.skipped ? 'Skipped' : 'Completed'}</strong>
                               {' · '}
                               {format(new Date(occ.completedAt), 'MMM d')}
                               {occ.completedBy && occ.completedBy !== 'unassigned' && ` · by ${formatOwnerLabel(occ.completedBy)}`}
-                              <span style={{ color: 'var(--ink-4)', marginLeft: 4, fontSize: 11 }}>
-                                (cycle: {format(new Date(occ.dueDate), 'MMM d')})
-                              </span>
+                              {!isAdHoc && (
+                                <span style={{ color: 'var(--ink-4)', marginLeft: 4, fontSize: 11 }}>
+                                  (cycle: {format(new Date(occ.dueDate), 'MMM d')})
+                                </span>
+                              )}
                             </>
                           ) : (
                             <>

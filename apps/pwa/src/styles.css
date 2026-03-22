@@ -5877,3 +5877,170 @@ input[type="date"].rem-form-input {
     padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* ─── Routines Flexible Scheduling ─────────────────────────────────────────── */
+
+/* Weekday Picker */
+.weekday-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-4, rgba(26,16,51,0.15));
+  background: var(--surface-2, #F3F0FF);
+  color: var(--ink-2, rgba(26,16,51,0.55));
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.weekday-circle:active {
+  transform: scale(0.92);
+}
+.weekday-circle-selected {
+  background: var(--violet, #6C5CE7);
+  border: none;
+  color: white;
+  box-shadow: 0 2px 6px rgba(108,92,231,0.2);
+}
+
+/* Week Interval Stepper */
+.week-interval-stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-2, #F3F0FF);
+  border: 1.5px solid var(--lavender-mid, #D4CCFF);
+  border-radius: 12px;
+  padding: 6px 8px;
+  width: fit-content;
+}
+.week-interval-stepper-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--lavender-soft, #EDE9FF);
+  color: var(--violet, #6C5CE7);
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.week-interval-stepper-btn:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.week-interval-stepper-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 24px;
+  text-align: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.week-interval-stepper-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  margin-left: 4px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Recurrence Type Selector */
+.recurrence-option-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--surface, var(--bg));
+  border: 1.5px solid var(--ink-4, rgba(26,16,51,0.15));
+  border-radius: 14px;
+  padding: 12px 16px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.recurrence-option-row-active {
+  background: rgba(108,92,231,0.1);
+  border-color: var(--violet, #6C5CE7);
+}
+.recurrence-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-4, rgba(26,16,51,0.15));
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+}
+.recurrence-radio-active {
+  border-color: var(--violet, #6C5CE7);
+  background: var(--violet, #6C5CE7);
+}
+.recurrence-radio-active::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: white;
+}
+
+/* Tracked Section */
+.tracked-section-divider {
+  background: var(--ink-4, rgba(26,16,51,0.15));
+  height: 1px;
+  margin: 20px 0 16px;
+}
+.tracked-section-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-3, rgba(26,16,51,0.3));
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Dark mode overrides for new components */
+@media (prefers-color-scheme: dark) {
+  .weekday-circle {
+    background: #242038;
+    border-color: rgba(237,233,255,0.1);
+    color: rgba(237,233,255,0.6);
+  }
+  .week-interval-stepper {
+    background: #242038;
+    border-color: #3D3660;
+  }
+  .week-interval-stepper-btn {
+    background: #3D3660;
+  }
+  .tracked-section-divider {
+    background: rgba(237,233,255,0.1);
+  }
+  .tracked-section-header {
+    color: rgba(237,233,255,0.35);
+  }
+  .recurrence-option-row {
+    border-color: rgba(237,233,255,0.1);
+  }
+  .recurrence-option-row-active {
+    background: rgba(108,92,231,0.18);
+  }
+  .recurrence-radio {
+    border-color: rgba(237,233,255,0.1);
+  }
+}

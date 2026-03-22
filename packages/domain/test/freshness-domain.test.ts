@@ -45,6 +45,8 @@ function makeRoutine(overrides: Partial<Routine> = {}): Routine {
     owner: 'stakeholder',
     recurrenceRule: 'weekly',
     intervalDays: null,
+    intervalWeeks: null,
+    weekdays: null,
     status: 'active',
     currentDueDate: daysAgo(7),
     createdAt: daysAgo(30),

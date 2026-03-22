@@ -9,7 +9,11 @@ import {
   archiveRoutine,
   restoreRoutine,
   scheduleNextRoutineOccurrence,
-  assertStakeholderWrite
+  assertStakeholderWrite,
+  formatRecurrenceLabel,
+  calculateFirstDueDate,
+  skipRoutineOccurrence,
+  jsWeekdayToSpec
 } from '../src/index';
 import type { Routine, RoutineOccurrence } from '@olivia/contracts';
 
@@ -25,6 +29,8 @@ function makeRoutine(overrides: Partial<Routine> = {}): Routine {
     owner: 'stakeholder',
     recurrenceRule: 'weekly',
     intervalDays: null,
+    intervalWeeks: null,
+    weekdays: null,
     status: 'active',
     currentDueDate: '2026-03-15T12:00:00.000Z',
     createdAt: '2026-03-01T12:00:00.000Z',
@@ -334,5 +340,197 @@ describe('assertStakeholderWrite (role enforcement)', () => {
       expect(error.statusCode).toBe(403);
       expect(error.code).toBe('ROLE_READ_ONLY');
     }
+  });
+});
+
+// ─── Flexible Scheduling Tests ────────────────────────────────────────────────
+
+describe('scheduleNextRoutineOccurrence — weekly_on_days', () => {
+  // 2026-03-15 is a Sunday → spec weekday 6
+  // 2026-03-16 is a Monday → spec weekday 0
+  // 2026-03-17 is a Tuesday → spec weekday 1
+  // 2026-03-18 is a Wednesday → spec weekday 2
+  // 2026-03-19 is a Thursday → spec weekday 3
+
+  it('advances to next matching weekday within same week', () => {
+    // Monday (0) routine, weekdays [0, 3] (Mon, Thu), should advance to Thursday
+    const next = scheduleNextRoutineOccurrence('2026-03-16T12:00:00.000Z', 'weekly_on_days', null, [0, 3]);
+    expect(next).toBe('2026-03-19T12:00:00.000Z'); // Thursday
+  });
+
+  it('wraps to next week when no more days this week', () => {
+    // Thursday (3) routine, weekdays [0, 3] (Mon, Thu), should advance to next Monday
+    const next = scheduleNextRoutineOccurrence('2026-03-19T12:00:00.000Z', 'weekly_on_days', null, [0, 3]);
+    expect(next).toBe('2026-03-23T12:00:00.000Z'); // next Monday
+  });
+
+  it('handles single weekday like weekly', () => {
+    // Monday (0) routine, weekdays [0] (Mon), should advance to next Monday
+    const next = scheduleNextRoutineOccurrence('2026-03-16T12:00:00.000Z', 'weekly_on_days', null, [0]);
+    expect(next).toBe('2026-03-23T12:00:00.000Z'); // next Monday
+  });
+
+  it('throws without weekdays', () => {
+    expect(() => scheduleNextRoutineOccurrence('2026-03-16T12:00:00.000Z', 'weekly_on_days')).toThrow();
+  });
+});
+
+describe('scheduleNextRoutineOccurrence — every_n_weeks', () => {
+  it('advances by 2 weeks', () => {
+    const next = scheduleNextRoutineOccurrence('2026-03-15T12:00:00.000Z', 'every_n_weeks', null, [6], 2);
+    expect(next).toBe('2026-03-29T12:00:00.000Z');
+  });
+
+  it('advances by 3 weeks', () => {
+    const next = scheduleNextRoutineOccurrence('2026-03-15T12:00:00.000Z', 'every_n_weeks', null, [6], 3);
+    expect(next).toBe('2026-04-05T12:00:00.000Z');
+  });
+
+  it('throws without intervalWeeks', () => {
+    expect(() => scheduleNextRoutineOccurrence('2026-03-15T12:00:00.000Z', 'every_n_weeks')).toThrow();
+  });
+});
+
+describe('scheduleNextRoutineOccurrence — ad_hoc', () => {
+  it('throws for ad_hoc routines', () => {
+    expect(() => scheduleNextRoutineOccurrence('2026-03-15T12:00:00.000Z', 'ad_hoc')).toThrow('ad_hoc routines do not schedule');
+  });
+});
+
+describe('computeRoutineDueState — new rules', () => {
+  it('returns null for ad_hoc routines', () => {
+    const routine = makeRoutine({ recurrenceRule: 'ad_hoc', currentDueDate: null });
+    expect(computeRoutineDueState(routine, null, BASE_DATE)).toBeNull();
+  });
+
+  it('returns null when currentDueDate is null', () => {
+    const routine = makeRoutine({ currentDueDate: null });
+    expect(computeRoutineDueState(routine, null, BASE_DATE)).toBeNull();
+  });
+
+  it('returns normal due state for weekly_on_days', () => {
+    const routine = makeRoutine({
+      recurrenceRule: 'weekly_on_days',
+      weekdays: [0, 3],
+      currentDueDate: '2026-03-20T12:00:00.000Z'
+    });
+    expect(computeRoutineDueState(routine, null, BASE_DATE)).toBe('upcoming');
+  });
+});
+
+describe('createRoutine — new rules', () => {
+  it('creates a weekly_on_days routine', () => {
+    const routine = createRoutine('Trash pickup', 'stakeholder', 'weekly_on_days', '2026-03-16T12:00:00.000Z', null, BASE_DATE, [0, 3]);
+    expect(routine.recurrenceRule).toBe('weekly_on_days');
+    expect(routine.weekdays).toEqual([0, 3]);
+    expect(routine.currentDueDate).toBe('2026-03-16T12:00:00.000Z');
+  });
+
+  it('creates an every_n_weeks routine', () => {
+    const routine = createRoutine('Recycling', 'stakeholder', 'every_n_weeks', '2026-03-18T12:00:00.000Z', null, BASE_DATE, [2], 2);
+    expect(routine.recurrenceRule).toBe('every_n_weeks');
+    expect(routine.intervalWeeks).toBe(2);
+    expect(routine.weekdays).toEqual([2]);
+  });
+
+  it('creates an ad_hoc routine with null currentDueDate', () => {
+    const routine = createRoutine('Dishes', 'stakeholder', 'ad_hoc', null, null, BASE_DATE);
+    expect(routine.recurrenceRule).toBe('ad_hoc');
+    expect(routine.currentDueDate).toBeNull();
+  });
+
+  it('throws for weekly_on_days without weekdays', () => {
+    expect(() => createRoutine('Bad', 'stakeholder', 'weekly_on_days', '2026-03-16T12:00:00.000Z', null, BASE_DATE)).toThrow();
+  });
+
+  it('throws for every_n_weeks without intervalWeeks', () => {
+    expect(() => createRoutine('Bad', 'stakeholder', 'every_n_weeks', '2026-03-16T12:00:00.000Z', null, BASE_DATE, [2])).toThrow();
+  });
+});
+
+describe('completeRoutineOccurrence — new rules', () => {
+  it('completes a weekly_on_days routine and advances to next matching day', () => {
+    // Due Monday (0), weekdays [0, 3] (Mon, Thu)
+    const routine = makeRoutine({
+      recurrenceRule: 'weekly_on_days',
+      weekdays: [0, 3],
+      currentDueDate: '2026-03-16T12:00:00.000Z' // Monday
+    });
+    const { updatedRoutine, occurrence } = completeRoutineOccurrence(routine, 'stakeholder', BASE_DATE);
+    expect(occurrence.dueDate).toBe('2026-03-16T12:00:00.000Z');
+    // Should advance to Thursday (3)
+    expect(updatedRoutine.currentDueDate).toBe('2026-03-19T12:00:00.000Z');
+  });
+
+  it('completes an every_n_weeks routine and advances by N weeks', () => {
+    const routine = makeRoutine({
+      recurrenceRule: 'every_n_weeks',
+      weekdays: [2],
+      intervalWeeks: 2,
+      currentDueDate: '2026-03-18T12:00:00.000Z' // Wednesday
+    });
+    const { updatedRoutine } = completeRoutineOccurrence(routine, 'stakeholder', BASE_DATE);
+    expect(updatedRoutine.currentDueDate).toBe('2026-04-01T12:00:00.000Z'); // 2 weeks later
+  });
+
+  it('completes an ad_hoc routine without scheduling next', () => {
+    const routine = makeRoutine({
+      recurrenceRule: 'ad_hoc',
+      currentDueDate: null
+    });
+    const { updatedRoutine, occurrence } = completeRoutineOccurrence(routine, 'stakeholder', BASE_DATE);
+    expect(updatedRoutine.currentDueDate).toBeNull();
+    expect(occurrence.dueDate).toBe(BASE_DATE.toISOString());
+    expect(occurrence.completedAt).toBe(BASE_DATE.toISOString());
+  });
+});
+
+describe('skipRoutineOccurrence — new rules', () => {
+  it('throws for ad_hoc routines', () => {
+    const routine = makeRoutine({ recurrenceRule: 'ad_hoc', currentDueDate: null });
+    expect(() => skipRoutineOccurrence(routine, 'stakeholder', BASE_DATE)).toThrow('ad_hoc');
+  });
+
+  it('skips a weekly_on_days routine and advances to next day', () => {
+    const routine = makeRoutine({
+      recurrenceRule: 'weekly_on_days',
+      weekdays: [0, 3],
+      currentDueDate: '2026-03-16T12:00:00.000Z'
+    });
+    const { updatedRoutine, occurrence } = skipRoutineOccurrence(routine, 'stakeholder', BASE_DATE);
+    expect(occurrence.skipped).toBe(true);
+    expect(updatedRoutine.currentDueDate).toBe('2026-03-19T12:00:00.000Z');
+  });
+});
+
+describe('formatRecurrenceLabel', () => {
+  it('formats daily', () => expect(formatRecurrenceLabel('daily')).toBe('Daily'));
+  it('formats weekly', () => expect(formatRecurrenceLabel('weekly')).toBe('Weekly'));
+  it('formats monthly', () => expect(formatRecurrenceLabel('monthly')).toBe('Monthly'));
+  it('formats every_n_days', () => expect(formatRecurrenceLabel('every_n_days', 14)).toBe('Every 14 days'));
+  it('formats weekly_on_days', () => expect(formatRecurrenceLabel('weekly_on_days', null, [0, 3])).toBe('Mon, Thu'));
+  it('formats every_n_weeks', () => expect(formatRecurrenceLabel('every_n_weeks', null, [2], 2)).toBe('Every 2 weeks, Wed'));
+  it('formats ad_hoc', () => expect(formatRecurrenceLabel('ad_hoc')).toBe('Track when done'));
+});
+
+describe('calculateFirstDueDate', () => {
+  it('returns null for ad_hoc', () => {
+    expect(calculateFirstDueDate('ad_hoc')).toBeNull();
+  });
+
+  it('returns a date for weekly_on_days', () => {
+    const result = calculateFirstDueDate('weekly_on_days', [0, 3], BASE_DATE);
+    expect(result).not.toBeNull();
+    // 2026-03-15 is Sunday (spec 6), so next Mon (spec 0) = March 16
+    const date = new Date(result!);
+    expect(jsWeekdayToSpec(date.getDay())).toBe(0); // should be Monday
+  });
+
+  it('returns a date for every_n_weeks', () => {
+    const result = calculateFirstDueDate('every_n_weeks', [2], BASE_DATE);
+    expect(result).not.toBeNull();
+    // 2026-03-15 is Sunday, next Wed (spec 2) = March 18
+    const date = new Date(result!);
+    expect(jsWeekdayToSpec(date.getDay())).toBe(2); // should be Wednesday
   });
 });

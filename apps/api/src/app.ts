@@ -1081,9 +1081,15 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     const now = new Date();
     const routines = repository.listActiveAndPausedRoutines();
+    const routineIds = routines.map((r) => r.id);
+    const lastCompletedMap = repository.getLastCompletedAtBulk(routineIds);
     const routinesWithState = routines.map((routine) => {
-      const currentOccurrence = repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate);
-      return { ...routine, dueState: computeRoutineDueState(routine, currentOccurrence, now) };
+      const currentOccurrence = routine.currentDueDate ? repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate) : null;
+      return {
+        ...routine,
+        dueState: computeRoutineDueState(routine, currentOccurrence, now),
+        lastCompletedAt: lastCompletedMap.get(routine.id) ?? null
+      };
     });
     return reply.send(activeRoutineIndexResponseSchema.parse({ routines: routinesWithState, source: 'server' }));
   });
@@ -1095,9 +1101,15 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     const now = new Date();
     const routines = repository.listRoutines('archived');
+    const routineIds = routines.map((r) => r.id);
+    const lastCompletedMap = repository.getLastCompletedAtBulk(routineIds);
     const routinesWithState = routines.map((routine) => {
-      const currentOccurrence = repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate);
-      return { ...routine, dueState: computeRoutineDueState(routine, currentOccurrence, now) };
+      const currentOccurrence = routine.currentDueDate ? repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate) : null;
+      return {
+        ...routine,
+        dueState: computeRoutineDueState(routine, currentOccurrence, now),
+        lastCompletedAt: lastCompletedMap.get(routine.id) ?? null
+      };
     });
     return reply.send(archivedRoutineIndexResponseSchema.parse({ routines: routinesWithState, source: 'server' }));
   });
@@ -1114,8 +1126,9 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
     }
     const occurrences = repository.getRoutineOccurrences(routine.id);
-    const currentOccurrence = occurrences.find((o) => o.dueDate === routine.currentDueDate) ?? null;
-    const routineWithState = { ...routine, dueState: computeRoutineDueState(routine, currentOccurrence, now) };
+    const currentOccurrence = routine.currentDueDate ? (occurrences.find((o) => o.dueDate === routine.currentDueDate) ?? null) : null;
+    const lastCompletedAt = repository.getLastCompletedAt(routine.id);
+    const routineWithState = { ...routine, dueState: computeRoutineDueState(routine, currentOccurrence, now), lastCompletedAt };
     return reply.send(routineDetailResponseSchema.parse({ routine: routineWithState, occurrences, source: 'server' }));
   });
 
@@ -1123,10 +1136,10 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     const body = createRoutineRequestSchema.parse(request.body);
     assertStakeholderWrite(body.actorRole);
     const now = new Date();
-    const routine = createRoutine(body.title, body.owner, body.recurrenceRule, body.firstDueDate, body.intervalDays, now);
+    const routine = createRoutine(body.title, body.owner, body.recurrenceRule, body.firstDueDate, body.intervalDays, now, body.weekdays, body.intervalWeeks);
     repository.createRoutine(routine);
     request.log.info({ routineId: routine.id }, 'accepted routine create command');
-    const routineWithState = { ...routine, dueState: computeRoutineDueState(routine, null, now) };
+    const routineWithState = { ...routine, dueState: computeRoutineDueState(routine, null, now), lastCompletedAt: null };
     return reply.status(201).send(routineMutationResponseSchema.parse({ savedRoutine: routineWithState, newVersion: routine.version }));
   });
 
@@ -1147,14 +1160,17 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       title: body.title,
       owner: body.owner,
       recurrenceRule: body.recurrenceRule,
-      intervalDays: body.intervalDays
+      intervalDays: body.intervalDays,
+      intervalWeeks: body.intervalWeeks,
+      weekdays: body.weekdays
     }, now);
     const saved = repository.updateRoutine(updatedRoutine, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
     }
-    const currentOccurrence = repository.getRoutineOccurrenceForDueDate(updatedRoutine.id, updatedRoutine.currentDueDate);
-    const routineWithState = { ...updatedRoutine, dueState: computeRoutineDueState(updatedRoutine, currentOccurrence, now) };
+    const currentOccurrence = updatedRoutine.currentDueDate ? repository.getRoutineOccurrenceForDueDate(updatedRoutine.id, updatedRoutine.currentDueDate) : null;
+    const lastCompletedAt = repository.getLastCompletedAt(updatedRoutine.id);
+    const routineWithState = { ...updatedRoutine, dueState: computeRoutineDueState(updatedRoutine, currentOccurrence, now), lastCompletedAt };
     return reply.send(routineMutationResponseSchema.parse({ savedRoutine: routineWithState, newVersion: updatedRoutine.version }));
   });
 
@@ -1222,7 +1238,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
     }
-    const currentOccurrence = repository.getRoutineOccurrenceForDueDate(resumedRoutine.id, resumedRoutine.currentDueDate);
+    const currentOccurrence = resumedRoutine.currentDueDate ? repository.getRoutineOccurrenceForDueDate(resumedRoutine.id, resumedRoutine.currentDueDate) : null;
     const routineWithState = { ...resumedRoutine, dueState: computeRoutineDueState(resumedRoutine, currentOccurrence, now) };
     return reply.send(routineMutationResponseSchema.parse({ savedRoutine: routineWithState, newVersion: resumedRoutine.version }));
   });
@@ -1268,7 +1284,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
     }
-    const currentOccurrence = repository.getRoutineOccurrenceForDueDate(restoredRoutine.id, restoredRoutine.currentDueDate);
+    const currentOccurrence = restoredRoutine.currentDueDate ? repository.getRoutineOccurrenceForDueDate(restoredRoutine.id, restoredRoutine.currentDueDate) : null;
     const routineWithState = { ...restoredRoutine, dueState: computeRoutineDueState(restoredRoutine, currentOccurrence, now) };
     return reply.send(routineMutationResponseSchema.parse({ savedRoutine: routineWithState, newVersion: restoredRoutine.version }));
   });
@@ -1611,6 +1627,8 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
             owner: routine.owner,
             recurrenceRule: routine.recurrenceRule,
             intervalDays: routine.intervalDays ?? null,
+            intervalWeeks: routine.intervalWeeks ?? null,
+            weekdays: routine.weekdays ?? null,
             dueDate: dayDateStr,
             dueState,
             completed: dueState === 'completed'
@@ -1765,13 +1783,13 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(400).send({ code: 'MISSING_OCCURRENCE', message: 'occurrenceId is required.' });
     }
 
-    const existingOccurrence = repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate);
+    const existingOccurrence = routine.currentDueDate ? repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate) : null;
     if (existingOccurrence && existingOccurrence.completedAt !== null) {
       return reply.status(409).send({ code: 'ALREADY_COMPLETED', message: 'Occurrence already completed.' });
     }
 
     // Compute review windows anchored to the occurrence's due date
-    const anchorDate = new Date(routine.currentDueDate);
+    const anchorDate = new Date(routine.currentDueDate!);
     const windows = getReviewWindowsForOccurrence(anchorDate);
     const lastWeek = formatReviewWindowAsDateStrings({ start: windows.lastWeekStart, end: windows.lastWeekEnd });
     const currentWeek = formatReviewWindowAsDateStrings({ start: windows.currentWeekStart, end: windows.currentWeekEnd });
@@ -1863,6 +1881,8 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
             owner: r.owner,
             recurrenceRule: r.recurrenceRule,
             intervalDays: r.intervalDays ?? null,
+            intervalWeeks: r.intervalWeeks ?? null,
+            weekdays: r.weekdays ?? null,
             dueDate: dayDateStr,
             dueState,
             completed: dueState === 'completed'
@@ -1941,13 +1961,13 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
 
     // Check if currentDueDate occurrence is already completed (ritual already done for this cycle)
-    const existingOccurrence = repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate);
+    const existingOccurrence = routine.currentDueDate ? repository.getRoutineOccurrenceForDueDate(routine.id, routine.currentDueDate) : null;
     if (existingOccurrence && existingOccurrence.completedAt !== null) {
       return reply.status(409).send({ code: 'ALREADY_COMPLETED', message: 'Occurrence already completed.' });
     }
 
     // Anchor windows to occurrence due date, not completion date (handles late completions)
-    const anchorDate = new Date(routine.currentDueDate);
+    const anchorDate = new Date(routine.currentDueDate!);
     const windows = getReviewWindowsForOccurrence(anchorDate);
     const lastWeek = formatReviewWindowAsDateStrings({ start: windows.lastWeekStart, end: windows.lastWeekEnd });
     const currentWeek = formatReviewWindowAsDateStrings({ start: windows.currentWeekStart, end: windows.currentWeekEnd });

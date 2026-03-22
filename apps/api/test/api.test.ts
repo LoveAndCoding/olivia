@@ -1877,6 +1877,8 @@ describe('planning ritual AI summaries api', () => {
       status: 'active' as const,
       currentDueDate: now.toISOString(),
       ritualType: 'weekly_review' as const,
+      intervalWeeks: null,
+      weekdays: null,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
       archivedAt: null,
@@ -2068,6 +2070,8 @@ describe('proactive household nudges api', () => {
       owner: 'stakeholder',
       recurrenceRule: 'weekly',
       intervalDays: null,
+      intervalWeeks: null,
+      weekdays: null,
       status: 'active',
       currentDueDate: pastDate,
       ritualType: null,
@@ -2093,6 +2097,8 @@ describe('proactive household nudges api', () => {
       status: 'active' as const,
       currentDueDate: pastDate,
       ritualType: 'weekly_review' as const,
+      intervalWeeks: null,
+      weekdays: null,
       createdAt: pastDate,
       updatedAt: pastDate,
       archivedAt: null,
@@ -2280,7 +2286,7 @@ describe('proactive household nudges api', () => {
     expect(skipRes.statusCode).toBe(200);
     const body = skipRes.json();
     expect(body.occurrence.skipped).toBe(true);
-    expect(new Date(body.savedRoutine.currentDueDate).getTime()).toBeGreaterThan(new Date(routine.currentDueDate).getTime());
+    expect(new Date(body.savedRoutine.currentDueDate).getTime()).toBeGreaterThan(new Date(routine.currentDueDate!).getTime());
 
     await app.close();
     rmSync(dir, { recursive: true, force: true });
