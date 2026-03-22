@@ -100,6 +100,15 @@ if (isNativePlatform && !import.meta.env.VITE_API_BASE_URL) {
   );
 }
 
+/** The API base URL baked into this build (for diagnostics). */
+export const effectiveApiBaseUrl: string = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
+
+if (isNativePlatform) {
+  console.info('[Olivia] Native platform detected. API base URL: %s (env: %s)',
+    effectiveApiBaseUrl,
+    import.meta.env.VITE_API_BASE_URL ? 'set' : 'NOT SET — using fallback');
+}
+
 function normalizeBasePath(basePath: string): string {
   const trimmedBasePath = basePath.trim();
   if (!trimmedBasePath || trimmedBasePath === '/') {

@@ -52,11 +52,13 @@ async function ping(): Promise<void> {
     return;
   }
 
+  const url = resolveApiUrl('/api/health');
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
 
-    const res = await fetch(resolveApiUrl('/api/health'), {
+    const res = await fetch(url, {
       method: 'GET',
       signal: controller.signal,
       // Avoid cache so we always hit the server
@@ -64,8 +66,12 @@ async function ping(): Promise<void> {
     });
 
     clearTimeout(timeout);
+    if (!res.ok) {
+      console.warn('[Olivia] Health check %s returned %d', url, res.status);
+    }
     setState({ browserOnline: true, apiReachable: res.ok });
-  } catch {
+  } catch (err) {
+    console.warn('[Olivia] Health check %s failed:', url, err);
     setState({ browserOnline: navigator.onLine, apiReachable: false });
   }
 }
