@@ -1764,6 +1764,11 @@ export class InboxRepository {
     })();
   }
 
+  deleteChatMessage(messageId: string): boolean {
+    const result = this.db.prepare('DELETE FROM conversation_messages WHERE id = ?').run(messageId);
+    return result.changes > 0;
+  }
+
   // ─── Onboarding (OLI-119) ─────────────────────────────────────────────────
 
   countTotalEntities(): number {

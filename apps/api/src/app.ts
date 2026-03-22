@@ -2316,6 +2316,28 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     return reply.send({ dismissed: true });
   });
 
+  // ─── Undo Chat Response (OLI-270) ──────────────────────────────────────────
+
+  app.post<{ Params: { messageId: string } }>('/api/chat/messages/:messageId/undo', async (request, reply) => {
+    const { messageId } = request.params;
+    const msg = repository.getChatMessage(messageId);
+    if (!msg) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Message not found.' });
+    }
+
+    if (msg.role !== 'assistant') {
+      return reply.status(400).send({ code: 'INVALID_ROLE', message: 'Only assistant messages can be undone.' });
+    }
+
+    // Block undo if any tool call was already confirmed
+    if (msg.toolCalls?.some(tc => tc.status === 'confirmed')) {
+      return reply.status(400).send({ code: 'HAS_CONFIRMED_ACTIONS', message: 'Cannot undo — some suggestions were already confirmed.' });
+    }
+
+    repository.deleteChatMessage(messageId);
+    return reply.send({ undone: true });
+  });
+
   // ─── Onboarding API (OLI-119) ─────────────────────────────────────────────
 
   // Get onboarding state — tells the client whether to show the welcome card

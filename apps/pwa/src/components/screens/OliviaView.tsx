@@ -6,7 +6,8 @@ import {
 } from '@phosphor-icons/react';
 import type { ChatMessage, ChatToolCall, QuickChip } from '../../types/display';
 import {
-  streamChatMessage, confirmChatAction, dismissChatAction, clearChatConversation
+  streamChatMessage, confirmChatAction, dismissChatAction, clearChatConversation,
+  undoChatResponse
 } from '../../lib/api';
 import { getActiveSignal } from '../../lib/app-lifecycle';
 import { ChatMarkdown } from '../ChatMarkdown';
@@ -216,6 +217,41 @@ export function OliviaView({
     }
   }, []);
 
+  const handleDismissAll = useCallback(async (messageId: string, toolCalls: ChatToolCall[]) => {
+    const pending = toolCalls.filter(tc => tc.status === 'pending');
+    try {
+      await Promise.all(pending.map(tc => dismissChatAction(tc.id)));
+      setMessages(prev =>
+        prev.map(m => {
+          if (m.id !== messageId || !m.toolCalls) return m;
+          return {
+            ...m,
+            toolCalls: m.toolCalls.map(tc =>
+              tc.status === 'pending' ? { ...tc, status: 'dismissed' as const } : tc
+            )
+          };
+        })
+      );
+    } catch {
+      // Silent fail
+    }
+  }, []);
+
+  const handleUndoResponse = useCallback(async (messageId: string) => {
+    try {
+      await undoChatResponse(messageId);
+      // Remove the assistant message and the user message that preceded it
+      setMessages(prev => {
+        const idx = prev.findIndex(m => m.id === messageId);
+        if (idx < 0) return prev;
+        // Keep the user message (spec says user message remains)
+        return prev.filter(m => m.id !== messageId);
+      });
+    } catch {
+      // Silent fail
+    }
+  }, []);
+
   const handleClearConversation = useCallback(async () => {
     try {
       await clearChatConversation();
@@ -279,7 +315,14 @@ export function OliviaView({
             </p>
           </div>
         )}
-        {messages.map((msg) => (
+        {messages.map((msg, msgIndex) => {
+          const pendingToolCalls = msg.toolCalls?.filter(tc => tc.status === 'pending') ?? [];
+          const hasAnyConfirmed = msg.toolCalls?.some(tc => tc.status === 'confirmed') ?? false;
+          const isLastOliviaMsg = msg.role === 'olivia' && !msg.isStreaming && !msg.isError
+            && msgIndex === messages.length - 1;
+          const canUndo = isLastOliviaMsg && !hasAnyConfirmed;
+
+          return (
           <div key={msg.id} className={`msg msg-${msg.role === 'olivia' ? 'olivia' : 'user'}${msg.isError ? ' msg-error' : ''}`}>
             <div className="msg-label">{msg.role === 'olivia' ? 'OLIVIA' : 'YOU'}</div>
             <div className="msg-bubble">
@@ -334,9 +377,32 @@ export function OliviaView({
                   </div>
                 );
               })}
+              {/* Batch dismiss: show when 2+ pending drafts */}
+              {pendingToolCalls.length >= 2 && (
+                <button
+                  type="button"
+                  className="oa-btn oa-btn-dismiss-all"
+                  onClick={() => handleDismissAll(msg.id, msg.toolCalls!)}
+                  aria-label="Dismiss all suggestions"
+                >
+                  Dismiss all
+                </button>
+              )}
+              {/* Undo: show on latest Olivia response when no drafts confirmed */}
+              {canUndo && (
+                <button
+                  type="button"
+                  className="oa-btn oa-btn-undo"
+                  onClick={() => handleUndoResponse(msg.id)}
+                  aria-label="Undo this response"
+                >
+                  Undo
+                </button>
+              )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Quick chips */}

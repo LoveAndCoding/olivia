@@ -848,6 +848,10 @@ export async function dismissChatAction(toolCallId: string): Promise<void> {
   await request<{ dismissed: boolean }>(`/api/chat/actions/${toolCallId}/dismiss`, { method: 'POST' });
 }
 
+export async function undoChatResponse(messageId: string): Promise<void> {
+  await request<{ undone: boolean }>(`/api/chat/messages/${messageId}/undo`, { method: 'POST' });
+}
+
 // ─── Onboarding API (OLI-119) ──────────────────────────────────────────────
 
 export type OnboardingState = {
