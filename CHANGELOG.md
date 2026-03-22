@@ -4,6 +4,11 @@ All notable changes to Olivia are documented here. This changelog is curated for
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.2] - 2026-03-22
+
+### Fixed
+- Server connections now use secure HTTPS, resolving remaining connectivity issues on the native iOS app
+
 ## [0.4.1] - 2026-03-22
 
 ### Fixed
