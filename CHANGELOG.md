@@ -4,6 +4,11 @@ All notable changes to Olivia are documented here. This changelog is curated for
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] - 2026-03-22
+
+### Fixed
+- App can now connect to the server on the native iOS app — previously, network requests were silently blocked
+
 ## [0.4.0] - 2026-03-22
 
 ### Added
