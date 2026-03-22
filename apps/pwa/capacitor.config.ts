@@ -9,6 +9,11 @@ const config: CapacitorConfig = {
     // Comment out for production builds that use the bundled dist/ assets.
     // url: 'http://localhost:4173',
   },
+  plugins: {
+    CapacitorHttp: {
+      enabled: true,
+    },
+  },
 };
 
 export default config;
