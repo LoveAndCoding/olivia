@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import type { DraftReminder, Owner, RecurrenceCadence } from '@olivia/contracts';
 import { BottomSheet } from './BottomSheet';
 import { OliviaMessage } from './OliviaMessage';
+import { DateTimePicker } from './DateTimePicker';
 import { getDateChipOptions, ownerLabel } from '../../lib/reminder-helpers';
 import { format } from 'date-fns';
 
@@ -54,6 +55,7 @@ export function CreateReminderSheet({
       setRecurring(false);
       setCadence('weekly');
       setNote('');
+      setPickerOpen(false);
       setMode(parsedDraft ? 'parsed' : 'structured');
     }
   }, [open, parsedDraft]);
@@ -63,18 +65,22 @@ export function CreateReminderSheet({
   const handleChipSelect = useCallback((label: string, value: Date) => {
     setSelectedChip(label);
     setScheduledAt(value.toISOString());
+    setPickerOpen(false);
   }, []);
 
-  const handleCustomDate = useCallback(() => {
-    const input = prompt('Enter a date and time (e.g. "March 20, 9:00 AM"):');
-    if (input) {
-      const parsed = new Date(input);
-      if (!isNaN(parsed.getTime())) {
-        setSelectedChip('custom');
-        setScheduledAt(parsed.toISOString());
-      }
-    }
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const handleCustomDateChange = useCallback((isoString: string) => {
+    setSelectedChip('custom');
+    setScheduledAt(isoString);
   }, []);
+
+  const handlePickerToggle = useCallback(() => {
+    setPickerOpen((prev) => !prev);
+    if (!pickerOpen) {
+      setSelectedChip('custom');
+    }
+  }, [pickerOpen]);
 
   const handleSave = useCallback(() => {
     if (!title.trim() || !scheduledAt) return;
@@ -197,14 +203,15 @@ export function CreateReminderSheet({
               {chip.label}
             </button>
           ))}
-          <button
-            type="button"
-            className={`rem-chip${selectedChip === 'custom' ? ' active' : ''}`}
-            onClick={handleCustomDate}
-          >
-            + Custom date
-          </button>
+          <DateTimePicker
+            value={selectedChip === 'custom' ? scheduledAt : ''}
+            onChange={handleCustomDateChange}
+            mode="create"
+            open={pickerOpen}
+            onToggle={handlePickerToggle}
+          />
         </div>
+        {pickerOpen && <div style={{ height: 0 }} />}
       </div>
 
       <div className="rem-form-group">

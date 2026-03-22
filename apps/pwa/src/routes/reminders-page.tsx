@@ -17,6 +17,7 @@ import { OliviaMessage } from '../components/reminders/OliviaMessage';
 import { CreateReminderSheet } from '../components/reminders/CreateReminderSheet';
 import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
+import { formatSnoozeUntil } from '../lib/reminder-helpers';
 import { showErrorToast } from '../lib/error-toast';
 
 type FilterTab = 'all' | 'due' | 'upcoming' | 'snoozed' | 'done';
@@ -129,7 +130,7 @@ export function RemindersPage() {
       await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-      setBanner({ message: `Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
+      setBanner({ message: `😴 Snoozed until ${formatSnoozeUntil(isoString)}`, variant: 'sky' });
       setTimeout(() => setBanner(null), 5000);
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not snooze reminder');
