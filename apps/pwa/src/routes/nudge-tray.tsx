@@ -16,6 +16,7 @@ import { dismissNudge, filterDismissed, pruneStaleNudgeDismissals, filterFreshne
 import { confirmFreshness, archiveFreshnessEntity } from '../lib/api';
 import { usePushOptIn } from '../lib/push-opt-in';
 import { showErrorToast } from '../lib/error-toast';
+import { reportError, errorMessage, errorStack } from '../lib/error-reporter';
 
 const POLL_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -26,14 +27,18 @@ export function useNudges(role: ActorRole) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(async () => {
-    await pruneStaleNudgeDismissals();
-    const raw = await loadNudges(role);
-    const filtered = await filterDismissed(raw);
-    // Apply 2/day throttle to freshness nudges
-    const nonFreshness = filtered.filter((n) => n.entityType !== 'freshness');
-    const freshnessOnly = filtered.filter((n) => n.entityType === 'freshness');
-    const throttledFreshness = await filterFreshnessNudgesByThrottle(freshnessOnly, FRESHNESS_NUDGE_MAX_PER_DAY);
-    setNudges([...nonFreshness, ...throttledFreshness]);
+    try {
+      await pruneStaleNudgeDismissals();
+      const raw = await loadNudges(role);
+      const filtered = await filterDismissed(raw);
+      // Apply 2/day throttle to freshness nudges
+      const nonFreshness = filtered.filter((n) => n.entityType !== 'freshness');
+      const freshnessOnly = filtered.filter((n) => n.entityType === 'freshness');
+      const throttledFreshness = await filterFreshnessNudgesByThrottle(freshnessOnly, FRESHNESS_NUDGE_MAX_PER_DAY);
+      setNudges([...nonFreshness, ...throttledFreshness]);
+    } catch (err) {
+      reportError({ message: errorMessage(err), stack: errorStack(err), context: 'nudge-poll' });
+    }
   }, [role]);
 
   useEffect(() => {
