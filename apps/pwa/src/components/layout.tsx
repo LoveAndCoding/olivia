@@ -5,8 +5,9 @@ import { App } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { flushOutbox } from '../lib/sync';
+import { flushOutbox, saveNativeNotificationSubscription } from '../lib/sync';
 import { abortActiveOperations, resetActiveOperations } from '../lib/app-lifecycle';
+import { useRole } from '../lib/role';
 import { checkConnectivityNow } from '../lib/connectivity';
 import { router } from '../router';
 import { OfflineIndicator } from './OfflineIndicator';
@@ -14,6 +15,7 @@ import { ErrorToastContainer } from './ErrorToastContainer';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const { role } = useRole();
 
   useEffect(() => {
     const syncNow = async () => {
@@ -68,6 +70,28 @@ export function AppLayout({ children }: { children: ReactNode }) {
     });
     return () => { void listener.then((h) => h.remove()); };
   }, []);
+
+  // On native launch, if push permission is already granted, re-register with APNs
+  // to ensure the device token is current and stored server-side.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const registrationListener = PushNotifications.addListener('registration', (token) => {
+      void saveNativeNotificationSubscription(role, token.value);
+    });
+    const errorListener = PushNotifications.addListener('registrationError', (error) => {
+      console.error('Push registration error:', error);
+    });
+    // If permission is already granted, trigger register() to refresh the token.
+    void PushNotifications.checkPermissions().then((result) => {
+      if (result.receive === 'granted') {
+        void PushNotifications.register();
+      }
+    });
+    return () => {
+      void registrationListener.then((h) => h.remove());
+      void errorListener.then((h) => h.remove());
+    };
+  }, [role]);
 
   // Configure the native status bar so the web view extends behind it and
   // env(safe-area-inset-top) reports correct values on iOS.

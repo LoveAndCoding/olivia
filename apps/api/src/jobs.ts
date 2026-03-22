@@ -341,15 +341,45 @@ function buildNudgeNotification(nudge: Nudge, pwaOrigin: string): NotificationPa
   };
 }
 
+function shouldHoldNudge(
+  nudge: Nudge,
+  repository: InboxRepository,
+  config: AppConfig,
+  logger: FastifyBaseLogger,
+  now: Date
+): boolean {
+  if (nudge.entityType !== 'routine') return false;
+  const maxHoldMs = COMPLETION_WINDOW_MAX_HOLD_DAYS * 24 * 60 * 60 * 1000;
+  const overdueSinceDate = nudge.overdueSince ? new Date(nudge.overdueSince) : null;
+  const overdueAge = overdueSinceDate ? now.getTime() - overdueSinceDate.getTime() : 0;
+  if (overdueAge > maxHoldMs) return false;
+
+  const timestamps = repository.getRoutineCompletionTimestamps(
+    nudge.entityId, COMPLETION_WINDOW_SAMPLE_SIZE
+  );
+  const currentHour = getCurrentLocalHour(now, config.householdTimezone);
+  const windowResult = computeCompletionWindow(timestamps, config.householdTimezone, currentHour);
+  if (windowResult.decision === 'hold') {
+    logger.debug({
+      entityId: nudge.entityId,
+      windowStart: windowResult.windowStartHour,
+      currentHour,
+    }, 'nudge push held: before completion window');
+    return true;
+  }
+  return false;
+}
+
 export async function evaluateNudgePushRule(
   repository: InboxRepository,
   push: PushProvider,
+  apns: ApnsPushProvider,
   config: AppConfig,
   logger: FastifyBaseLogger,
   now: Date = new Date()
 ): Promise<void> {
-  if (!push.isConfigured()) {
-    logger.debug('nudge push rule: VAPID keys not configured, skipping');
+  if (!push.isConfigured() && !apns.isConfigured()) {
+    logger.debug('nudge push rule: no push providers configured, skipping');
     return;
   }
 
@@ -358,67 +388,66 @@ export async function evaluateNudgePushRule(
 
   repository.purgeStalePushNotificationLog(PURGE_RETENTION_MS, now);
 
-  const subscriptions = repository.listPushSubscriptions();
-  if (subscriptions.length === 0) {
-    logger.debug('nudge push rule: no push subscriptions');
-    return;
-  }
-
   const nudges = sortNudgesByPriority(repository.getNudgePayloads(now));
   if (nudges.length === 0) {
     logger.debug('nudge push rule: no active nudges');
     return;
   }
 
-  for (const subscription of subscriptions) {
-    for (const nudge of nudges) {
-      const alreadySent = repository.hasPushNotificationLog(
-        subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
-      );
-      if (alreadySent) continue;
+  // ─── Deliver to Web Push subscriptions ─────────────────────────────────────
+  if (push.isConfigured()) {
+    const subscriptions = repository.listPushSubscriptions();
+    for (const subscription of subscriptions) {
+      for (const nudge of nudges) {
+        const alreadySent = repository.hasPushNotificationLog(
+          subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
+        );
+        if (alreadySent) continue;
+        if (shouldHoldNudge(nudge, repository, config, logger, now)) continue;
 
-      // ─── Completion window evaluation (routine nudges only) ──────────────
-      if (nudge.entityType === 'routine') {
-        const maxHoldMs = COMPLETION_WINDOW_MAX_HOLD_DAYS * 24 * 60 * 60 * 1000;
-        const overdueSinceDate = nudge.overdueSince ? new Date(nudge.overdueSince) : null;
-        const overdueAge = overdueSinceDate ? now.getTime() - overdueSinceDate.getTime() : 0;
-        const bypassWindow = overdueAge > maxHoldMs;
-
-        if (!bypassWindow) {
-          const timestamps = repository.getRoutineCompletionTimestamps(
-            nudge.entityId, COMPLETION_WINDOW_SAMPLE_SIZE
+        const notification = buildNudgeNotification(nudge, config.pwaOrigin);
+        try {
+          await push.send(
+            { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh_key, auth: subscription.auth_key } },
+            notification
           );
-          const currentHour = getCurrentLocalHour(now, config.householdTimezone);
-          const windowResult = computeCompletionWindow(timestamps, config.householdTimezone, currentHour);
-
-          if (windowResult.decision === 'hold') {
-            logger.debug({
-              entityId: nudge.entityId,
-              windowStart: windowResult.windowStartHour,
-              currentHour,
-            }, 'nudge push held: before completion window');
-            continue;
+          repository.recordPushNotificationLog(subscription.id, nudge.entityType, nudge.entityId, now);
+          logger.info({ subscriptionId: subscription.id, entityType: nudge.entityType, entityId: nudge.entityId }, 'nudge push delivered');
+        } catch (error) {
+          const statusCode = (error as { statusCode?: number }).statusCode;
+          if (statusCode === 410) {
+            repository.deletePushSubscription(subscription.endpoint);
+            logger.info({ subscriptionId: subscription.id }, 'nudge push: 410 Gone — subscription removed');
+            break;
           }
+          logger.warn({ subscriptionId: subscription.id, entityId: nudge.entityId, error }, 'nudge push delivery failed (non-fatal)');
         }
       }
-      // ─── End completion window evaluation ────────────────────────────────
+    }
+  }
 
-      const notification = buildNudgeNotification(nudge, config.pwaOrigin);
-      try {
-        await push.send(
-          { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh_key, auth: subscription.auth_key } },
-          notification
+  // ─── Deliver to APNs subscriptions (native iOS) ────────────────────────────
+  if (apns.isConfigured()) {
+    const notifSubs = repository.listNotificationSubscriptions('stakeholder');
+    const apnsSubs = notifSubs.filter((s) => isApnsSubscriptionPayload(s.payload as Record<string, unknown>));
+
+    for (const subscription of apnsSubs) {
+      const token = (subscription.payload as Record<string, unknown>).token as string;
+      for (const nudge of nudges) {
+        const alreadySent = repository.hasPushNotificationLog(
+          subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
         );
-        repository.recordPushNotificationLog(subscription.id, nudge.entityType, nudge.entityId, now);
-        logger.info({ subscriptionId: subscription.id, entityType: nudge.entityType, entityId: nudge.entityId }, 'nudge push delivered');
-      } catch (error) {
-        const statusCode = (error as { statusCode?: number }).statusCode;
-        if (statusCode === 410) {
-          repository.deletePushSubscription(subscription.endpoint);
-          logger.info({ subscriptionId: subscription.id }, 'nudge push: 410 Gone — subscription removed');
-          break;
+        if (alreadySent) continue;
+        if (shouldHoldNudge(nudge, repository, config, logger, now)) continue;
+
+        const notification = buildNudgeNotification(nudge, config.pwaOrigin);
+        try {
+          await apns.send(token, notification);
+          repository.recordPushNotificationLog(subscription.id, nudge.entityType, nudge.entityId, now);
+          logger.info({ subscriptionId: subscription.id, entityType: nudge.entityType, entityId: nudge.entityId }, 'nudge push delivered (APNs)');
+        } catch (error) {
+          logger.warn({ subscriptionId: subscription.id, entityId: nudge.entityId, error }, 'nudge APNs delivery failed (non-fatal)');
         }
-        logger.warn({ subscriptionId: subscription.id, entityId: nudge.entityId, error }, 'nudge push delivery failed (non-fatal)');
       }
     }
   }
@@ -460,7 +489,7 @@ export function startBackgroundJobs(
   const nudgePushIntervalMs = config.nudgePushIntervalMs ?? 1_800_000;
   logger.info({ nudgePushIntervalMs }, 'starting nudge push scheduler');
   const nudgeIntervalId = setInterval(
-    () => void evaluateNudgePushRule(repository, push, config, logger),
+    () => void evaluateNudgePushRule(repository, push, apns, config, logger),
     nudgePushIntervalMs
   );
 

@@ -30,7 +30,9 @@ const createConfig = (dbPath: string): AppConfig => ({
 });
 
 const makeLogger = () =>
-  ({ info: () => {}, warn: () => {}, debug: () => {}, error: () => {} }) as unknown as Parameters<typeof evaluateNudgePushRule>[3];
+  ({ info: () => {}, warn: () => {}, debug: () => {}, error: () => {} }) as unknown as Parameters<typeof evaluateNudgePushRule>[4];
+
+const disabledApns = new DisabledApnsPushProvider();
 
 function createMockPush(configured = true): PushProvider & { sends: Array<{ sub: PushSubscriptionPayload; notification: NotificationPayload }> } {
   const sends: Array<{ sub: PushSubscriptionPayload; notification: NotificationPayload }> = [];
@@ -167,7 +169,7 @@ describe('evaluateNudgePushRule', () => {
 
   it('returns early when push is not configured', async () => {
     const push = createMockPush(false);
-    await evaluateNudgePushRule(repository, push, config, makeLogger());
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger());
     expect(push.sends).toHaveLength(0);
   });
 
@@ -175,14 +177,14 @@ describe('evaluateNudgePushRule', () => {
     const push = createMockPush();
     const now = new Date('2026-03-15T10:00:00Z');
     insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(0);
   });
 
   it('returns early when no active nudges exist', async () => {
     const push = createMockPush();
     repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
-    await evaluateNudgePushRule(repository, push, config, makeLogger());
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger());
     expect(push.sends).toHaveLength(0);
   });
 
@@ -192,7 +194,7 @@ describe('evaluateNudgePushRule', () => {
     insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
     repository.savePushSubscription('https://push.example.com/sub', 'p256dh-val', 'auth-val');
 
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
     expect(push.sends[0].notification.title).toBe('Olivia household nudge');
     expect(push.sends[0].notification.body).toContain('Take out trash');
@@ -204,12 +206,12 @@ describe('evaluateNudgePushRule', () => {
     insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
     repository.savePushSubscription('https://push.example.com/sub', 'p256dh-val', 'auth-val');
 
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
 
     // Second run within the 2h window
     const nowPlus1h = new Date(now.getTime() + 60 * 60 * 1000);
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), nowPlus1h);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), nowPlus1h);
     expect(push.sends).toHaveLength(1); // still 1, not 2
   });
 
@@ -219,12 +221,12 @@ describe('evaluateNudgePushRule', () => {
     insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
     repository.savePushSubscription('https://push.example.com/sub', 'p256dh-val', 'auth-val');
 
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
 
     // Run again 3 hours later (outside 2h window)
     const nowPlus3h = new Date(now.getTime() + 3 * 60 * 60 * 1000);
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), nowPlus3h);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), nowPlus3h);
     expect(push.sends).toHaveLength(2);
   });
 
@@ -235,7 +237,7 @@ describe('evaluateNudgePushRule', () => {
     repository.savePushSubscription('https://push.example.com/sub', 'p256dh-val', 'auth-val');
 
     expect(repository.listPushSubscriptions()).toHaveLength(1);
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(repository.listPushSubscriptions()).toHaveLength(0);
   });
 
@@ -254,7 +256,7 @@ describe('evaluateNudgePushRule', () => {
     expect(countBefore).toBe(1);
 
     // Run the rule which purges stale entries
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
 
     // Old entry should be purged
     const countAfter = (db.prepare("SELECT COUNT(*) as cnt FROM push_notification_log WHERE entity_id = 'r-old'").get() as { cnt: number }).cnt;
@@ -309,7 +311,7 @@ describe('completion window push timing', () => {
     ]);
     repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
 
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(0);
   });
 
@@ -325,7 +327,7 @@ describe('completion window push timing', () => {
     ]);
     repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
 
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
   });
 
@@ -338,7 +340,7 @@ describe('completion window push timing', () => {
     ]);
     repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
 
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
   });
 
@@ -352,7 +354,7 @@ describe('completion window push timing', () => {
     `).run(new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString());
     repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
 
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
   });
 
@@ -369,7 +371,7 @@ describe('completion window push timing', () => {
     ]);
     repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
 
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
   });
 
@@ -385,7 +387,7 @@ describe('completion window push timing', () => {
     ]);
     repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
 
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     const logCount = (db.prepare('SELECT COUNT(*) as cnt FROM push_notification_log').get() as { cnt: number }).cnt;
     expect(logCount).toBe(0);
   });
@@ -402,11 +404,11 @@ describe('completion window push timing', () => {
     repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
 
     // First cycle: 10am → held
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), new Date('2026-03-15T10:00:00Z'));
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), new Date('2026-03-15T10:00:00Z'));
     expect(push.sends).toHaveLength(0);
 
     // Second cycle: 7:30pm → within window → delivered
-    await evaluateNudgePushRule(repository, push, config, makeLogger(), new Date('2026-03-15T19:30:00Z'));
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), new Date('2026-03-15T19:30:00Z'));
     expect(push.sends).toHaveLength(1);
   });
 });
