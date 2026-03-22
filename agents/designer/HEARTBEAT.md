@@ -23,7 +23,16 @@ Run this checklist on every heartbeat. You are an IC designer — your heartbeat
 - Read the issue description, parent context, and any linked specs.
 - For design tasks: read the feature spec and product ethos before designing.
 
-## 4. Prepare for Design Work
+## 4. Pre-Flight Checks (before design work)
+
+Run these checks before starting any design task. Do not skip them.
+
+- [ ] Confirm a **feature spec exists** in `docs/specs/` for the feature you are designing. If not, block and tag VP of Product.
+- [ ] Confirm you have read the **design system foundations** (`docs/vision/design-foundations.md`). All tokens must come from here.
+- [ ] Confirm you will run the **design checklist** (`docs/vision/design-checklist.md`) before delivering the visual spec.
+- [ ] If this task involves **implementation review**: confirm you are commenting with findings, not modifying code yourself.
+
+## 5. Prepare for Design Work
 
 Before producing any visual spec or design review:
 
@@ -36,7 +45,7 @@ Before producing any visual spec or design review:
 
 This ensures every design decision aligns with the established system.
 
-## 5. Do the Work
+## 6. Do the Work
 
 Design tasks fall into three categories:
 
@@ -59,7 +68,7 @@ Design tasks fall into three categories:
 3. Flag deviations: wrong tokens, spacing mismatches, missing states, dark mode issues.
 4. Comment on the Paperclip issue with specific findings.
 
-## 6. Update Status and Communicate
+## 7. Update Status and Communicate
 
 - Always include `X-Paperclip-Run-Id` header on mutating API calls.
 - Comment on in_progress work before exiting: what was designed, what is next, any blockers.
@@ -67,7 +76,7 @@ Design tasks fall into three categories:
 - If blocked (missing feature spec, unclear product intent), PATCH status to `blocked` with a clear description and who needs to unblock.
 - Tag the Founding Engineer when a visual spec is ready for implementation.
 
-## 7. Git Hygiene
+## 8. Git Hygiene
 
 Before exiting, check for uncommitted work:
 
@@ -75,7 +84,7 @@ Before exiting, check for uncommitted work:
 2. Commit completed specs and design docs. Include `Co-Authored-By: Paperclip <noreply@paperclip.ing>`.
 3. Do NOT commit work-in-progress drafts that aren't ready.
 
-## 8. Exit
+## 9. Exit
 
 - Comment on any in_progress work before exiting.
 - If no assignments and no valid mention-handoff, exit cleanly.

@@ -21,13 +21,22 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 - If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize that task.
 - For blocked tasks with no new comments since your last update, skip without re-commenting.
 
-## 4. Checkout and Work
+## 4. Pre-Flight Checks (before product work)
+
+Run these checks before starting any task work. Do not skip them.
+
+- [ ] Confirm your **release readiness check** (Step 5) has been completed for this heartbeat and the result is noted in your comment.
+- [ ] If this task involves **spec changes**: confirm you have read the current decision history and assumptions log.
+- [ ] If this task will **create work for Founding Engineer**: confirm you are creating an issue, not modifying code yourself.
+- [ ] If this task will **create work for Designer**: confirm you are creating an issue, not modifying design system files yourself.
+
+## 5. Checkout and Work
 
 - Always checkout before working: `POST /api/issues/{id}/checkout`.
 - Never retry a 409 -- that task belongs to someone else.
 - Do the work. Update status and comment when done.
 
-## 5. Release Readiness Check (MANDATORY)
+## 6. Release Readiness Check (MANDATORY)
 
 You MUST run this check on every heartbeat, before picking up task work. It is a standing responsibility, not optional.
 
@@ -40,7 +49,7 @@ You MUST run this check on every heartbeat, before picking up task work. It is a
 4. If no release is warranted, note it briefly in your heartbeat comment (e.g., "Release check: 3 unreleased commits, all docs — no release needed").
 5. This check should take under a minute. Do not skip it.
 
-## 6. Product Work Priorities
+## 7. Product Work Priorities
 
 When picking up work, follow this priority order:
 
@@ -50,7 +59,7 @@ When picking up work, follow this priority order:
 4. **New spec drafting** -- use `docs/specs/spec-template.md` and the feature spec workflow from AGENTS.md.
 5. **Documentation maintenance** -- keep roadmap, decision history, and assumptions log current.
 
-## 7. Essential Reading Check
+## 8. Essential Reading Check
 
 Before any product decision, confirm you have current context from:
 
@@ -63,14 +72,14 @@ Before any product decision, confirm you have current context from:
 
 Only re-read if the work requires it -- don't reload everything every heartbeat.
 
-## 8. Cross-Team Coordination
+## 9. Cross-Team Coordination
 
 - Route implementation questions to Founding Engineer via issue.
 - Route visual/design questions to Designer via issue.
 - Escalate strategic or budget questions to CEO.
 - Use `@AgentName` mentions sparingly -- they cost budget.
 
-## 9. Doc Commit Check
+## 10. Doc Commit Check
 
 Before exiting, check for uncommitted documentation:
 
@@ -78,7 +87,7 @@ Before exiting, check for uncommitted documentation:
 2. If durable artifacts exist (specs, decision history updates, milestone changes), commit them.
 3. Do NOT commit work-in-progress drafts that aren't finished.
 
-## 10. Exit
+## 11. Exit
 
 - Comment on any in_progress work before exiting.
 - If no assignments and no valid mention-handoff, check `docs/roadmap/milestones.md` for outstanding gaps before exiting.

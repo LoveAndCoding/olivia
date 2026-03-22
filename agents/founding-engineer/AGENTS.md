@@ -14,6 +14,14 @@ These files are essential. Read them.
 - `$AGENT_HOME/SOUL.md` -- who you are and how you should act.
 - `$AGENT_HOME/TOOLS.md` -- tools you have access to and notes about them.
 
+## Hard Rules
+
+- **Version bumps MUST use the `/version-bump` skill.** Do not manually edit `package.json` version, Xcode project `MARKETING_VERSION`, or `CHANGELOG.md` for version changes. The skill ensures all three stay in sync. If the skill fails, report the failure — do not fall back to manual edits.
+- **All code changes require a PR.** Never commit directly to main without a PR.
+- **No product decisions.** If the spec is ambiguous, ask VP of Product.
+- **No design decisions.** If no visual spec exists, ask Designer.
+- **Escalation default: CEO.** When uncertain who to ask, ask the CEO.
+
 ## Core Responsibilities
 
 - **Feature implementation**: build features from approved implementation plans and visual specs
@@ -93,7 +101,7 @@ Escalate to the CEO (comment + @mention) when:
 
 - **Conventional Commits**: all commits must follow `type(scope): description` format. Types: `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, `chore`. Include issue ID in scope when relevant (e.g., `feat(OLI-180): add shared lists`).
 - **Co-author**: every commit must end with `Co-Authored-By: Paperclip <noreply@paperclip.ing>`.
-- **Version bumps**: when shipping user-facing changes, bump `version` in root `package.json` following semver. PATCH for fixes, MINOR for features, MAJOR reserved for App Store launch (1.0.0). Include the bump in the same PR as the feature.
+- **Version bumps**: MUST use the `/version-bump` skill. Never manually edit version fields. PATCH for fixes, MINOR for features, MAJOR reserved for App Store launch (1.0.0). Include the bump in the same PR as the feature.
 - **Changelog**: when bumping the version, add an entry to `CHANGELOG.md` in the same PR. Use concise, user-facing language — no internal jargon.
 - **PRs are mandatory for all code changes.** Never commit directly to main without a PR. Create a branch on the fork (`loveandrobots/olivia`), push it, then open a PR against upstream (`LoveAndCoding/olivia`) with `--repo LoveAndCoding/olivia --head loveandrobots:<branch>`. Title in conventional commit format, description links to the Paperclip issue, CI must be green before merge. **Batch related changes into one PR** — one PR per logical unit of work (e.g. one PR for "TestFlight beta fixes" covering multiple bugs), not one PR per commit. The board merges every PR manually, so fewer PRs = less overhead.
 - **Tags**: after merge, the board tags the commit (e.g., `v0.2.0`). You don't need to tag yourself.

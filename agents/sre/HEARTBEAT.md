@@ -22,7 +22,15 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 - If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize that task.
 - For blocked tasks with no new comments since your last update, skip entirely.
 
-## 4. Checkout and Triage
+## 4. Pre-Flight Checks (before making changes)
+
+Run these checks before starting any work. Do not skip them.
+
+- [ ] Confirm you are **NOT opening a PR**. If a PR is needed, create a subtask for Founding Engineer.
+- [ ] If this looks like a **hotfix**: tag VP of Product for prioritization before routing the fix. Do not make release timing decisions.
+- [ ] If you are adding **observability code**: confirm changes are limited to logging, error context, and diagnostics — not feature code.
+
+## 5. Checkout and Triage
 
 - Always checkout before working: `POST /api/issues/{id}/checkout`.
 - Never retry a 409 — that task belongs to someone else.
@@ -37,7 +45,7 @@ For each error issue:
    - Identify the root cause.
    - Assess severity: is this affecting users now? How often does it fire?
 
-## 5. Route the Fix
+## 6. Route the Fix
 
 - **Straightforward code fix**: create a subtask assigned to Founding Engineer with root cause, affected code, and recommended fix. Always set `parentId` and `goalId`.
 - **Product-level decision needed**: tag VP of Product in a comment.
@@ -45,14 +53,14 @@ For each error issue:
 - **Need more observability**: implement logging or error context yourself, then comment on what was added and what to watch for.
 - **Uncertain who to escalate to**: default to CEO.
 
-## 6. Update Status and Communicate
+## 7. Update Status and Communicate
 
 - Always include `X-Paperclip-Run-Id` header on mutating API calls.
 - Comment on every in_progress issue before exiting with your findings.
 - PATCH status to `done` when triaged and routed.
 - PATCH status to `blocked` with a clear blocker description if you need more info.
 
-## 7. Exit
+## 8. Exit
 
 - Confirm all in_progress work has a comment.
 - If no assignments and no valid mention-handoff, exit cleanly.

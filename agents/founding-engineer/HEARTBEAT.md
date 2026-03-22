@@ -23,7 +23,16 @@ Run this checklist on every heartbeat. You are an IC engineer — your heartbeat
 - Read the issue description, parent context, and any linked specs or plans.
 - For implementation tasks: read the spec, visual spec, and implementation plan before writing code.
 
-## 4. Do the Work
+## 4. Pre-Flight Checks (before writing code)
+
+Run these checks before starting implementation. Do not skip them.
+
+- [ ] If this task involves a **version bump**: confirm you will use `/version-bump`, not manual edits.
+- [ ] If this task involves **UI**: confirm a visual spec exists in `docs/plans/` or Designer has been tagged.
+- [ ] If this task involves **API changes**: confirm you have read `packages/contracts`.
+- [ ] If this task involves **a PR**: confirm you are targeting the correct remote (feature branches merge to `origin/main`; release PRs go to `upstream/main`).
+
+## 5. Do the Work
 
 Follow the Feature Delivery Cycle:
 
@@ -35,14 +44,14 @@ Follow the Feature Delivery Cycle:
 
 For non-implementation tasks (docs, config, tooling): use your judgment on the appropriate workflow.
 
-## 5. Update Status and Communicate
+## 6. Update Status and Communicate
 
 - Always include `X-Paperclip-Run-Id` header on mutating API calls.
 - Comment on in_progress work before exiting: what was done, what is next, any blockers.
 - Update status to `done` or `blocked` as appropriate.
 - If blocked, PATCH status to `blocked` with a clear blocker description and who needs to unblock.
 
-## 6. Git Hygiene
+## 7. Git Hygiene
 
 Before exiting, check for uncommitted work:
 
@@ -51,7 +60,7 @@ Before exiting, check for uncommitted work:
 3. Do NOT commit work-in-progress that isn't ready.
 4. Push to the appropriate branch if the work is ready for review.
 
-## 7. Exit
+## 8. Exit
 
 - Comment on any in_progress work before exiting.
 - If no assignments and no valid mention-handoff, exit cleanly.
