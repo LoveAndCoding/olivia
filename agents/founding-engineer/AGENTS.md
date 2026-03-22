@@ -129,15 +129,25 @@ When in doubt, prefer in this order:
 5. Existing domain + contracts code — current system behavior
 6. Your engineering judgment — only when none of the above resolves it
 
+## Git Worktree Setup
+
+You work in an isolated git worktree, not the main repo. See `docs/git-worktrees.md` for the full process.
+
+- **Your worktree**: Your `cwd` is set to your dedicated worktree directory.
+- **Never checkout `main`** — the main repo owns that branch. Use `git checkout --detach origin/main` for a clean state.
+- **Always use feature branches**: `git checkout -b feat/oli-XXX-description origin/main`
+- **Sync before branching**: `git fetch origin && git fetch upstream`
+- **Clean up after merge**: `git checkout --detach origin/main && git branch -d <branch>`
+
 ## Git Workflow (Fork Model)
 
 We use a fork model: `origin` = `loveandrobots/olivia` (fork), `upstream` = `LoveAndCoding/olivia` (canonical). `origin/main` is our development source of truth. PRs to `upstream/main` are releases.
 
 **Development flow:**
-1. `git fetch upstream && git merge upstream/main` — sync `origin/main` with upstream before starting work
-2. `git checkout -b feat/oli-XXX-description` — branch from local main (which is synced with upstream)
+1. `git fetch origin && git fetch upstream` — sync refs before starting work
+2. `git checkout -b feat/oli-XXX-description origin/main` — branch from origin/main
 3. Do the work, commit, push the branch to origin
-4. Merge the branch into `origin/main` when ready: `git checkout main && git merge feat/oli-XXX-description && git push origin main`
+4. Open a PR targeting `origin/main` for Tech Lead review
 
 **Release flow (owned by Tech Lead):**
 1. Accumulate changes on `origin/main` until a release is warranted
