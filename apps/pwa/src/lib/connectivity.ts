@@ -168,3 +168,60 @@ export function getConnectivitySnapshot(): ConnectivityState {
 export function isEffectivelyOnline(): boolean {
   return state.browserOnline && state.apiReachable;
 }
+
+// ── Diagnostic probe (for Settings page) ────────────────
+
+export type ConnectivityDiagnostic = {
+  healthUrl: string;
+  /** Normal fetch result */
+  cors: 'ok' | 'error';
+  corsDetail: string;
+  /** no-cors fetch result — if this succeeds but cors fails, the issue is CORS */
+  noCors: 'ok' | 'error';
+  noCorsDetail: string;
+  timestamp: string;
+};
+
+/**
+ * Run a one-shot diagnostic probe that tests both normal and no-cors
+ * fetches to the health endpoint. Helps distinguish CORS failures from
+ * network-level failures.
+ */
+export async function runDiagnosticProbe(): Promise<ConnectivityDiagnostic> {
+  const url = resolveApiUrl('/api/health');
+  const result: ConnectivityDiagnostic = {
+    healthUrl: url,
+    cors: 'error',
+    corsDetail: 'pending',
+    noCors: 'error',
+    noCorsDetail: 'pending',
+    timestamp: new Date().toISOString(),
+  };
+
+  // Test 1: normal (cors) fetch
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+    const res = await fetch(url, { method: 'GET', signal: controller.signal, cache: 'no-store' });
+    clearTimeout(timeout);
+    result.cors = res.ok ? 'ok' : 'error';
+    result.corsDetail = res.ok ? `${res.status} OK` : `HTTP ${res.status}`;
+  } catch (err) {
+    result.corsDetail = err instanceof Error ? err.message : String(err);
+  }
+
+  // Test 2: no-cors fetch (bypasses CORS — opaque response but proves network path works)
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+    const res = await fetch(url, { method: 'GET', signal: controller.signal, cache: 'no-store', mode: 'no-cors' });
+    clearTimeout(timeout);
+    // no-cors returns opaque response (type: 'opaque', status: 0) on success
+    result.noCors = (res.type === 'opaque' || res.ok) ? 'ok' : 'error';
+    result.noCorsDetail = res.type === 'opaque' ? 'opaque (network reachable)' : `${res.status}`;
+  } catch (err) {
+    result.noCorsDetail = err instanceof Error ? err.message : String(err);
+  }
+
+  return result;
+}

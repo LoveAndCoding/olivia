@@ -7,7 +7,7 @@ import { PushNotifications } from '@capacitor/push-notifications';
 import { clientDb } from '../lib/client-db';
 import { useRole } from '../lib/role';
 import { effectiveApiBaseUrl, resolveApiUrl } from '../lib/api';
-import { getLastPingDiagnostic } from '../lib/connectivity';
+import { runDiagnosticProbe, type ConnectivityDiagnostic } from '../lib/connectivity';
 import { loadNotificationState, saveDemoNotificationSubscription, saveNativeNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
 import { OliviaMessage } from '../components/reminders/OliviaMessage';
 import type { ActorRole, ReminderNotificationPreferencesInput } from '@olivia/contracts';
@@ -30,16 +30,38 @@ function readSavedTheme(): ThemeMode {
   return 'auto';
 }
 
-function PingDiagnosticDisplay() {
-  const [diag, setDiag] = useState(getLastPingDiagnostic);
-  useEffect(() => {
-    const id = setInterval(() => setDiag(getLastPingDiagnostic()), 2000);
-    return () => clearInterval(id);
+function ConnectivityProbe() {
+  const [result, setResult] = useState<ConnectivityDiagnostic | null>(null);
+  const [running, setRunning] = useState(false);
+
+  const run = useCallback(async () => {
+    setRunning(true);
+    try { setResult(await runDiagnosticProbe()); } finally { setRunning(false); }
   }, []);
-  if (diag.status === 'pending') return <p className="muted">Last ping: waiting for first check…</p>;
-  if (diag.status === 'ok') return <p className="muted">Last ping: <strong style={{ color: 'var(--color-success, green)' }}>OK ({diag.httpStatus})</strong></p>;
-  if (diag.status === 'http-error') return <p className="muted">Last ping: <strong style={{ color: 'var(--color-error, red)' }}>HTTP {diag.httpStatus}</strong></p>;
-  return <p className="muted">Last ping: <strong style={{ color: 'var(--color-error, red)' }}>Network error</strong> — {diag.error}</p>;
+
+  useEffect(() => { void run(); }, [run]);
+
+  return (
+    <>
+      <p className="muted">API base URL: <strong style={{ wordBreak: 'break-all' }}>{effectiveApiBaseUrl}</strong></p>
+      <p className="muted">Health check URL: <strong style={{ wordBreak: 'break-all' }}>{resolveApiUrl('/api/health')}</strong></p>
+      {result && (
+        <>
+          <p className="muted">Normal fetch: <strong style={{ color: result.cors === 'ok' ? 'var(--color-success, green)' : 'var(--color-error, red)' }}>{result.corsDetail}</strong></p>
+          <p className="muted">No-CORS fetch: <strong style={{ color: result.noCors === 'ok' ? 'var(--color-success, green)' : 'var(--color-error, red)' }}>{result.noCorsDetail}</strong></p>
+          {result.noCors === 'ok' && result.cors === 'error' && (
+            <p className="muted" style={{ fontStyle: 'italic' }}>Network works but CORS is blocking. Server needs to allow this app's origin.</p>
+          )}
+          {result.noCors === 'error' && result.cors === 'error' && (
+            <p className="muted" style={{ fontStyle: 'italic' }}>Network unreachable — not a CORS issue.</p>
+          )}
+        </>
+      )}
+      <button type="button" className="secondary-button" disabled={running} onClick={() => void run()}>
+        {running ? 'Testing…' : 'Re-run probe'}
+      </button>
+    </>
+  );
 }
 
 export function SettingsPage() {
@@ -368,10 +390,7 @@ export function SettingsPage() {
             <div className="section-header">
               <h3 className="card-title">Connectivity diagnostics</h3>
             </div>
-            <p className="muted">Platform: <strong>{isNative ? 'Native (Capacitor)' : installed ? 'PWA' : 'Browser'}</strong></p>
-            <p className="muted">API base URL: <strong style={{ wordBreak: 'break-all' }}>{effectiveApiBaseUrl}</strong></p>
-            <p className="muted">Health check URL: <strong style={{ wordBreak: 'break-all' }}>{resolveApiUrl('/api/health')}</strong></p>
-            <PingDiagnosticDisplay />
+            <ConnectivityProbe />
           </div>
         </div>
       </div>
