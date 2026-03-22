@@ -1,4 +1,5 @@
-import { Component, type ReactNode } from 'react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportError } from '../lib/error-reporter';
 
 type Props = { children: ReactNode };
 type State = { error: Error | null };
@@ -8,6 +9,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    reportError({
+      message: error.message,
+      stack: error.stack,
+      context: `ErrorBoundary${info.componentStack ? ` — ${info.componentStack.slice(0, 500)}` : ''}`,
+    });
   }
 
   private handleReload = () => {

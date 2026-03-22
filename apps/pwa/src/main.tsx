@@ -12,21 +12,57 @@ if (typeof crypto !== 'undefined' && typeof crypto.randomUUID !== 'function') {
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { QueryClient, QueryClientProvider, MutationCache } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
 import { RoleProvider } from './lib/role';
 import { showErrorToast } from './lib/error-toast';
+import { reportError, errorMessage, errorStack } from './lib/error-reporter';
 import { router } from './router';
 import './styles.css';
 
-const mutationCache = new MutationCache({
+// ─── Global error handlers ──────────────────────────────────────────────────
+
+window.addEventListener('error', (event) => {
+  reportError({
+    message: event.message || 'Uncaught error',
+    stack: event.error instanceof Error ? event.error.stack : undefined,
+    context: 'window.onerror',
+  });
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  reportError({
+    message: errorMessage(event.reason),
+    stack: errorStack(event.reason),
+    context: 'unhandledrejection',
+  });
+});
+
+// ─── TanStack Query caches ─────────────────────────────────────────────────
+
+const queryCache = new QueryCache({
   onError(error) {
-    const message = (error as Error).message || 'Something went wrong';
-    showErrorToast(message);
+    reportError({
+      message: errorMessage(error),
+      stack: errorStack(error),
+      context: 'QueryCache',
+    });
   },
 });
 
-const queryClient = new QueryClient({ mutationCache });
+const mutationCache = new MutationCache({
+  onError(error) {
+    const message = errorMessage(error);
+    showErrorToast(message);
+    reportError({
+      message,
+      stack: errorStack(error),
+      context: 'MutationCache',
+    });
+  },
+});
+
+const queryClient = new QueryClient({ queryCache, mutationCache });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
