@@ -2348,7 +2348,7 @@ textarea:focus, input:focus, select:focus {
   position: relative;
   width: 100%;
   max-width: 430px;
-  max-height: 92vh;
+  max-height: calc(92vh - var(--keyboard-height, 0px));
   background: var(--surface);
   border-radius: 28px 28px 0 0;
   box-shadow: 0 -8px 40px rgba(26,16,51,0.12);

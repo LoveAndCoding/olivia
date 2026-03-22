@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from '@capacitor/cli';
+import { KeyboardResize } from '@capacitor/keyboard';
 
 const config: CapacitorConfig = {
   appId: 'com.loveandcoding.olivia',
@@ -10,6 +11,9 @@ const config: CapacitorConfig = {
     // url: 'http://localhost:4173',
   },
   plugins: {
+    Keyboard: {
+      resize: KeyboardResize.None,
+    },
     CapacitorHttp: {
       enabled: true,
     },
