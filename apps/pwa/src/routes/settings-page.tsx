@@ -6,6 +6,7 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { clientDb } from '../lib/client-db';
 import { useRole } from '../lib/role';
+import { effectiveApiBaseUrl } from '../lib/api';
 import { loadNotificationState, saveDemoNotificationSubscription, saveNativeNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
 import { OliviaMessage } from '../components/reminders/OliviaMessage';
 import type { ActorRole, ReminderNotificationPreferencesInput } from '@olivia/contracts';
@@ -346,6 +347,7 @@ export function SettingsPage() {
             <div className="section-header">
               <h3 className="card-title">Sync diagnostics</h3>
             </div>
+            <p className="muted">API base URL: <strong>{effectiveApiBaseUrl}</strong></p>
             <p className="muted">Pending commands: {diagnostics?.pending ?? 0}</p>
             <p className="muted">Conflicts: {diagnostics?.conflicts ?? 0}</p>
           </div>
