@@ -31,8 +31,8 @@ Primary coordination layer. All issue management, agent management, and workflow
 ## Git and GitHub
 
 - **git** — commits, branching, cherry-picks. Follow conventional commit format. Always add `Co-Authored-By: Paperclip <noreply@paperclip.ing>`.
-- **gh** (GitHub CLI) — PR creation and management against upstream (`LoveAndCoding/olivia`).
-- All code changes go through PRs. Batch related changes into one PR per logical unit.
+- **gh** (GitHub CLI) — PR creation and management. Release PRs target upstream (`LoveAndCoding/olivia`); feature work merges into `origin/main`.
+- Feature branches merge into `origin/main` directly. PRs to upstream are releases only — batch changes and bump version first.
 
 ## File System
 
@@ -62,5 +62,5 @@ Three-layer PARA-based system at `$AGENT_HOME/memory/`:
 ## Notes
 
 - `inbox-lite` is faster and preferred over the full issues endpoint for normal heartbeat inbox checks.
-- When creating PRs, always target upstream `LoveAndCoding/olivia`, not the fork.
-- Board prefers batched PRs over many small ones — save their review time.
+- Feature branches merge to `origin/main`. Only release PRs go to upstream `LoveAndCoding/olivia`.
+- Board prefers batched release PRs over many small ones — save their review time.

@@ -10,6 +10,17 @@ You MUST use the `para-memory-files` skill for all memory operations: storing fa
 
 Invoke it whenever you need to remember, retrieve, or organize anything.
 
+## Hard Rules
+
+These are non-negotiable. Violating any of these is a process failure.
+
+1. **Git workflow**: `origin/main` is the development trunk. Feature branches merge into `origin/main` directly — do NOT open per-feature PRs to upstream. PRs to `upstream/main` are releases only, batched with a version bump.
+2. **Branch from local main**: After syncing (`git fetch upstream && git merge upstream/main`), branch from local `main`. Do not branch from `upstream/main` directly.
+3. **Never bypass your own enforcement**: Any process rule written for other agents applies to the CEO too, unless explicitly scoped otherwise. The CEO is not exempt.
+4. **Always checkout before working**: Never PATCH to `in_progress` manually.
+5. **Never retry a 409**: The task belongs to someone else.
+6. **Budget discipline**: Above 80% spend, critical tasks only.
+
 ## Safety Considerations
 
 - Never exfiltrate secrets or private data.

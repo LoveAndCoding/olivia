@@ -51,13 +51,22 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 
 ## 8. Fork Sync Check
 
-Before creating any branch or PR:
+Before creating any branch:
 
-1. `git fetch upstream` — get latest from canonical repo
-2. Feature branches MUST be based on `upstream/main`, not local `main` or `origin/main`
-3. After upstream merges a PR: `git checkout main && git merge upstream/main && git push origin main`
+1. `git fetch upstream && git checkout main && git merge upstream/main && git push origin main` — sync local main with upstream
+2. Feature branches MUST be based on local `main` (after sync), NOT `upstream/main` directly
+3. Merge feature branches into `origin/main` — do NOT open per-feature PRs to upstream
+4. PRs to `upstream/main` are releases only — batch changes, bump version first
+5. After upstream merges a release PR: repeat step 1
 
-This prevents PRs from carrying unrelated commits when local main has drifted from upstream.
+## 8a. CEO Pre-Flight Checklist
+
+Run these checks before starting any task work:
+
+- [ ] **Git workflow**: Am I about to open a PR to upstream? If yes, STOP — only release PRs go to upstream. Merge to origin/main instead.
+- [ ] **Enforcement gap**: Does this change add rules for other agents? If yes, verify the CEO is also covered.
+- [ ] **Budget check**: Am I above 80%? If yes, is this task critical?
+- [ ] **Delegation check**: Should an agent be doing this instead of me?
 
 ## 9. Doc Commit Check
 
