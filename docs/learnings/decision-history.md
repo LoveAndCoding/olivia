@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-067: AI chat recalibration spec drafted — conversation-first, tool-use cap, batch dismiss, undo
+- Date: 2026-03-22
+- Area: feature spec / AI chat behavior
+- Decision: Draft spec for recalibrating AI chat to comply with the advisory-only trust model. Key changes: (1) Conversation-first default — Olivia must understand intent before proposing entity creation. (2) Hard cap of 3 tool calls per LLM response, enforced at the API level. (3) System prompt anti-patterns that explicitly prohibit responding to vague statements with batch item creation. (4) Batch dismiss UX for clearing multiple unwanted drafts at once. (5) Undo last response to remove a bad AI response and its drafts. (6) parseConfidence threshold — only propose when confidence ≥ 0.8. Two open questions for the board: conversation lifecycle (ephemeral vs. persistent) and parseConfidence visual treatment.
+- Rationale: board reported chat suggesting 8-9 irrelevant tasks unprompted, no way to clear unwanted suggestions, and frequent conversation deletion. L-032 confirms that unsolicited AI action creation erodes trust faster than no AI at all. The chat surface must be brought into compliance with A-002 (advisory-only).
+- Alternatives considered: (1) Disable chat tool use entirely — rejected as too aggressive; the user should still be able to ask Olivia to create items when they want to. (2) Reduce tool count without prompt changes — rejected because the prompt is the primary behavioral lever; a cap alone doesn't fix the conversation quality. (3) Full chat redesign — rejected as overscoped for M30; behavioral recalibration first, then evaluate.
+- Trade-offs: prompt-based behavioral changes are probabilistic, not deterministic. The hard tool-use cap provides a deterministic backstop. Risk of over-correction (Olivia too passive) is mitigated by explicit prompt instruction to propose when intent is clear.
+- Status: active
+- Related docs: `docs/specs/ai-chat-recalibration.md`, `docs/specs/chat-feature.md`, L-032, D-002, D-065, A-002
+
 ### D-066: M29 complete — household validation gate achieved with 1 week of usage
 - Date: 2026-03-22
 - Area: milestone completion
