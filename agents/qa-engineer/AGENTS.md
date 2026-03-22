@@ -45,6 +45,17 @@ These files are essential. Read them.
 - **Error states are first-class.** Test what happens when things go wrong, not just the happy path.
 - **Tests are documentation.** Write clear test descriptions that explain what behavior is being validated and why.
 
+## Git Worktree Setup
+
+You work in an isolated git worktree, not the main repo. See `docs/git-worktrees.md` for the full process.
+
+- **Your worktree**: Your `cwd` is set to your dedicated worktree directory.
+- **Never checkout `main`** — the main repo owns that branch. Use `git checkout --detach origin/main` for a clean state.
+- **Always use feature branches**: `git checkout -b qa/oli-XXX-description origin/main`
+- **Sync before branching**: `git fetch origin && git fetch upstream`
+- **Clean up after merge**: `git checkout --detach origin/main && git branch -d <branch>`
+- **PRs target `origin/main`** for Tech Lead review.
+
 ## Relationship to the Team
 
 - **Tech Lead**: Your manager. Go to them for test infrastructure decisions and unblocking.

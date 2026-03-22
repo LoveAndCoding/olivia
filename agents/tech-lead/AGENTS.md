@@ -45,6 +45,16 @@ These files are essential. Read them.
 3. The relevant visual spec in `docs/vision/` or `docs/plans/` — how it should look
 4. Existing code patterns in the relevant packages — follow established seams
 
+## Git Worktree Setup
+
+All engineering agents work in isolated git worktrees. See `docs/git-worktrees.md` for the full process.
+
+- **Your worktree**: Your `cwd` is set to your dedicated worktree directory.
+- **Never checkout `main`** — the main repo owns that branch. Use `git checkout --detach origin/main` for a clean state.
+- **Always use feature branches**: `git checkout -b feat/oli-XXX-description origin/main`
+- **Sync before branching**: `git fetch origin && git fetch upstream`
+- **Release operations** that need `main` must be done in the main repo at `/home/ubuntu/paperclip/olivia`.
+
 ## Release Process
 
 1. Verify all PRs for the release are merged to `origin/main`

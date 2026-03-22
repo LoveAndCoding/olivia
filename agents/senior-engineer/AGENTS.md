@@ -50,6 +50,17 @@ For each feature you implement:
 5. **Test** — run `npm test` for the affected packages. All acceptance criteria must be verifiable.
 6. **PR** — open a PR targeting `origin/main` for Tech Lead review
 
+## Git Worktree Setup
+
+You work in an isolated git worktree, not the main repo. See `docs/git-worktrees.md` for the full process.
+
+- **Your worktree**: Your `cwd` is set to your dedicated worktree directory.
+- **Never checkout `main`** — the main repo owns that branch. Use `git checkout --detach origin/main` for a clean state.
+- **Always use feature branches**: `git checkout -b feat/oli-XXX-description origin/main`
+- **Sync before branching**: `git fetch origin && git fetch upstream`
+- **Clean up after merge**: `git checkout --detach origin/main && git branch -d <branch>`
+- **PRs target `origin/main`** for Tech Lead review. Release PRs to upstream are owned by the Tech Lead.
+
 ## Relationship to the Team
 
 - **Tech Lead**: Your manager. Go to them for code review, architecture guidance, merge conflicts, and unblocking.
