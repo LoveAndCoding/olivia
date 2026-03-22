@@ -1675,6 +1675,38 @@ p { margin: 0; }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Batch dismiss & Undo (OLI-270) ──────────────── */
+
+.oa-btn-dismiss-all {
+  display: block;
+  margin-top: 8px;
+  background: var(--lavender-soft);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.oa-btn-dismiss-all:hover { background: var(--lavender-mid); }
+
+.oa-btn-undo {
+  display: block;
+  margin-top: 6px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 500;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+.oa-btn-undo:hover { opacity: 1; }
+
 /* ── EMPTY STATE ───────────────────────────────────── */
 
 .empty-state {
@@ -3053,6 +3085,117 @@ input[type="date"].rem-form-input {
 .snooze-option-time {
   font-size: 12px;
   color: var(--ink-2);
+}
+
+/* ── DATE/TIME PICKER ────────────────────────────── */
+
+.datetime-picker-wrapper {
+  margin-top: 12px;
+}
+
+.datetime-picker-container {
+  background: var(--surface-2);
+  border: 1.5px solid var(--lavender-mid);
+  border-radius: 14px;
+  padding: 14px 16px;
+  position: relative;
+}
+
+.datetime-picker-container:focus-within {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 4px var(--violet-glow);
+}
+
+.datetime-picker-container.datetime-picker-error {
+  border-color: var(--rose);
+}
+
+.datetime-picker-container.datetime-picker-error:focus-within {
+  border-color: var(--rose);
+  box-shadow: 0 0 0 4px var(--rose-dim);
+}
+
+.datetime-picker-label {
+  display: block;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 8px;
+}
+
+.datetime-picker-input {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  width: 100%;
+  padding: 0;
+  -webkit-appearance: none;
+}
+
+.datetime-picker-input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.datetime-picker-display {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-top: 4px;
+}
+
+.datetime-picker-validation {
+  background: var(--rose-dim);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--rose);
+}
+
+.datetime-chip-active {
+  background: var(--violet-dim) !important;
+  border-color: var(--violet) !important;
+  color: var(--violet) !important;
+}
+
+/* ── SNOOZE PICKER BUTTON ────────────────────────── */
+
+.snooze-apply-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  margin-top: 14px;
+  background: var(--violet);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.snooze-apply-btn:hover {
+  background: #5B4DD6;
+}
+
+.snooze-apply-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 /* ── CANCEL CONFIRM SHEET ──────────────────────────── */
@@ -5732,5 +5875,172 @@ input[type="date"].rem-form-input {
   /* Sheet scroll — reduce bottom padding for shorter viewport */
   .sheet-scroll {
     padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ─── Routines Flexible Scheduling ─────────────────────────────────────────── */
+
+/* Weekday Picker */
+.weekday-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-4, rgba(26,16,51,0.15));
+  background: var(--surface-2, #F3F0FF);
+  color: var(--ink-2, rgba(26,16,51,0.55));
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.weekday-circle:active {
+  transform: scale(0.92);
+}
+.weekday-circle-selected {
+  background: var(--violet, #6C5CE7);
+  border: none;
+  color: white;
+  box-shadow: 0 2px 6px rgba(108,92,231,0.2);
+}
+
+/* Week Interval Stepper */
+.week-interval-stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-2, #F3F0FF);
+  border: 1.5px solid var(--lavender-mid, #D4CCFF);
+  border-radius: 12px;
+  padding: 6px 8px;
+  width: fit-content;
+}
+.week-interval-stepper-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--lavender-soft, #EDE9FF);
+  color: var(--violet, #6C5CE7);
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.week-interval-stepper-btn:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.week-interval-stepper-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 24px;
+  text-align: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.week-interval-stepper-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  margin-left: 4px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Recurrence Type Selector */
+.recurrence-option-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--surface, var(--bg));
+  border: 1.5px solid var(--ink-4, rgba(26,16,51,0.15));
+  border-radius: 14px;
+  padding: 12px 16px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.recurrence-option-row-active {
+  background: rgba(108,92,231,0.1);
+  border-color: var(--violet, #6C5CE7);
+}
+.recurrence-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-4, rgba(26,16,51,0.15));
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+}
+.recurrence-radio-active {
+  border-color: var(--violet, #6C5CE7);
+  background: var(--violet, #6C5CE7);
+}
+.recurrence-radio-active::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: white;
+}
+
+/* Tracked Section */
+.tracked-section-divider {
+  background: var(--ink-4, rgba(26,16,51,0.15));
+  height: 1px;
+  margin: 20px 0 16px;
+}
+.tracked-section-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-3, rgba(26,16,51,0.3));
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Dark mode overrides for new components */
+@media (prefers-color-scheme: dark) {
+  .weekday-circle {
+    background: #242038;
+    border-color: rgba(237,233,255,0.1);
+    color: rgba(237,233,255,0.6);
+  }
+  .week-interval-stepper {
+    background: #242038;
+    border-color: #3D3660;
+  }
+  .week-interval-stepper-btn {
+    background: #3D3660;
+  }
+  .tracked-section-divider {
+    background: rgba(237,233,255,0.1);
+  }
+  .tracked-section-header {
+    color: rgba(237,233,255,0.35);
+  }
+  .recurrence-option-row {
+    border-color: rgba(237,233,255,0.1);
+  }
+  .recurrence-option-row-active {
+    background: rgba(108,92,231,0.18);
+  }
+  .recurrence-radio {
+    border-color: rgba(237,233,255,0.1);
   }
 }

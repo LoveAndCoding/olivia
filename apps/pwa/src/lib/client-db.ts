@@ -563,6 +563,8 @@ export async function assembleWeeklyViewFromCache(weekStartStr: string): Promise
         owner: routine.owner,
         recurrenceRule: routine.recurrenceRule,
         intervalDays: routine.intervalDays,
+        intervalWeeks: routine.intervalWeeks ?? null,
+        weekdays: routine.weekdays ?? null,
         dueDate: dayDate,
         dueState,
         completed: dueState === 'completed'

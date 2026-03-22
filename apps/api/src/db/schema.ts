@@ -132,12 +132,15 @@ export const routinesTable = sqliteTable('routines', {
   owner: text('owner').notNull(),
   recurrenceRule: text('recurrence_rule').notNull(),
   intervalDays: integer('interval_days'),
+  intervalWeeks: integer('interval_weeks'),
+  weekdays: text('weekdays'),
   status: text('status').notNull(),
-  currentDueDate: text('current_due_date').notNull(),
+  currentDueDate: text('current_due_date'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   archivedAt: text('archived_at'),
   version: integer('version').notNull(),
+  ritualType: text('ritual_type'),
   freshnessCheckedAt: text('freshness_checked_at')
 });
 

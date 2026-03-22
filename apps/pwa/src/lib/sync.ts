@@ -619,11 +619,11 @@ async function flushOutboxOnce() {
       } else if (command.kind === 'items_uncheck_all') {
         await uncheckAllItemsApi(command.actorRole, command.listId);
       } else if (command.kind === 'routine_create') {
-        const response = await createRoutineApi(command.actorRole, command.title, command.owner, command.recurrenceRule, command.firstDueDate, command.intervalDays);
+        const response = await createRoutineApi(command.actorRole, command.title, command.owner, command.recurrenceRule, command.firstDueDate, command.intervalDays, command.weekdays, command.intervalWeeks);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
       } else if (command.kind === 'routine_update') {
-        const { title, owner, recurrenceRule, intervalDays } = command;
-        const response = await updateRoutineApi(command.actorRole, command.routineId, command.expectedVersion, { title, owner, recurrenceRule, intervalDays });
+        const { title, owner, recurrenceRule, intervalDays, intervalWeeks, weekdays } = command;
+        const response = await updateRoutineApi(command.actorRole, command.routineId, command.expectedVersion, { title, owner, recurrenceRule, intervalDays, intervalWeeks, weekdays });
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
       } else if (command.kind === 'routine_complete') {
         const response = await completeRoutineOccurrenceApi(command.actorRole, command.routineId, command.expectedVersion);
@@ -1085,17 +1085,19 @@ export async function createRoutineCommand(
   title: string,
   owner: Owner,
   recurrenceRule: RoutineRecurrenceRule,
-  firstDueDate: string,
-  intervalDays?: number | null
+  firstDueDate: string | null,
+  intervalDays?: number | null,
+  weekdays?: number[] | null,
+  intervalWeeks?: number | null
 ): Promise<Routine> {
   if (!isOffline()) {
-    const response = await createRoutineApi(role, title, owner, recurrenceRule, firstDueDate, intervalDays);
+    const response = await createRoutineApi(role, title, owner, recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks);
     await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
     return response.savedRoutine;
   }
-  const routine = createRoutineDomain(title, owner, recurrenceRule, firstDueDate, intervalDays);
+  const routine = createRoutineDomain(title, owner, recurrenceRule, firstDueDate, intervalDays, undefined, weekdays, intervalWeeks);
   const pendingRoutine = { ...routine, pendingSync: true };
-  const command: OutboxCommand = { kind: 'routine_create', commandId: crypto.randomUUID(), actorRole: role, title, owner, recurrenceRule, firstDueDate, intervalDays };
+  const command: OutboxCommand = { kind: 'routine_create', commandId: crypto.randomUUID(), actorRole: role, title, owner, recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks };
   await cacheRoutine(pendingRoutine);
   await enqueueCommand(command);
   return pendingRoutine;
@@ -1105,7 +1107,7 @@ export async function updateRoutineCommand(
   role: ActorRole,
   routineId: string,
   expectedVersion: number,
-  changes: { title?: string; owner?: Owner; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null }
+  changes: { title?: string; owner?: Owner; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null; intervalWeeks?: number | null; weekdays?: number[] | null }
 ): Promise<Routine> {
   if (!isOffline()) {
     const response = await updateRoutineApi(role, routineId, expectedVersion, changes);
@@ -1515,7 +1517,7 @@ export async function submitRitualCompletion(
   if (!cached) throw new Error('Routine not available offline.');
 
   // Compute windows from the routine's current due date anchor
-  const anchorDate = new Date(cached.currentDueDate);
+  const anchorDate = new Date(cached.currentDueDate!);
   const windows = getReviewWindowsForOccurrence(anchorDate);
   const lastWeek = formatReviewWindowAsDateStrings({ start: windows.lastWeekStart, end: windows.lastWeekEnd });
   const currentWeek = formatReviewWindowAsDateStrings({ start: windows.currentWeekStart, end: windows.currentWeekEnd });
@@ -1567,7 +1569,7 @@ export async function submitRitualCompletion(
   return {
     reviewRecordId: provisionalReviewRecordId,
     reviewDate,
-    nextOccurrenceDueDate: updatedRoutine.currentDueDate
+    nextOccurrenceDueDate: updatedRoutine.currentDueDate!
   };
 }
 

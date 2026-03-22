@@ -567,7 +567,7 @@ export const listItemMutationResponseSchema = z.object({
 
 export const routineStatusSchema = z.enum(['active', 'paused', 'archived']);
 export const routineDueStateSchema = z.enum(['upcoming', 'due', 'overdue', 'completed', 'paused']);
-export const routineRecurrenceRuleSchema = z.enum(['daily', 'weekly', 'monthly', 'every_n_days']);
+export const routineRecurrenceRuleSchema = z.enum(['daily', 'weekly', 'monthly', 'every_n_days', 'weekly_on_days', 'every_n_weeks', 'ad_hoc']);
 
 export const routineEventTypeSchema = z.enum([
   'routine_created',
@@ -588,10 +588,13 @@ export const routineSchema = z.object({
   owner: ownerSchema,
   recurrenceRule: routineRecurrenceRuleSchema,
   intervalDays: z.number().int().positive().nullable(),
+  intervalWeeks: z.number().int().min(2).max(12).nullable().default(null),
+  weekdays: z.array(z.number().int().min(0).max(6)).nullable().default(null),
   status: routineStatusSchema,
-  currentDueDate: z.string().datetime(),
-  dueState: routineDueStateSchema.optional(),
+  currentDueDate: z.string().datetime().nullable(),
+  dueState: routineDueStateSchema.nullable().optional(),
   ritualType: ritualTypeSchema.nullable().optional(),
+  lastCompletedAt: z.string().datetime().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   archivedAt: z.string().datetime().nullable(),
@@ -601,6 +604,15 @@ export const routineSchema = z.object({
 }).refine(
   (r) => r.recurrenceRule !== 'every_n_days' || (r.intervalDays !== null && r.intervalDays > 0),
   { message: 'intervalDays must be a positive integer when recurrenceRule is every_n_days' }
+).refine(
+  (r) => r.recurrenceRule !== 'weekly_on_days' || (r.weekdays !== null && r.weekdays.length > 0),
+  { message: 'weekdays must be a non-empty array when recurrenceRule is weekly_on_days' }
+).refine(
+  (r) => r.recurrenceRule !== 'every_n_weeks' || (r.intervalWeeks !== null && r.intervalWeeks >= 2 && r.weekdays !== null && r.weekdays.length === 1),
+  { message: 'intervalWeeks (2-12) and exactly one weekday are required when recurrenceRule is every_n_weeks' }
+).refine(
+  (r) => r.recurrenceRule !== 'ad_hoc' || r.currentDueDate === null,
+  { message: 'currentDueDate must be null for ad_hoc routines' }
 );
 
 export const routineOccurrenceSchema = z.object({
@@ -638,10 +650,21 @@ export const createRoutineRequestSchema = z.object({
   owner: ownerSchema,
   recurrenceRule: routineRecurrenceRuleSchema,
   intervalDays: z.number().int().positive().nullable().optional(),
-  firstDueDate: z.string().datetime()
+  intervalWeeks: z.number().int().min(2).max(12).nullable().optional(),
+  weekdays: z.array(z.number().int().min(0).max(6)).nullable().optional(),
+  firstDueDate: z.string().datetime().nullable()
 }).refine(
   (r) => r.recurrenceRule !== 'every_n_days' || (r.intervalDays !== null && r.intervalDays !== undefined && r.intervalDays > 0),
   { message: 'intervalDays must be a positive integer when recurrenceRule is every_n_days' }
+).refine(
+  (r) => r.recurrenceRule !== 'weekly_on_days' || (r.weekdays !== null && r.weekdays !== undefined && r.weekdays.length > 0),
+  { message: 'weekdays must be a non-empty array when recurrenceRule is weekly_on_days' }
+).refine(
+  (r) => r.recurrenceRule !== 'every_n_weeks' || (r.intervalWeeks !== null && r.intervalWeeks !== undefined && r.intervalWeeks >= 2 && r.weekdays !== null && r.weekdays !== undefined && r.weekdays.length === 1),
+  { message: 'intervalWeeks (2-12) and exactly one weekday are required when recurrenceRule is every_n_weeks' }
+).refine(
+  (r) => r.recurrenceRule !== 'ad_hoc' || r.firstDueDate === null,
+  { message: 'firstDueDate must be null for ad_hoc routines' }
 );
 
 export const updateRoutineRequestSchema = z.object({
@@ -651,7 +674,9 @@ export const updateRoutineRequestSchema = z.object({
   title: z.string().trim().min(1).optional(),
   owner: ownerSchema.optional(),
   recurrenceRule: routineRecurrenceRuleSchema.optional(),
-  intervalDays: z.number().int().positive().nullable().optional()
+  intervalDays: z.number().int().positive().nullable().optional(),
+  intervalWeeks: z.number().int().min(2).max(12).nullable().optional(),
+  weekdays: z.array(z.number().int().min(0).max(6)).nullable().optional()
 });
 
 export const completeRoutineOccurrenceRequestSchema = z.object({
@@ -824,6 +849,8 @@ export const weeklyRoutineOccurrenceSchema = z.object({
   owner: ownerSchema,
   recurrenceRule: routineRecurrenceRuleSchema,
   intervalDays: z.number().int().positive().nullable(),
+  intervalWeeks: z.number().int().min(2).max(12).nullable().optional(),
+  weekdays: z.array(z.number().int().min(0).max(6)).nullable().optional(),
   dueDate: z.string(), // ISO date string, date only (YYYY-MM-DD)
   dueState: routineDueStateSchema,
   completed: z.boolean()
@@ -1026,7 +1053,9 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
     owner: ownerSchema,
     recurrenceRule: routineRecurrenceRuleSchema,
     intervalDays: z.number().int().positive().nullable().optional(),
-    firstDueDate: z.string().datetime()
+    intervalWeeks: z.number().int().min(2).max(12).nullable().optional(),
+    weekdays: z.array(z.number().int().min(0).max(6)).nullable().optional(),
+    firstDueDate: z.string().datetime().nullable()
   }),
   z.object({
     kind: z.literal('routine_update'),
@@ -1037,7 +1066,9 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
     title: z.string().trim().min(1).optional(),
     owner: ownerSchema.optional(),
     recurrenceRule: routineRecurrenceRuleSchema.optional(),
-    intervalDays: z.number().int().positive().nullable().optional()
+    intervalDays: z.number().int().positive().nullable().optional(),
+    intervalWeeks: z.number().int().min(2).max(12).nullable().optional(),
+    weekdays: z.array(z.number().int().min(0).max(6)).nullable().optional()
   }),
   z.object({
     kind: z.literal('routine_complete'),

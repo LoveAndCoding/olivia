@@ -1155,14 +1155,33 @@ export function createItemsUncheckedAllHistoryEntry(listId: string, uncheckedCou
 // ─── Recurring Routines domain helpers ────────────────────────────────────────
 
 /**
+ * Convert JS Date.getDay() (0=Sun, 1=Mon, ..., 6=Sat) to spec weekday (0=Mon, ..., 6=Sun).
+ */
+export function jsWeekdayToSpec(jsDay: number): number {
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+/**
+ * Convert spec weekday (0=Mon, ..., 6=Sun) to JS Date.getDay() (0=Sun, 1=Mon, ..., 6=Sat).
+ */
+export function specWeekdayToJs(specDay: number): number {
+  return specDay === 6 ? 0 : specDay + 1;
+}
+
+/**
  * Advance a date by a routine's recurrence rule.
  * For `every_n_days`, intervalDays must be provided.
  * For `monthly`, clamps to last day of month if needed.
+ * For `weekly_on_days`, weekdays must be provided.
+ * For `every_n_weeks`, intervalWeeks and weekdays must be provided.
+ * For `ad_hoc`, throws — ad_hoc routines do not schedule next occurrences.
  */
 export function scheduleNextRoutineOccurrence(
   fromDate: string | Date,
   recurrenceRule: RoutineRecurrenceRule,
-  intervalDays?: number | null
+  intervalDays?: number | null,
+  weekdays?: number[] | null,
+  intervalWeeks?: number | null
 ): string {
   const from = typeof fromDate === 'string' ? new Date(fromDate) : fromDate;
 
@@ -1185,6 +1204,30 @@ export function scheduleNextRoutineOccurrence(
       }
       return addDays(from, intervalDays).toISOString();
     }
+    case 'weekly_on_days': {
+      if (!weekdays || weekdays.length === 0) {
+        throw new Error('weekdays must be a non-empty array for weekly_on_days recurrence');
+      }
+      const sorted = [...weekdays].sort((a, b) => a - b);
+      const fromSpecDay = jsWeekdayToSpec(from.getDay());
+      // Find next weekday strictly after fromSpecDay in the same week
+      const nextInWeek = sorted.find((d) => d > fromSpecDay);
+      if (nextInWeek !== undefined) {
+        const daysAhead = nextInWeek - fromSpecDay;
+        return addDays(from, daysAhead).toISOString();
+      }
+      // Wrap to first day of next week
+      const daysToNextWeekStart = 7 - fromSpecDay + sorted[0];
+      return addDays(from, daysToNextWeekStart).toISOString();
+    }
+    case 'every_n_weeks': {
+      if (!intervalWeeks || intervalWeeks < 2) {
+        throw new Error('intervalWeeks must be >= 2 for every_n_weeks recurrence');
+      }
+      return addDays(from, intervalWeeks * 7).toISOString();
+    }
+    case 'ad_hoc':
+      throw new Error('ad_hoc routines do not schedule next occurrences');
     default:
       throw new Error(`Unsupported recurrence rule: ${recurrenceRule as string}`);
   }
@@ -1199,9 +1242,15 @@ export function computeRoutineDueState(
   routine: Routine,
   currentOccurrence: RoutineOccurrence | null,
   now: Date = new Date()
-): RoutineDueState {
+): RoutineDueState | null {
+  if (routine.recurrenceRule === 'ad_hoc') {
+    return null;
+  }
   if (routine.status === 'paused') {
     return 'paused';
+  }
+  if (routine.currentDueDate === null) {
+    return null;
   }
   if (currentOccurrence && currentOccurrence.completedAt !== null) {
     return 'completed';
@@ -1221,12 +1270,20 @@ export function createRoutine(
   title: string,
   owner: Owner,
   recurrenceRule: RoutineRecurrenceRule,
-  firstDueDate: string,
+  firstDueDate: string | null,
   intervalDays?: number | null,
-  now: Date = new Date()
+  now: Date = new Date(),
+  weekdays?: number[] | null,
+  intervalWeeks?: number | null
 ): Routine {
   if (recurrenceRule === 'every_n_days' && (!intervalDays || intervalDays <= 0)) {
     throw new Error('intervalDays must be a positive integer when recurrenceRule is every_n_days');
+  }
+  if (recurrenceRule === 'weekly_on_days' && (!weekdays || weekdays.length === 0)) {
+    throw new Error('weekdays must be a non-empty array when recurrenceRule is weekly_on_days');
+  }
+  if (recurrenceRule === 'every_n_weeks' && (!intervalWeeks || intervalWeeks < 2 || !weekdays || weekdays.length !== 1)) {
+    throw new Error('intervalWeeks (2-12) and exactly one weekday are required when recurrenceRule is every_n_weeks');
   }
   const timestamp = now.toISOString();
   return routineSchema.parse({
@@ -1235,8 +1292,10 @@ export function createRoutine(
     owner,
     recurrenceRule,
     intervalDays: intervalDays ?? null,
+    intervalWeeks: intervalWeeks ?? null,
+    weekdays: weekdays ?? null,
     status: 'active',
-    currentDueDate: firstDueDate,
+    currentDueDate: recurrenceRule === 'ad_hoc' ? null : firstDueDate,
     createdAt: timestamp,
     updatedAt: timestamp,
     archivedAt: null,
@@ -1246,20 +1305,31 @@ export function createRoutine(
 
 export function updateRoutine(
   routine: Routine,
-  changes: { title?: string; owner?: Owner; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null },
+  changes: {
+    title?: string;
+    owner?: Owner;
+    recurrenceRule?: RoutineRecurrenceRule;
+    intervalDays?: number | null;
+    intervalWeeks?: number | null;
+    weekdays?: number[] | null;
+    currentDueDate?: string | null;
+  },
   now: Date = new Date()
 ): Routine {
   const newRecurrenceRule = changes.recurrenceRule ?? routine.recurrenceRule;
   const newIntervalDays = changes.intervalDays !== undefined ? changes.intervalDays : routine.intervalDays;
+  const newIntervalWeeks = changes.intervalWeeks !== undefined ? changes.intervalWeeks : routine.intervalWeeks;
+  const newWeekdays = changes.weekdays !== undefined ? changes.weekdays : routine.weekdays;
 
   if (newRecurrenceRule === 'every_n_days' && (!newIntervalDays || newIntervalDays <= 0)) {
     throw new Error('intervalDays must be a positive integer when recurrenceRule is every_n_days');
   }
 
-  // currentDueDate stays unchanged — it is the anchor for the next completion advancement.
-  // Per Decision A: when the rule changes, the NEXT occurrence after completion is recalculated
-  // from the current cycle's original start (currentDueDate), using the new rule.
-  // completeRoutineOccurrence already does this correctly; no change needed here.
+  // When switching to ad_hoc, clear currentDueDate
+  let newCurrentDueDate = changes.currentDueDate !== undefined ? changes.currentDueDate : routine.currentDueDate;
+  if (newRecurrenceRule === 'ad_hoc') {
+    newCurrentDueDate = null;
+  }
 
   return routineSchema.parse({
     ...routine,
@@ -1267,6 +1337,9 @@ export function updateRoutine(
     owner: changes.owner ?? routine.owner,
     recurrenceRule: newRecurrenceRule,
     intervalDays: newIntervalDays,
+    intervalWeeks: newIntervalWeeks,
+    weekdays: newWeekdays,
+    currentDueDate: newCurrentDueDate,
     updatedAt: now.toISOString(),
     version: routine.version + 1
   });
@@ -1279,7 +1352,8 @@ export type CompleteRoutineResult = {
 
 /**
  * Complete the current routine occurrence.
- * Advances currentDueDate from the ORIGINAL due date (schedule-anchored), not from now.
+ * For scheduled routines: advances currentDueDate from the ORIGINAL due date (schedule-anchored).
+ * For ad_hoc routines: records occurrence with dueDate = now, does not advance currentDueDate.
  */
 export function completeRoutineOccurrence(
   routine: Routine,
@@ -1294,13 +1368,38 @@ export function completeRoutineOccurrence(
   }
 
   const timestamp = now.toISOString();
-  const originalDueDate = routine.currentDueDate;
+
+  if (routine.recurrenceRule === 'ad_hoc') {
+    // Ad-hoc: record occurrence with dueDate = completion timestamp, no next due date
+    const occurrence = routineOccurrenceSchema.parse({
+      id: createId(),
+      routineId: routine.id,
+      dueDate: timestamp,
+      completedAt: timestamp,
+      completedBy,
+      skipped: false,
+      createdAt: timestamp
+    });
+
+    const updatedRoutine = routineSchema.parse({
+      ...routine,
+      currentDueDate: null,
+      updatedAt: timestamp,
+      version: routine.version + 1
+    });
+
+    return { updatedRoutine, occurrence };
+  }
+
+  const originalDueDate = routine.currentDueDate!;
 
   // Schedule-anchored: advance from original due date, not from completion date
   const nextDueDate = scheduleNextRoutineOccurrence(
     originalDueDate,
     routine.recurrenceRule,
-    routine.intervalDays
+    routine.intervalDays,
+    routine.weekdays,
+    routine.intervalWeeks
   );
 
   const occurrence = routineOccurrenceSchema.parse({
@@ -1375,6 +1474,85 @@ export function restoreRoutine(routine: Routine, now: Date = new Date()): Routin
     updatedAt: now.toISOString(),
     version: routine.version + 1
   });
+}
+
+const WEEKDAY_NAMES_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/**
+ * Format a human-readable recurrence label for display.
+ */
+export function formatRecurrenceLabel(
+  recurrenceRule: RoutineRecurrenceRule,
+  intervalDays?: number | null,
+  weekdays?: number[] | null,
+  intervalWeeks?: number | null
+): string {
+  switch (recurrenceRule) {
+    case 'daily': return 'Daily';
+    case 'weekly': return 'Weekly';
+    case 'monthly': return 'Monthly';
+    case 'every_n_days': return `Every ${intervalDays ?? '?'} days`;
+    case 'weekly_on_days': {
+      if (!weekdays || weekdays.length === 0) return 'Weekly';
+      const sorted = [...weekdays].sort((a, b) => a - b);
+      return sorted.map((d) => WEEKDAY_NAMES_SHORT[d]).join(', ');
+    }
+    case 'every_n_weeks': {
+      const weekStr = `Every ${intervalWeeks ?? '?'} weeks`;
+      if (weekdays && weekdays.length === 1) {
+        return `${weekStr}, ${WEEKDAY_NAMES_SHORT[weekdays[0]]}`;
+      }
+      return weekStr;
+    }
+    case 'ad_hoc': return 'Track when done';
+    default: return String(recurrenceRule);
+  }
+}
+
+/**
+ * Calculate the first due date for a new routine based on its rule.
+ * For weekly_on_days: next matching weekday from today.
+ * For every_n_weeks: next matching weekday from today.
+ * For ad_hoc: returns null.
+ */
+export function calculateFirstDueDate(
+  recurrenceRule: RoutineRecurrenceRule,
+  weekdays?: number[] | null,
+  now: Date = new Date()
+): string | null {
+  if (recurrenceRule === 'ad_hoc') {
+    return null;
+  }
+  if (recurrenceRule === 'weekly_on_days' && weekdays && weekdays.length > 0) {
+    const sorted = [...weekdays].sort((a, b) => a - b);
+    const todaySpec = jsWeekdayToSpec(now.getDay());
+    // Find next matching day today or later
+    const todayOrLater = sorted.find((d) => d >= todaySpec);
+    if (todayOrLater !== undefined) {
+      const daysAhead = todayOrLater - todaySpec;
+      const target = addDays(startOfDay(now), daysAhead);
+      target.setHours(12, 0, 0, 0);
+      return target.toISOString();
+    }
+    // Wrap to next week
+    const daysToNextWeek = 7 - todaySpec + sorted[0];
+    const target = addDays(startOfDay(now), daysToNextWeek);
+    target.setHours(12, 0, 0, 0);
+    return target.toISOString();
+  }
+  if (recurrenceRule === 'every_n_weeks' && weekdays && weekdays.length === 1) {
+    const targetDay = weekdays[0];
+    const todaySpec = jsWeekdayToSpec(now.getDay());
+    let daysAhead = targetDay - todaySpec;
+    if (daysAhead < 0) daysAhead += 7;
+    const target = addDays(startOfDay(now), daysAhead);
+    target.setHours(12, 0, 0, 0);
+    return target.toISOString();
+  }
+  // For other rules, use today at noon as default
+  const target = startOfDay(now);
+  target.setHours(12, 0, 0, 0);
+  return target.toISOString();
 }
 
 // ─── Meal Planning domain helpers ─────────────────────────────────────────────
@@ -1584,24 +1762,42 @@ export function getRoutineOccurrenceDatesForWeek(
     return [];
   }
 
+  // Ad-hoc routines have no scheduled dates
+  if (routine.recurrenceRule === 'ad_hoc' || routine.currentDueDate === null) {
+    return [];
+  }
+
+  // For weekly_on_days, directly compute matching days in the week
+  if (routine.recurrenceRule === 'weekly_on_days' && routine.weekdays) {
+    const results: Date[] = [];
+    for (let d = startOfDay(weekStart); d <= weekEnd; d = addDays(d, 1)) {
+      const specDay = jsWeekdayToSpec(d.getDay());
+      if (routine.weekdays.includes(specDay)) {
+        results.push(startOfDay(d));
+      }
+    }
+    return results;
+  }
+
   const anchor = startOfDay(new Date(routine.currentDueDate));
 
   // Determine max backward steps to avoid infinite loops.
-  // The anchor (currentDueDate) may be up to ~1 cycle ahead of weekEnd,
-  // so we need enough steps to reach weekStart from there.
   let maxBackward: number;
   switch (routine.recurrenceRule) {
     case 'daily':
-      maxBackward = 14; // anchor could be up to weekEnd+7 days ahead
+      maxBackward = 14;
       break;
     case 'weekly':
-      maxBackward = 3; // at most 2 weeks back from any anchor within range
+      maxBackward = 3;
       break;
     case 'monthly':
       maxBackward = 3;
       break;
     case 'every_n_days':
       maxBackward = Math.ceil(14 / (routine.intervalDays ?? 1)) + 1;
+      break;
+    case 'every_n_weeks':
+      maxBackward = Math.ceil(14 / ((routine.intervalWeeks ?? 2) * 7)) + 1;
       break;
     default:
       maxBackward = 14;
@@ -1613,6 +1809,8 @@ export function getRoutineOccurrenceDatesForWeek(
       case 'weekly': return subWeeks(d, 1);
       case 'monthly': return subMonths(d, 1);
       case 'every_n_days': return subDays(d, routine.intervalDays ?? 1);
+      case 'every_n_weeks': return subDays(d, (routine.intervalWeeks ?? 2) * 7);
+      default: return subDays(d, 1);
     }
   };
 
@@ -1622,6 +1820,8 @@ export function getRoutineOccurrenceDatesForWeek(
       case 'weekly': return addWeeks(d, 1);
       case 'monthly': return addMonths(d, 1);
       case 'every_n_days': return addDays(d, routine.intervalDays ?? 1);
+      case 'every_n_weeks': return addDays(d, (routine.intervalWeeks ?? 2) * 7);
+      default: return addDays(d, 1);
     }
   };
 
@@ -1634,7 +1834,6 @@ export function getRoutineOccurrenceDatesForWeek(
     earliest = prev;
     steps++;
   }
-  // If earliest fell below weekStart during the walk, step back up one
   if (earliest < weekStart) {
     earliest = stepForward(earliest);
   }
@@ -1818,14 +2017,19 @@ export function skipRoutineOccurrence(
   if (routine.status === 'archived') {
     throw new Error('Cannot skip an archived routine.');
   }
+  if (routine.recurrenceRule === 'ad_hoc') {
+    throw new Error('Cannot skip an ad_hoc routine.');
+  }
 
   const timestamp = now.toISOString();
-  const originalDueDate = routine.currentDueDate;
+  const originalDueDate = routine.currentDueDate!;
 
   const nextDueDate = scheduleNextRoutineOccurrence(
     originalDueDate,
     routine.recurrenceRule,
-    routine.intervalDays
+    routine.intervalDays,
+    routine.weekdays,
+    routine.intervalWeeks
   );
 
   const occurrence = routineOccurrenceSchema.parse({
@@ -2006,9 +2210,20 @@ export function isInboxItemStale(
 }
 
 /**
+ * Get the effective interval in days for freshness calculations.
+ */
+function getEffectiveIntervalDays(routine: Routine): number {
+  if (routine.recurrenceRule === 'every_n_weeks' && routine.intervalWeeks) {
+    return routine.intervalWeeks * 7;
+  }
+  return routine.intervalDays ?? 7;
+}
+
+/**
  * Check if a routine is stale.
  * Stale = active routine where last completed occurrence > 2× intervalDays ago.
  * For routines without intervalDays (e.g., weekly = 7), uses 7 as default.
+ * Ad-hoc routines are never stale (they have no schedule).
  */
 export function isRoutineStale(
   routine: Routine,
@@ -2018,9 +2233,14 @@ export function isRoutineStale(
   const active = routine.status === 'active';
   if (!active) return { stale: false, lastActivityAt: routine.updatedAt };
 
+  // Ad-hoc routines have no schedule, so no staleness concept
+  if (routine.recurrenceRule === 'ad_hoc') {
+    return { stale: false, lastActivityAt: lastCompletedAt ?? routine.updatedAt };
+  }
+
   const referenceDate = routine.freshnessCheckedAt;
   if (referenceDate) {
-    const intervalDays = routine.intervalDays ?? 7;
+    const intervalDays = getEffectiveIntervalDays(routine);
     const threshold = intervalDays * FRESHNESS_THRESHOLDS.routine;
     const daysSince = differenceInCalendarDays(now, new Date(referenceDate));
     return { stale: daysSince >= threshold, lastActivityAt: referenceDate };
@@ -2028,14 +2248,13 @@ export function isRoutineStale(
 
   // Fall back to last completed occurrence
   if (!lastCompletedAt) {
-    // No completions ever — check if overdue by 2× interval from creation
-    const intervalDays = routine.intervalDays ?? 7;
+    const intervalDays = getEffectiveIntervalDays(routine);
     const threshold = intervalDays * FRESHNESS_THRESHOLDS.routine;
     const daysSince = differenceInCalendarDays(now, new Date(routine.createdAt));
     return { stale: daysSince >= threshold, lastActivityAt: routine.createdAt };
   }
 
-  const intervalDays = routine.intervalDays ?? 7;
+  const intervalDays = getEffectiveIntervalDays(routine);
   const threshold = intervalDays * FRESHNESS_THRESHOLDS.routine;
   const daysSince = differenceInCalendarDays(now, new Date(lastCompletedAt));
   return { stale: daysSince >= threshold, lastActivityAt: lastCompletedAt };

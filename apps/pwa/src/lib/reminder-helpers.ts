@@ -204,6 +204,19 @@ export function getDateChipOptions(now: Date = new Date()) {
   ];
 }
 
+export function formatSnoozeUntil(isoString: string): string {
+  const d = new Date(isoString);
+  const now = new Date();
+  const tomorrow = addDays(now, 1);
+  if (d.toDateString() === tomorrow.toDateString()) {
+    return `tomorrow at ${format(d, 'h:mm a')}`;
+  }
+  if (d.toDateString() === now.toDateString()) {
+    return format(d, 'h:mm a');
+  }
+  return `${format(d, 'MMM d')}, ${format(d, 'h:mm a')}`;
+}
+
 export function homeSubtitleForReminders(
   reminderCount: number,
   _snoozedCount: number,

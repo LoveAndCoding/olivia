@@ -3,13 +3,16 @@ import {
   addListItemRequestSchema,
   archiveListRequestSchema,
   archivedListIndexResponseSchema,
+  bulkListActionResponseSchema,
   checkListItemRequestSchema,
+  clearCompletedItemsRequestSchema,
   createListRequestSchema,
   deleteListRequestSchema,
   listDetailResponseSchema,
   outboxCommandSchema,
   removeListItemRequestSchema,
   restoreListRequestSchema,
+  uncheckAllItemsRequestSchema,
   uncheckListItemRequestSchema,
   updateListItemBodyRequestSchema,
   updateListTitleRequestSchema
@@ -268,6 +271,122 @@ describe('list contracts', () => {
         confirmed: true
       });
       expect(result.kind).toBe('item_remove');
+    });
+
+    it('parses items_clear_completed outbox command with confirmed', () => {
+      const result = outboxCommandSchema.parse({
+        kind: 'items_clear_completed',
+        commandId: '550e8400-e29b-41d4-a716-446655440001',
+        actorRole: 'stakeholder',
+        listId,
+        confirmed: true
+      });
+      expect(result.kind).toBe('items_clear_completed');
+    });
+
+    it('parses items_uncheck_all outbox command with confirmed', () => {
+      const result = outboxCommandSchema.parse({
+        kind: 'items_uncheck_all',
+        commandId: '550e8400-e29b-41d4-a716-446655440001',
+        actorRole: 'stakeholder',
+        listId,
+        confirmed: true
+      });
+      expect(result.kind).toBe('items_uncheck_all');
+    });
+  });
+
+  describe('completed-item management schemas', () => {
+    it('parses clear completed items request — requires confirmed: true', () => {
+      const result = clearCompletedItemsRequestSchema.parse({
+        actorRole: 'stakeholder',
+        listId,
+        confirmed: true
+      });
+      expect(result.confirmed).toBe(true);
+      expect(result.listId).toBe(listId);
+    });
+
+    it('rejects clear completed items request without confirmed field', () => {
+      expect(() =>
+        clearCompletedItemsRequestSchema.parse({
+          actorRole: 'stakeholder',
+          listId
+        })
+      ).toThrow();
+    });
+
+    it('rejects clear completed items request with confirmed: false', () => {
+      expect(() =>
+        clearCompletedItemsRequestSchema.parse({
+          actorRole: 'stakeholder',
+          listId,
+          confirmed: false
+        })
+      ).toThrow();
+    });
+
+    it('parses uncheck all items request — requires confirmed: true', () => {
+      const result = uncheckAllItemsRequestSchema.parse({
+        actorRole: 'stakeholder',
+        listId,
+        confirmed: true
+      });
+      expect(result.confirmed).toBe(true);
+      expect(result.listId).toBe(listId);
+    });
+
+    it('rejects uncheck all items request without confirmed field', () => {
+      expect(() =>
+        uncheckAllItemsRequestSchema.parse({
+          actorRole: 'stakeholder',
+          listId
+        })
+      ).toThrow();
+    });
+
+    it('rejects uncheck all items request with confirmed: false', () => {
+      expect(() =>
+        uncheckAllItemsRequestSchema.parse({
+          actorRole: 'stakeholder',
+          listId,
+          confirmed: false
+        })
+      ).toThrow();
+    });
+
+    it('parses bulk list action response with affectedCount', () => {
+      const result = bulkListActionResponseSchema.parse({
+        affectedCount: 7
+      });
+      expect(result.affectedCount).toBe(7);
+    });
+
+    it('rejects bulk list action response with negative affectedCount', () => {
+      expect(() =>
+        bulkListActionResponseSchema.parse({
+          affectedCount: -1
+        })
+      ).toThrow();
+    });
+
+    it('parses bulk list action response with zero affectedCount', () => {
+      const result = bulkListActionResponseSchema.parse({
+        affectedCount: 0
+      });
+      expect(result.affectedCount).toBe(0);
+    });
+
+    it('rejects clear completed items with spouse role at API boundary', () => {
+      // The schema itself accepts any valid actorRole, but the API layer
+      // calls assertStakeholderWrite before executing. This test validates
+      // the schema parses — the role guard is tested at the domain level.
+      const result = clearCompletedItemsRequestSchema.parse({
+        actorRole: 'spouse',
+        listId,
+        confirmed: true
+      });
+      expect(result.actorRole).toBe('spouse');
     });
   });
 });

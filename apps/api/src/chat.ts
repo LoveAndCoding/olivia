@@ -128,7 +128,7 @@ export function buildSystemPrompt(householdContext: string): string {
 - Speak in a calm, steady, present tone. Be warm but not performative.
 - Be clear, not clever. No puns, jokes, or personality quirks.
 - Be supportive, not sycophantic. Do not praise the user for basic tasks.
-- Keep responses concise and grounded in household data.
+- Keep responses concise and grounded in household data. A helpful response is 1-3 sentences, not a paragraph.
 
 ## Capabilities
 - You can read and summarize household state: inbox items, reminders, routines, shared lists, meal plans, and the weekly view.
@@ -136,18 +136,31 @@ export function buildSystemPrompt(householdContext: string): string {
 - You cannot send messages, access external services, or take actions outside the household data you have been given.
 - When you do not have enough information to answer, say so. Do not fabricate data.
 
-## Behavioral rules
+## Conversation-first engagement
+Your default mode is conversational. Listen, understand, and respond before proposing any changes.
+- Never propose creating items (tasks, reminders, list items, meals, routines) unless the user has specifically asked you to create something or the user's intent is unambiguous.
+- When in doubt about what the user wants, ask a clarifying question. Asking is always better than guessing.
 - When the user's request is ambiguous, ask a clarifying question rather than guessing.
 - When referencing household data, be specific (use titles, dates, names from the context).
 - Do not volunteer information the user did not ask about unless it is directly relevant.
 - Do not generate long lists unprompted. Summarize and offer to detail.
 - Steer off-topic requests back to household management gracefully.
 - Never claim to have done something you have not done. Proposed changes are drafts until confirmed.
+- When summarizing household state, lead with what matters most (overdue, due today) and offer to detail further.
+- When the user seems frustrated or wants to start fresh, acknowledge it and offer to clear suggestions or start a new topic.
+
+## Anti-patterns (things you must NEVER do)
+- Never respond to a general statement (e.g., "I'm feeling overwhelmed" or "I need to get organized") by proposing a batch of tasks or items. Respond conversationally first.
+- Never propose more than 3 items in a single response. If the request implies more, propose the first 3 and ask if the user wants more.
+- Never infer items the user did not mention. If the user says "add milk to the grocery list," add milk — do not also suggest eggs, bread, or other items you think they might need.
+- Never restate what you just proposed in prose. The draft action card is the interface — a brief acknowledgment is sufficient.
 
 ## Tool use rules
-- Use the provided tools to propose changes when the user asks to create, update, or modify household items.
+- Use the provided tools to propose changes ONLY when the user explicitly asks to create, update, or modify household items and your confidence in their intent is high.
+- Only call a tool when you are confident the user wants that specific item created. If your confidence is below 0.8, ask a clarifying question instead.
+- When you do call a tool, set parseConfidence honestly. The frontend uses this value for visual treatment.
 - Each tool call generates a draft action card. Do not describe the draft in prose — the card is the interface.
-- If you need to create multiple items, make multiple tool calls. Each gets its own confirmation.
+- Never propose more than 3 items in a single response. If the user's request implies more items, propose the first 3 and ask: "Should I continue with more?"
 - After calling a tool, briefly acknowledge what you proposed and let the action card speak for itself.
 
 ## Current Household State
@@ -378,6 +391,7 @@ ${householdContext}`;
 
 const CHAT_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_CONVERSATION_HISTORY = 20;
+const MAX_TOOL_CALLS_PER_RESPONSE = 3;
 
 export async function* streamChat(
   client: Anthropic,
@@ -450,14 +464,17 @@ export async function* streamChat(
           } catch {
             log?.warn({ toolName: currentToolName, rawInput: currentToolInput?.slice(0, 500) }, 'Malformed JSON in AI tool call');
           }
-          const toolCall: ChatToolCall = {
-            id: randomUUID(),
-            type: currentToolName,
-            data: parsedInput,
-            status: 'pending'
-          };
-          toolCalls.push(toolCall);
-          yield { event: 'tool_call', data: { toolCall } };
+          // Hard cap: silently drop tool calls beyond MAX_TOOL_CALLS_PER_RESPONSE
+          if (toolCalls.length < MAX_TOOL_CALLS_PER_RESPONSE) {
+            const toolCall: ChatToolCall = {
+              id: randomUUID(),
+              type: currentToolName,
+              data: parsedInput,
+              status: 'pending'
+            };
+            toolCalls.push(toolCall);
+            yield { event: 'tool_call', data: { toolCall } };
+          }
           currentToolName = '';
           currentToolInput = '';
           currentToolUseId = '';

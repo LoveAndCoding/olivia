@@ -824,14 +824,21 @@ export class InboxRepository {
   // ─── Routine repository ───────────────────────────────────────────────────
 
   private mapRoutineRow(row: Record<string, unknown>): Routine {
+    const weekdaysRaw = row.weekdays;
+    let weekdays: number[] | null = null;
+    if (typeof weekdaysRaw === 'string' && weekdaysRaw) {
+      try { weekdays = JSON.parse(weekdaysRaw); } catch { weekdays = null; }
+    }
     const base = routineSchema.parse({
       id: row.id,
       title: row.title,
       owner: row.owner,
       recurrenceRule: row.recurrence_rule,
       intervalDays: row.interval_days ?? null,
+      intervalWeeks: row.interval_weeks ?? null,
+      weekdays,
       status: row.status,
-      currentDueDate: row.current_due_date,
+      currentDueDate: row.current_due_date ?? null,
       ritualType: row.ritual_type ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -896,11 +903,12 @@ export class InboxRepository {
   createRoutine(routine: Routine): void {
     this.db.prepare(`
       INSERT INTO routines (
-        id, title, owner, recurrence_rule, interval_days, status, current_due_date,
+        id, title, owner, recurrence_rule, interval_days, interval_weeks, weekdays, status, current_due_date,
         ritual_type, created_at, updated_at, archived_at, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       routine.id, routine.title, routine.owner, routine.recurrenceRule, routine.intervalDays,
+      routine.intervalWeeks, routine.weekdays ? JSON.stringify(routine.weekdays) : null,
       routine.status, routine.currentDueDate, routine.ritualType ?? null,
       routine.createdAt, routine.updatedAt, routine.archivedAt, routine.version
     );
@@ -909,15 +917,37 @@ export class InboxRepository {
   updateRoutine(routine: Routine, expectedVersion: number): boolean {
     const result = this.db.prepare(`
       UPDATE routines
-      SET title = ?, owner = ?, recurrence_rule = ?, interval_days = ?, status = ?,
+      SET title = ?, owner = ?, recurrence_rule = ?, interval_days = ?, interval_weeks = ?, weekdays = ?, status = ?,
           current_due_date = ?, ritual_type = ?, updated_at = ?, archived_at = ?, version = ?
       WHERE id = ? AND version = ?
     `).run(
-      routine.title, routine.owner, routine.recurrenceRule, routine.intervalDays, routine.status,
-      routine.currentDueDate, routine.ritualType ?? null, routine.updatedAt, routine.archivedAt, routine.version,
+      routine.title, routine.owner, routine.recurrenceRule, routine.intervalDays,
+      routine.intervalWeeks, routine.weekdays ? JSON.stringify(routine.weekdays) : null,
+      routine.status, routine.currentDueDate, routine.ritualType ?? null,
+      routine.updatedAt, routine.archivedAt, routine.version,
       routine.id, expectedVersion
     );
     return result.changes > 0;
+  }
+
+  getLastCompletedAt(routineId: string): string | null {
+    const row = this.db
+      .prepare('SELECT completed_at FROM routine_occurrences WHERE routine_id = ? AND completed_at IS NOT NULL AND skipped = 0 ORDER BY completed_at DESC LIMIT 1')
+      .get(routineId) as { completed_at: string } | undefined;
+    return row?.completed_at ?? null;
+  }
+
+  getLastCompletedAtBulk(routineIds: string[]): Map<string, string> {
+    if (routineIds.length === 0) return new Map();
+    const placeholders = routineIds.map(() => '?').join(',');
+    const rows = this.db
+      .prepare(`SELECT routine_id, MAX(completed_at) as last_completed_at FROM routine_occurrences WHERE routine_id IN (${placeholders}) AND completed_at IS NOT NULL AND skipped = 0 GROUP BY routine_id`)
+      .all(...routineIds) as Array<{ routine_id: string; last_completed_at: string }>;
+    const map = new Map<string, string>();
+    for (const row of rows) {
+      map.set(row.routine_id, row.last_completed_at);
+    }
+    return map;
   }
 
   deleteRoutine(routineId: string): void {
@@ -1762,6 +1792,11 @@ export class InboxRepository {
       this.db.prepare('DELETE FROM conversation_messages WHERE conversation_id = ?').run(conversationId);
       this.db.prepare('DELETE FROM conversations WHERE id = ?').run(conversationId);
     })();
+  }
+
+  deleteChatMessage(messageId: string): boolean {
+    const result = this.db.prepare('DELETE FROM conversation_messages WHERE id = ?').run(messageId);
+    return result.changes > 0;
   }
 
   // ─── Onboarding (OLI-119) ─────────────────────────────────────────────────

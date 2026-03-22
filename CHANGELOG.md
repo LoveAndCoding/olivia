@@ -6,6 +6,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-22
+
+### Added
+- Routines now support flexible scheduling — track irregular chores like dishes or laundry with "last done" visibility instead of rigid recurring schedules
+- Reminders now have a proper date and time picker instead of text-only entry — easier to set exact times
+
+### Changed
+- AI chat is now calmer and more conversational — Olivia asks clarifying questions before suggesting tasks instead of proposing multiple items unprompted
+- Chat responses are limited to at most 3 suggestions at a time, with an offer to continue if more are needed
+
+### Fixed
+- Snoozed reminders now clear from the home screen until the snooze time arrives
+- Improved error visibility for AI and chat connection issues
+
 ## [0.5.0] - 2026-03-22
 
 ### Added

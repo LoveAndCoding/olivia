@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { Reminder, Owner, RecurrenceCadence, ReminderUpdateChange } from '@olivia/contracts';
 import { BottomSheet } from './BottomSheet';
+import { DateTimePicker } from './DateTimePicker';
 import { ownerLabel, formatScheduledLabel } from '../../lib/reminder-helpers';
-import { format } from 'date-fns';
 
 type EditReminderSheetProps = {
   open: boolean;
@@ -31,18 +31,19 @@ export function EditReminderSheet({ open, onClose, reminder, onSave }: EditRemin
       setRecurring(reminder.recurrenceCadence !== 'none');
       setCadence(reminder.recurrenceCadence === 'none' ? 'weekly' : reminder.recurrenceCadence);
       setNote(reminder.note ?? '');
+      setPickerOpen(false);
     }
   }, [open, reminder]);
 
-  const handleChangeDate = useCallback(() => {
-    const input = prompt('Enter new date/time:', format(new Date(scheduledAt), "yyyy-MM-dd'T'HH:mm"));
-    if (input) {
-      const parsed = new Date(input);
-      if (!isNaN(parsed.getTime())) {
-        setScheduledAt(parsed.toISOString());
-      }
-    }
-  }, [scheduledAt]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const handleDateChange = useCallback((isoString: string) => {
+    setScheduledAt(isoString);
+  }, []);
+
+  const handlePickerToggle = useCallback(() => {
+    setPickerOpen((prev) => !prev);
+  }, []);
 
   const handleSave = useCallback(() => {
     const change: ReminderUpdateChange = {};
@@ -78,9 +79,13 @@ export function EditReminderSheet({ open, onClose, reminder, onSave }: EditRemin
           <span className="rem-chip active">
             {formatScheduledLabel(scheduledAt)}
           </span>
-          <button type="button" className="rem-chip" onClick={handleChangeDate}>
-            + Change
-          </button>
+          <DateTimePicker
+            value={scheduledAt}
+            onChange={handleDateChange}
+            mode="edit"
+            open={pickerOpen}
+            onToggle={handlePickerToggle}
+          />
         </div>
       </div>
 

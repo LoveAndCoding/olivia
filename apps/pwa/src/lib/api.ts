@@ -480,13 +480,15 @@ export async function createRoutine(
   title: string,
   owner: Owner,
   recurrenceRule: RoutineRecurrenceRule,
-  firstDueDate: string,
-  intervalDays?: number | null
+  firstDueDate: string | null,
+  intervalDays?: number | null,
+  weekdays?: number[] | null,
+  intervalWeeks?: number | null
 ): Promise<RoutineMutationResponse> {
   return routineMutationResponseSchema.parse(
     await request<RoutineMutationResponse>('/api/routines', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, title, owner, recurrenceRule, firstDueDate, intervalDays })
+      body: JSON.stringify({ actorRole: role, title, owner, recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks })
     })
   );
 }
@@ -495,7 +497,7 @@ export async function updateRoutine(
   role: ActorRole,
   routineId: string,
   expectedVersion: number,
-  changes: { title?: string; owner?: Owner; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null }
+  changes: { title?: string; owner?: Owner; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null; intervalWeeks?: number | null; weekdays?: number[] | null }
 ): Promise<RoutineMutationResponse> {
   return routineMutationResponseSchema.parse(
     await request<RoutineMutationResponse>(`/api/routines/${routineId}`, {
@@ -846,6 +848,10 @@ export async function confirmChatAction(toolCallId: string): Promise<Record<stri
 
 export async function dismissChatAction(toolCallId: string): Promise<void> {
   await request<{ dismissed: boolean }>(`/api/chat/actions/${toolCallId}/dismiss`, { method: 'POST' });
+}
+
+export async function undoChatResponse(messageId: string): Promise<void> {
+  await request<{ undone: boolean }>(`/api/chat/messages/${messageId}/undo`, { method: 'POST' });
 }
 
 // ─── Onboarding API (OLI-119) ──────────────────────────────────────────────

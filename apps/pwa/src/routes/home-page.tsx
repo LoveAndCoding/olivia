@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix, Stethoscope } from '@phosphor-icons/react';
-import { computeReminderState, rankRemindersForSurfacing } from '@olivia/domain';
+import { rankRemindersForSurfacing } from '@olivia/domain';
 import { getWeekBounds } from '@olivia/domain';
 import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, WeeklyReminder, WeeklyMealEntry, WeeklyInboxItem } from '@olivia/contracts';
 import { useRole } from '../lib/role';
@@ -16,6 +16,7 @@ import { CreateReminderSheet } from '../components/reminders/CreateReminderSheet
 import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
 import { SpouseBanner } from '../components/lists/SpouseBanner';
+import { formatSnoozeUntil } from '../lib/reminder-helpers';
 import type { NudgeData } from '../types/display';
 import { fetchOnboardingState, startOnboarding, finishOnboarding, fetchHealthCheckState, dismissHealthCheck, type OnboardingState, type HealthCheckState } from '../lib/api';
 import { getHealthCheckProgress } from '../lib/client-db';
@@ -460,9 +461,8 @@ export function HomePage() {
     }
     const byState = reminderQuery.data.remindersByState;
     const now = new Date();
-    const allActive: Reminder[] = [...byState.overdue, ...byState.due, ...byState.upcoming, ...byState.snoozed];
-    const ranked = rankRemindersForSurfacing(allActive, now, 4);
-    const surfaced = ranked.filter((r) => computeReminderState(r, now) !== 'snoozed').slice(0, 3);
+    const allActive: Reminder[] = [...byState.overdue, ...byState.due, ...byState.upcoming];
+    const surfaced = rankRemindersForSurfacing(allActive, now, 3);
 
     let nudgeData: NudgeData | null = null;
     const dueWithLinkedTask = byState.due.find((r) => r.linkedInboxItem && r.linkedInboxItem.status === 'open');
@@ -540,7 +540,7 @@ export function HomePage() {
       await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-      setBanner({ message: `Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
+      setBanner({ message: `😴 Snoozed until ${formatSnoozeUntil(isoString)}`, variant: 'sky' });
       setTimeout(() => setBanner(null), 5000);
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not snooze reminder');

@@ -12,15 +12,14 @@ test.describe('Routine lifecycle', () => {
     await page.goto('/routines');
     await expect(page.locator('.screen-title')).toContainText('Routines', { timeout: 10_000 });
 
-    // Open create sheet
-    await page.locator('.add-label', { hasText: 'New routine…' }).click();
+    // Open create sheet — first() needed because empty-state has a second button
+    await page.locator('.add-rem-btn', { hasText: 'New routine…' }).first().click();
 
     // Fill the form
     await page.getByPlaceholder('e.g. Take out the trash').fill('Water the garden');
     // Owner defaults to stakeholder — leave it
-    // Select recurrence
-    const recurrenceSelect = page.locator('select.rem-form-input').nth(1);
-    await recurrenceSelect.selectOption('weekly');
+    // Select recurrence via radio button (exact label to avoid matching "Weekly on specific days")
+    await page.locator('.recurrence-option-row', { hasText: 'Every week on a day' }).click();
 
     // Set first due date to today
     const today = new Date();
@@ -45,10 +44,9 @@ test.describe('Routine lifecycle', () => {
 
     if (!hasCompletable) {
       // Create one that's due today
-      await page.locator('.add-label', { hasText: 'New routine…' }).click();
+      await page.locator('.add-rem-btn', { hasText: 'New routine…' }).first().click();
       await page.getByPlaceholder('e.g. Take out the trash').fill('E2E completion test');
-      const recurrenceSelect = page.locator('select.rem-form-input').nth(1);
-      await recurrenceSelect.selectOption('daily');
+      await page.locator('.recurrence-option-row', { hasText: 'Every day' }).click();
       const today = new Date();
       const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       await page.locator('input[type="date"]').fill(todayIso);
@@ -74,10 +72,9 @@ test.describe('Routine lifecycle', () => {
     await page.goto('/routines');
     await expect(page.locator('.screen-title')).toContainText('Routines', { timeout: 10_000 });
 
-    await page.locator('.add-label', { hasText: 'New routine…' }).click();
+    await page.locator('.add-rem-btn', { hasText: 'New routine…' }).first().click();
     await page.getByPlaceholder('e.g. Take out the trash').fill('Weekly view check');
-    const recurrenceSelect = page.locator('select.rem-form-input').nth(1);
-    await recurrenceSelect.selectOption('daily');
+    await page.locator('.recurrence-option-row', { hasText: 'Every day' }).click();
     const today = new Date();
     const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     await page.locator('input[type="date"]').fill(todayIso);
@@ -100,7 +97,7 @@ test.describe('Routine lifecycle', () => {
     await expect(page.locator('.screen-title')).toContainText('Routines', { timeout: 10_000 });
 
     // No "New routine…" button for spouse
-    await expect(page.locator('.add-label', { hasText: 'New routine…' })).toHaveCount(0);
+    await expect(page.locator('.add-rem-btn', { hasText: 'New routine…' })).toHaveCount(0);
 
     // No completion checkboxes
     await expect(page.locator('.task-checkbox')).toHaveCount(0);

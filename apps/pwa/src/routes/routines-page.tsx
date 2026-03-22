@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, isToday, isTomorrow } from 'date-fns';
+import { format, isToday, isTomorrow, formatDistanceToNow } from 'date-fns';
 import type { Owner, Routine, RoutineDueState, RoutineRecurrenceRule } from '@olivia/contracts';
-import { computeRoutineDueState as computeDueState } from '@olivia/domain';
+import { computeRoutineDueState as computeDueState, formatRecurrenceLabel as formatRecurrenceLabelDomain, calculateFirstDueDate } from '@olivia/domain';
 import { ArrowsClockwise, Plus } from '@phosphor-icons/react';
 import { useRole } from '../lib/role';
 import {
@@ -16,23 +16,27 @@ import { BottomNav } from '../components/bottom-nav';
 import { BottomSheet } from '../components/reminders/BottomSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
 import { showErrorToast } from '../lib/error-toast';
+import { WeekdayPicker } from '../components/routines/WeekdayPicker';
+import { WeekIntervalStepper } from '../components/routines/WeekIntervalStepper';
 
 type FilterTab = 'active' | 'archived';
-
-function formatRecurrenceLabel(rule: RoutineRecurrenceRule, intervalDays?: number | null): string {
-  switch (rule) {
-    case 'daily': return 'Daily';
-    case 'weekly': return 'Weekly';
-    case 'monthly': return 'Monthly';
-    case 'every_n_days': return `Every ${intervalDays ?? '?'} days`;
-  }
-}
 
 function formatDueDate(isoString: string): string {
   const date = new Date(isoString);
   if (isToday(date)) return 'Today';
   if (isTomorrow(date)) return 'Tomorrow';
   return format(date, 'EEE, MMM d');
+}
+
+function formatLastDone(lastCompletedAt: string | null | undefined): string {
+  if (!lastCompletedAt) return 'Not yet done';
+  const date = new Date(lastCompletedAt);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays > 30) {
+    return `Last done: ${format(date, 'MMM d')}`;
+  }
+  return `Last done: ${formatDistanceToNow(date, { addSuffix: false })} ago`;
 }
 
 function dueStateBadge(state: RoutineDueState): { label: string; className: string } {
@@ -47,7 +51,7 @@ function dueStateBadge(state: RoutineDueState): { label: string; className: stri
 
 type RoutineCardProps = {
   routine: Routine;
-  dueState: RoutineDueState;
+  dueState: RoutineDueState | null;
   onComplete: () => void;
   onNavigate: () => void;
   isSpouse: boolean;
@@ -77,7 +81,7 @@ function RitualCard({ routine, dueState, onStartReview, isSpouse }: {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="list-card-title" style={{ fontWeight: 600 }}>{routine.title}</div>
           <div className="list-card-meta" style={{ color: 'var(--ink-3)', fontSize: 12, marginTop: 2 }}>
-            {formatDueDate(routine.currentDueDate)} · {formatRecurrenceLabel(routine.recurrenceRule, routine.intervalDays)}
+            {routine.currentDueDate ? formatDueDate(routine.currentDueDate) : ''} · {formatRecurrenceLabelDomain(routine.recurrenceRule, routine.intervalDays, routine.weekdays, routine.intervalWeeks)}
           </div>
         </div>
         <span className={badge.className}>{badge.label}</span>
@@ -120,8 +124,9 @@ function RitualCard({ routine, dueState, onStartReview, isSpouse }: {
 }
 
 function RoutineCard({ routine, dueState, onComplete, onNavigate, isSpouse, busy }: RoutineCardProps) {
-  const badge = dueStateBadge(dueState);
-  const canComplete = !isSpouse && (dueState === 'due' || dueState === 'overdue');
+  const isAdHoc = routine.recurrenceRule === 'ad_hoc';
+  const badge = dueState ? dueStateBadge(dueState) : null;
+  const canComplete = !isSpouse && (isAdHoc || (dueState && (dueState === 'due' || dueState === 'overdue')));
   const isOverdue = dueState === 'overdue';
 
   return (
@@ -129,7 +134,7 @@ function RoutineCard({ routine, dueState, onComplete, onNavigate, isSpouse, busy
       className="list-card"
       style={{
         cursor: 'pointer',
-        borderLeft: isOverdue ? '3px solid var(--rose)' : undefined,
+        borderLeft: isOverdue ? '3px solid var(--rose)' : isAdHoc ? undefined : undefined,
         paddingLeft: isOverdue ? 13 : undefined,
       }}
       onClick={onNavigate}
@@ -154,20 +159,38 @@ function RoutineCard({ routine, dueState, onComplete, onNavigate, isSpouse, busy
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="list-card-title" style={{ fontWeight: 600 }}>{routine.title}</div>
           <div className="list-card-meta" style={{ color: 'var(--ink-3)', fontSize: 12, marginTop: 2 }}>
-            {formatDueDate(routine.currentDueDate)} · {formatRecurrenceLabel(routine.recurrenceRule, routine.intervalDays)}
+            {routine.currentDueDate ? formatDueDate(routine.currentDueDate) + ' · ' : ''}
+            {formatRecurrenceLabelDomain(routine.recurrenceRule, routine.intervalDays, routine.weekdays, routine.intervalWeeks)}
+          </div>
+          <div style={{
+            fontSize: isAdHoc ? 12 : 11,
+            fontWeight: isAdHoc ? 500 : 400,
+            color: isAdHoc ? 'var(--ink-2)' : 'var(--ink-3)',
+            marginTop: 4,
+          }}>
+            {formatLastDone(routine.lastCompletedAt)}
           </div>
         </div>
-        <span className={badge.className}>{badge.label}</span>
+        {badge && <span className={badge.className}>{badge.label}</span>}
       </div>
     </div>
   );
 }
 
-const RECURRENCE_OPTIONS: { value: RoutineRecurrenceRule; label: string }[] = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'every_n_days', label: 'Every N days' },
+type RecurrenceOption = {
+  value: RoutineRecurrenceRule;
+  label: string;
+  description: string;
+};
+
+const RECURRENCE_OPTIONS: RecurrenceOption[] = [
+  { value: 'daily', label: 'Every day', description: 'Daily recurrence' },
+  { value: 'every_n_days', label: 'Every N days', description: 'Fixed interval in days' },
+  { value: 'weekly', label: 'Weekly', description: 'Every week on a day' },
+  { value: 'weekly_on_days', label: 'Weekly on specific days', description: 'Multiple weekdays' },
+  { value: 'every_n_weeks', label: 'Every N weeks', description: 'Alternating weeks' },
+  { value: 'monthly', label: 'Monthly', description: 'Monthly on a date' },
+  { value: 'ad_hoc', label: 'No schedule — track when done', description: 'For recurring tasks without a fixed schedule' },
 ];
 
 const OWNER_OPTIONS: { value: Owner; label: string }[] = [
@@ -181,6 +204,8 @@ type CreateRoutineFormState = {
   owner: Owner;
   recurrenceRule: RoutineRecurrenceRule | '';
   intervalDays: string;
+  intervalWeeks: number;
+  weekdays: number[];
   firstDueDate: string;
 };
 
@@ -203,6 +228,8 @@ export function RoutinesPage() {
     owner: 'stakeholder',
     recurrenceRule: '',
     intervalDays: '7',
+    intervalWeeks: 2,
+    weekdays: [],
     firstDueDate: todayIso(),
   });
   const [formError, setFormError] = useState<string | null>(null);
@@ -221,21 +248,39 @@ export function RoutinesPage() {
 
   const currentQuery = activeTab === 'active' ? activeQuery : archivedQuery;
 
-  const getRoutineDueState = useCallback((routine: Routine): RoutineDueState => {
+  const getRoutineDueState = useCallback((routine: Routine): RoutineDueState | null => {
+    if (routine.recurrenceRule === 'ad_hoc') return null;
     return routine.dueState ?? computeDueState(routine, null);
   }, []);
 
-  const groupedRoutines = useMemo(() => {
-    if (activeTab !== 'active' || !activeQuery.data) return null;
+  const { scheduledGroups, trackedRoutines } = useMemo(() => {
+    if (activeTab !== 'active' || !activeQuery.data) return { scheduledGroups: null, trackedRoutines: [] };
     const routines = activeQuery.data.routines;
     const groups: Record<RoutineDueState, Routine[]> = {
       overdue: [], due: [], upcoming: [], completed: [], paused: []
     };
+    const tracked: Routine[] = [];
+
     for (const routine of routines) {
-      const state = getRoutineDueState(routine);
-      groups[state].push(routine);
+      if (routine.recurrenceRule === 'ad_hoc') {
+        tracked.push(routine);
+      } else {
+        const state = getRoutineDueState(routine);
+        if (state) groups[state].push(routine);
+      }
     }
-    return groups;
+
+    // Sort tracked by staleness: never-completed first, then oldest last-done first
+    tracked.sort((a, b) => {
+      const aLast = a.lastCompletedAt;
+      const bLast = b.lastCompletedAt;
+      if (!aLast && !bLast) return 0;
+      if (!aLast) return -1;
+      if (!bLast) return 1;
+      return new Date(aLast).getTime() - new Date(bLast).getTime();
+    });
+
+    return { scheduledGroups: groups, trackedRoutines: tracked };
   }, [activeQuery.data, activeTab, getRoutineDueState]);
 
   const showBanner = useCallback((message: string, variant: 'mint' | 'sky') => {
@@ -250,7 +295,7 @@ export function RoutinesPage() {
       await completeRoutineOccurrenceCommand(role, routine.id, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-      showBanner('Marked complete', 'mint');
+      showBanner(routine.recurrenceRule === 'ad_hoc' ? 'Marked as done' : 'Marked complete', 'mint');
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not complete routine');
     } finally {
@@ -265,17 +310,34 @@ export function RoutinesPage() {
       const n = parseInt(form.intervalDays, 10);
       if (!n || n <= 0) { setFormError('Interval must be a positive number.'); return; }
     }
+    if (form.recurrenceRule === 'weekly_on_days' && form.weekdays.length === 0) {
+      setFormError('Select at least one day.'); return;
+    }
+    if (form.recurrenceRule === 'every_n_weeks' && form.weekdays.length !== 1) {
+      setFormError('Select exactly one day for the interval.'); return;
+    }
     setFormError(null);
     setShowCreateSheet(false);
 
-    const firstDueDateIso = new Date(form.firstDueDate + 'T12:00:00').toISOString();
+    const isAdHoc = form.recurrenceRule === 'ad_hoc';
     const intervalDays = form.recurrenceRule === 'every_n_days' ? parseInt(form.intervalDays, 10) : null;
+    const intervalWeeks = form.recurrenceRule === 'every_n_weeks' ? form.intervalWeeks : null;
+    const weekdays = (form.recurrenceRule === 'weekly_on_days' || form.recurrenceRule === 'every_n_weeks') ? form.weekdays : null;
+
+    let firstDueDate: string | null;
+    if (isAdHoc) {
+      firstDueDate = null;
+    } else if (form.recurrenceRule === 'weekly_on_days' || form.recurrenceRule === 'every_n_weeks') {
+      firstDueDate = calculateFirstDueDate(form.recurrenceRule, weekdays);
+    } else {
+      firstDueDate = new Date(form.firstDueDate + 'T12:00:00').toISOString();
+    }
 
     try {
-      await createRoutineCommand(role, form.title.trim(), form.owner, form.recurrenceRule, firstDueDateIso, intervalDays);
+      await createRoutineCommand(role, form.title.trim(), form.owner, form.recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-      setForm({ title: '', owner: 'stakeholder', recurrenceRule: '', intervalDays: '7', firstDueDate: todayIso() });
+      setForm({ title: '', owner: 'stakeholder', recurrenceRule: '', intervalDays: '7', intervalWeeks: 2, weekdays: [], firstDueDate: todayIso() });
       showBanner('Routine created', 'mint');
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not create routine');
@@ -296,6 +358,13 @@ export function RoutinesPage() {
       ? (activeQuery.data?.routines.length === 0)
       : (archivedQuery.data?.routines.length === 0)
   );
+
+  // Determine if we need weekday picker or other sub-controls in create sheet
+  const needsWeekdayPicker = form.recurrenceRule === 'weekly_on_days' || form.recurrenceRule === 'every_n_weeks' || form.recurrenceRule === 'weekly';
+  const weekdayPickerMode = form.recurrenceRule === 'weekly_on_days' ? 'multi' : 'single';
+  const needsIntervalStepper = form.recurrenceRule === 'every_n_weeks';
+  const needsIntervalDays = form.recurrenceRule === 'every_n_days';
+  const needsFirstDueDate = form.recurrenceRule !== '' && form.recurrenceRule !== 'ad_hoc' && form.recurrenceRule !== 'weekly_on_days' && form.recurrenceRule !== 'every_n_weeks';
 
   return (
     <div className="screen">
@@ -396,10 +465,10 @@ export function RoutinesPage() {
           )}
 
           {/* Active routines grouped by due state */}
-          {!isEmpty && activeTab === 'active' && groupedRoutines && (
+          {!isEmpty && activeTab === 'active' && scheduledGroups && (
             <div className="rem-list">
               {GROUP_ORDER.map((state) => {
-                const items = groupedRoutines[state];
+                const items = scheduledGroups[state];
                 if (items.length === 0) return null;
                 return (
                   <div key={state}>
@@ -431,6 +500,25 @@ export function RoutinesPage() {
                   </div>
                 );
               })}
+
+              {/* Tracked section for ad-hoc routines */}
+              {trackedRoutines.length > 0 && (
+                <>
+                  <div className="tracked-section-divider" />
+                  <div className="tracked-section-header" role="heading" aria-level={2}>TRACKED</div>
+                  {trackedRoutines.map((routine) => (
+                    <RoutineCard
+                      key={routine.id}
+                      routine={routine}
+                      dueState={null}
+                      onComplete={() => void handleComplete(routine)}
+                      onNavigate={() => void navigate({ to: '/routines/$routineId', params: { routineId: routine.id } })}
+                      isSpouse={isSpouse}
+                      busy={busyId === routine.id}
+                    />
+                  ))}
+                </>
+              )}
             </div>
           )}
 
@@ -497,44 +585,85 @@ export function RoutinesPage() {
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 4 }}>
               Recurrence
             </label>
-            <select
-              className="rem-form-input"
-              value={form.recurrenceRule}
-              onChange={(e) => setForm((f) => ({ ...f, recurrenceRule: e.target.value as RoutineRecurrenceRule | '' }))}
-            >
-              <option value="">Select recurrence…</option>
-              {RECURRENCE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+              {RECURRENCE_OPTIONS.map((option) => {
+                const isActive = form.recurrenceRule === option.value;
+                return (
+                  <div key={option.value}>
+                    <button
+                      type="button"
+                      className={`recurrence-option-row${isActive ? ' recurrence-option-row-active' : ''}`}
+                      onClick={() => setForm((f) => ({
+                        ...f,
+                        recurrenceRule: option.value,
+                        weekdays: option.value === 'weekly' ? (f.weekdays.length > 0 ? [f.weekdays[0]] : []) : option.value === 'weekly_on_days' || option.value === 'every_n_weeks' ? f.weekdays : [],
+                      }))}
+                    >
+                      <span className={`recurrence-radio${isActive ? ' recurrence-radio-active' : ''}`} />
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>{option.label}</div>
+                        <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--ink-3)', marginTop: 2 }}>{option.description}</div>
+                      </div>
+                    </button>
+
+                    {/* Sub-controls */}
+                    {isActive && needsWeekdayPicker && (
+                      <div style={{ marginTop: 12 }}>
+                        {needsIntervalStepper && (
+                          <div style={{ marginBottom: 12 }}>
+                            <WeekIntervalStepper
+                              value={form.intervalWeeks}
+                              onChange={(v) => setForm((f) => ({ ...f, intervalWeeks: v }))}
+                            />
+                          </div>
+                        )}
+                        <WeekdayPicker
+                          selected={form.weekdays}
+                          onChange={(days) => setForm((f) => ({ ...f, weekdays: days }))}
+                          mode={weekdayPickerMode}
+                        />
+                      </div>
+                    )}
+
+                    {isActive && needsIntervalDays && (
+                      <div style={{ marginTop: 12 }}>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 4 }}>
+                          Every how many days?
+                        </label>
+                        <input
+                          type="number"
+                          className="rem-form-input"
+                          min={1}
+                          value={form.intervalDays}
+                          onChange={(e) => setForm((f) => ({ ...f, intervalDays: e.target.value }))}
+                        />
+                      </div>
+                    )}
+
+                    {isActive && option.value === 'ad_hoc' && (
+                      <div style={{ marginTop: 8, fontSize: 13, fontWeight: 300, fontStyle: 'italic', color: 'var(--ink-3)', fontFamily: 'Fraunces, serif' }}>
+                        For recurring household tasks that don't have a fixed schedule. You'll see when it was last done.
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {form.recurrenceRule === 'every_n_days' && (
+          {needsFirstDueDate && (
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 4 }}>
-                Every how many days?
+                First due date
               </label>
               <input
-                type="number"
+                type="date"
                 className="rem-form-input"
-                min={1}
-                value={form.intervalDays}
-                onChange={(e) => setForm((f) => ({ ...f, intervalDays: e.target.value }))}
+                value={form.firstDueDate}
+                onChange={(e) => setForm((f) => ({ ...f, firstDueDate: e.target.value }))}
               />
             </div>
           )}
-
-          <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 4 }}>
-              First due date
-            </label>
-            <input
-              type="date"
-              className="rem-form-input"
-              value={form.firstDueDate}
-              onChange={(e) => setForm((f) => ({ ...f, firstDueDate: e.target.value }))}
-            />
-          </div>
 
           {formError && (
             <div style={{ fontSize: 13, color: 'var(--rose)' }}>{formError}</div>

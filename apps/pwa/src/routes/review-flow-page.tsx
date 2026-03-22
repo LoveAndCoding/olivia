@@ -610,7 +610,7 @@ export function ReviewFlowPage() {
   // Compute review windows from routine's currentDueDate anchor
   const windows = routine
     ? (() => {
-        const anchor = new Date(routine.currentDueDate);
+        const anchor = new Date(routine.currentDueDate!);
         const w = getReviewWindowsForOccurrence(anchor);
         return {
           lastWeek: formatReviewWindowAsDateStrings({ start: w.lastWeekStart, end: w.lastWeekEnd }),
