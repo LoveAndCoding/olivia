@@ -6,6 +6,8 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { clientDb } from '../lib/client-db';
 import { useRole } from '../lib/role';
+import { effectiveApiBaseUrl, resolveApiUrl } from '../lib/api';
+import { getLastPingDiagnostic } from '../lib/connectivity';
 import { loadNotificationState, saveDemoNotificationSubscription, saveNativeNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
 import { OliviaMessage } from '../components/reminders/OliviaMessage';
 import type { ActorRole, ReminderNotificationPreferencesInput } from '@olivia/contracts';
@@ -26,6 +28,18 @@ function readSavedTheme(): ThemeMode {
   const saved = localStorage.getItem('olivia-theme');
   if (saved === 'light' || saved === 'dark') return saved;
   return 'auto';
+}
+
+function PingDiagnosticDisplay() {
+  const [diag, setDiag] = useState(getLastPingDiagnostic);
+  useEffect(() => {
+    const id = setInterval(() => setDiag(getLastPingDiagnostic()), 2000);
+    return () => clearInterval(id);
+  }, []);
+  if (diag.status === 'pending') return <p className="muted">Last ping: waiting for first check…</p>;
+  if (diag.status === 'ok') return <p className="muted">Last ping: <strong style={{ color: 'var(--color-success, green)' }}>OK ({diag.httpStatus})</strong></p>;
+  if (diag.status === 'http-error') return <p className="muted">Last ping: <strong style={{ color: 'var(--color-error, red)' }}>HTTP {diag.httpStatus}</strong></p>;
+  return <p className="muted">Last ping: <strong style={{ color: 'var(--color-error, red)' }}>Network error</strong> — {diag.error}</p>;
 }
 
 export function SettingsPage() {
@@ -348,6 +362,16 @@ export function SettingsPage() {
             </div>
             <p className="muted">Pending commands: {diagnostics?.pending ?? 0}</p>
             <p className="muted">Conflicts: {diagnostics?.conflicts ?? 0}</p>
+          </div>
+
+          <div className="card stack-md">
+            <div className="section-header">
+              <h3 className="card-title">Connectivity diagnostics</h3>
+            </div>
+            <p className="muted">Platform: <strong>{isNative ? 'Native (Capacitor)' : installed ? 'PWA' : 'Browser'}</strong></p>
+            <p className="muted">API base URL: <strong style={{ wordBreak: 'break-all' }}>{effectiveApiBaseUrl}</strong></p>
+            <p className="muted">Health check URL: <strong style={{ wordBreak: 'break-all' }}>{resolveApiUrl('/api/health')}</strong></p>
+            <PingDiagnosticDisplay />
           </div>
         </div>
       </div>

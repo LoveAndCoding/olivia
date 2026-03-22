@@ -21,6 +21,25 @@ type ConnectivityState = {
   apiReachable: boolean;
 };
 
+/** Diagnostic info from the last health-check ping (for Settings display). */
+export type PingDiagnostic = {
+  url: string;
+  status: 'ok' | 'http-error' | 'network-error' | 'pending';
+  httpStatus?: number;
+  error?: string;
+  timestamp: string;
+};
+
+let lastPingDiagnostic: PingDiagnostic = {
+  url: '',
+  status: 'pending',
+  timestamp: new Date().toISOString(),
+};
+
+export function getLastPingDiagnostic(): PingDiagnostic {
+  return lastPingDiagnostic;
+}
+
 let state: ConnectivityState = {
   browserOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
   apiReachable: true, // optimistic until first check
@@ -52,11 +71,13 @@ async function ping(): Promise<void> {
     return;
   }
 
+  const url = resolveApiUrl('/api/health');
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
 
-    const res = await fetch(resolveApiUrl('/api/health'), {
+    const res = await fetch(url, {
       method: 'GET',
       signal: controller.signal,
       // Avoid cache so we always hit the server
@@ -64,8 +85,17 @@ async function ping(): Promise<void> {
     });
 
     clearTimeout(timeout);
+    lastPingDiagnostic = res.ok
+      ? { url, status: 'ok', httpStatus: res.status, timestamp: new Date().toISOString() }
+      : { url, status: 'http-error', httpStatus: res.status, timestamp: new Date().toISOString() };
     setState({ browserOnline: true, apiReachable: res.ok });
-  } catch {
+  } catch (err) {
+    lastPingDiagnostic = {
+      url,
+      status: 'network-error',
+      error: err instanceof Error ? err.message : String(err),
+      timestamp: new Date().toISOString(),
+    };
     setState({ browserOnline: navigator.onLine, apiReachable: false });
   }
 }
