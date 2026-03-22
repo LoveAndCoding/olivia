@@ -1,7 +1,7 @@
 # Feature Spec: Task Steps
 
 ## Status
-- Draft
+- Ready to build (spec complete; implementation deferred until M29 usage signal)
 
 ## Summary
 Some household tasks are not single actions but multi-step processes that unfold over time — scheduling a fridge repair involves identifying the problem, finding a technician, booking an appointment, getting it fixed, and paying the bill. Today, Olivia's inbox items are flat: a task is either open or done, with no way to break it into smaller pieces. This spec defines task steps — an ordered list of actionable steps within a single inbox item — so that complex household tasks can be tracked incrementally without requiring the household to manage a separate project-management system. If this works well, fewer multi-step obligations are dropped mid-process, and the household can see exactly where a complex task stands at a glance.
@@ -42,7 +42,7 @@ If this feature works well:
 - Due dates on individual steps. Step-level scheduling is deferred; the parent item's due date provides the overall timeline.
 - Step-level notifications or nudges. Proactive nudges continue to operate at the item level.
 - Automatic step suggestions by AI. AI-assisted step generation is a strong future direction but is out of scope for the initial implementation.
-- Step-level notes or descriptions. Steps are lightweight — a title and a status. If a step needs detailed context, it should be captured in the parent item's notes or promoted to its own inbox item.
+- Step-level notes or descriptions. Steps are titles only (decided — see Facts, Assumptions, And Decisions). A step that needs detailed context should be promoted to its own inbox item.
 - Dependencies between steps (step B cannot start until step A is done). The list order implies sequence, but the system does not enforce it.
 
 **Known gaps acceptable for this phase:**
@@ -159,10 +159,7 @@ If this feature works well:
 - Decision D-060 (CSS completeness) applies to all step UI components.
 
 ## Open Questions
-1. **Should steps support descriptions or just titles?** This spec says titles only for simplicity. If household feedback indicates steps need more context, descriptions could be added later.
-2. **Should completing all steps auto-transition the item to a "ready to close" state?** This spec says no — advisory prompt only. But a lightweight status indicator (e.g., visual treatment on the item card) could signal "all steps done" without changing status.
-3. **What is the right interaction pattern for step reordering on mobile?** Long-press drag is standard on iOS, but may need design validation.
-4. **Should step creation be available in the item creation flow, or only after the item exists?** This spec says only after creation to keep item creation fast. Could revisit if chat-based creation naturally includes steps.
+_All open questions resolved — see Decisions below._
 
 ## Facts, Assumptions, And Decisions
 - **Fact:** The current `InboxItem` model has no parent-child or step relationship. Steps would be a new data structure.
@@ -171,6 +168,10 @@ If this feature works well:
 - **Assumption:** A flat step list (no nesting) is sufficient for household task complexity. Most household tasks have 3–7 steps.
 - **Decision:** Steps are part of the inbox item, not separate entities. This keeps the data model simple and avoids the complexity of cross-entity relationships.
 - **Decision:** No AI involvement in Phase 1. Steps must prove useful as a pure user-driven capability before AI is layered on.
+- **Decision:** Steps are titles only — no descriptions. A step that needs a description is complex enough to be its own inbox item. Revisit if household feedback shows people consistently wanting to attach context to individual steps. _(CEO, 2026-03-22)_
+- **Decision:** Step creation is available only after an item exists in the UI. Item creation stays fast and focused. The chat path naturally supports creating items with steps inline — that is the "create with steps" flow. No need to complicate the direct UI creation form. _(CEO, 2026-03-22)_
+- **Decision:** Implementation deferred until M29 household usage signal. The spec is worth completing now, but building on top of an inbox that households are not actively using would be premature. _(CEO, 2026-03-22)_
+- **Decision:** Visual spec from Designer required before implementation. The UX interactions (inline add, drag reorder, progress indicator on cards, completion advisory prompt) all need visual definition before engineering starts. _(CEO, 2026-03-22)_
 
 ## Deferred Decisions
 - Step-level due dates and scheduling.

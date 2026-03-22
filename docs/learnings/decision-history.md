@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-064: Task steps — CEO resolved 4 open design questions, spec finalized, build deferred to M29
+- Date: 2026-03-22
+- Area: feature spec / task steps
+- Decision: (1) Steps are titles only — no descriptions; a step needing a description should be its own inbox item. (2) Step creation available only after item exists in UI; chat path handles "create with steps" naturally. (3) Implementation deferred until M29 household usage signal — spec is ready to build but building on unvalidated inbox usage is premature. (4) Visual spec from Designer required before implementation begins.
+- Rationale: Keep steps lightweight (checklist-weight), keep item creation fast, validate the underlying inbox usage before layering more features on top, and define UX interactions visually before engineering starts.
+- Alternatives considered: (1) Step descriptions — rejected as over-structuring; promote complex steps to their own inbox items instead. (2) Steps during item creation — rejected as unnecessary complexity given chat path already covers this naturally.
+- Trade-offs: Deferring build means this won't ship until M29 validates inbox usage, which could be weeks. Benefit: avoids building on sand if households aren't using the inbox.
+- Status: active
+- Related docs: `docs/specs/task-steps.md`, OLI-242, D-054 (M29 definition)
+
 ### D-063: Shared calendar — board direction on scope and integration approach
 - Date: 2026-03-22
 - Area: feature scoping / calendar

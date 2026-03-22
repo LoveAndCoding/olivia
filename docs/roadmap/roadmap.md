@@ -226,6 +226,7 @@ Phase 4 candidate tracks (to be decided by M29 usage signal):
 - **Track B: Broaden the household** — spouse write access, multi-user roles and permissions
 - **Track C: Complete H3** — meal planning (spec drafted, H3 primitives proven)
 - **Track D: Increase autonomy** — rule-based automation, push action buttons, Layer 2 LLM timing
+- **Track E: Deepen the coordination surface** — shared calendar integration. Phase 1: enhanced calendar view of existing Olivia data (multi-week navigation across routines, meals, reminders, inbox). Phase 2: native Apple Calendar read-only integration via EventKit (same-device, no cloud sync). Board direction: normal planning process, not urgent (D-063).
 
 ## Near-Term Product Bets
 - Enduring value comes from reducing coordination overhead, not from maximizing AI novelty. This remains true even with the chat interface and AI-assisted features now shipped.
