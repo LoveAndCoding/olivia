@@ -6,6 +6,8 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { clientDb } from '../lib/client-db';
 import { useRole } from '../lib/role';
+import { effectiveApiBaseUrl, resolveApiUrl } from '../lib/api';
+import { runDiagnosticProbe, type ConnectivityDiagnostic } from '../lib/connectivity';
 import { loadNotificationState, saveDemoNotificationSubscription, saveNativeNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
 import { OliviaMessage } from '../components/reminders/OliviaMessage';
 import type { ActorRole, ReminderNotificationPreferencesInput } from '@olivia/contracts';
@@ -26,6 +28,40 @@ function readSavedTheme(): ThemeMode {
   const saved = localStorage.getItem('olivia-theme');
   if (saved === 'light' || saved === 'dark') return saved;
   return 'auto';
+}
+
+function ConnectivityProbe() {
+  const [result, setResult] = useState<ConnectivityDiagnostic | null>(null);
+  const [running, setRunning] = useState(false);
+
+  const run = useCallback(async () => {
+    setRunning(true);
+    try { setResult(await runDiagnosticProbe()); } finally { setRunning(false); }
+  }, []);
+
+  useEffect(() => { void run(); }, [run]);
+
+  return (
+    <>
+      <p className="muted">API base URL: <strong style={{ wordBreak: 'break-all' }}>{effectiveApiBaseUrl}</strong></p>
+      <p className="muted">Health check URL: <strong style={{ wordBreak: 'break-all' }}>{resolveApiUrl('/api/health')}</strong></p>
+      {result && (
+        <>
+          <p className="muted">Normal fetch: <strong style={{ color: result.cors === 'ok' ? 'var(--color-success, green)' : 'var(--color-error, red)' }}>{result.corsDetail}</strong></p>
+          <p className="muted">No-CORS fetch: <strong style={{ color: result.noCors === 'ok' ? 'var(--color-success, green)' : 'var(--color-error, red)' }}>{result.noCorsDetail}</strong></p>
+          {result.noCors === 'ok' && result.cors === 'error' && (
+            <p className="muted" style={{ fontStyle: 'italic' }}>Network works but CORS is blocking. Server needs to allow this app's origin.</p>
+          )}
+          {result.noCors === 'error' && result.cors === 'error' && (
+            <p className="muted" style={{ fontStyle: 'italic' }}>Network unreachable — not a CORS issue.</p>
+          )}
+        </>
+      )}
+      <button type="button" className="secondary-button" disabled={running} onClick={() => void run()}>
+        {running ? 'Testing…' : 'Re-run probe'}
+      </button>
+    </>
+  );
 }
 
 export function SettingsPage() {
@@ -348,6 +384,13 @@ export function SettingsPage() {
             </div>
             <p className="muted">Pending commands: {diagnostics?.pending ?? 0}</p>
             <p className="muted">Conflicts: {diagnostics?.conflicts ?? 0}</p>
+          </div>
+
+          <div className="card stack-md">
+            <div className="section-header">
+              <h3 className="card-title">Connectivity diagnostics</h3>
+            </div>
+            <ConnectivityProbe />
           </div>
         </div>
       </div>

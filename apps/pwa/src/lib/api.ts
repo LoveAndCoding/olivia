@@ -100,6 +100,9 @@ if (isNativePlatform && !import.meta.env.VITE_API_BASE_URL) {
   );
 }
 
+/** The API base URL baked into this build (for diagnostics). */
+export const effectiveApiBaseUrl: string = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
+
 function normalizeBasePath(basePath: string): string {
   const trimmedBasePath = basePath.trim();
   if (!trimmedBasePath || trimmedBasePath === '/') {
