@@ -10,6 +10,7 @@ export function HouseholdSection() {
   const { user, getSessionToken } = useAuth();
   const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const token = getSessionToken();
 
@@ -23,16 +24,17 @@ export function HouseholdSection() {
   const pendingInvitations = membersQuery.data?.pendingInvitations ?? [];
   const isAdmin = user?.role === 'admin';
   const hasPendingInvite = pendingInvitations.some((inv) => inv.status === 'pending');
-  const canInvite = isAdmin && members.length < MAX_MEMBERS && !hasPendingInvite;
+  const canInvite = isAdmin && members.length < MAX_MEMBERS && !hasPendingInvite && !!token;
 
   const handleGenerateInvite = useCallback(async () => {
     if (!token) return;
     setGenerating(true);
+    setError(null);
     try {
       await generateInvite(token);
       await queryClient.invalidateQueries({ queryKey: ['household-members'] });
-    } catch {
-      // Error handling could show a toast
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not generate invite. Please try again.');
     } finally {
       setGenerating(false);
     }
@@ -41,11 +43,12 @@ export function HouseholdSection() {
   const handleRevokeInvite = useCallback(async (invitationId: string) => {
     if (!token) return;
     if (!window.confirm('Cancel this invite? The code will stop working.')) return;
+    setError(null);
     try {
       await revokeInvite(token, invitationId);
       await queryClient.invalidateQueries({ queryKey: ['household-members'] });
-    } catch {
-      // Error handling
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not revoke invite. Please try again.');
     }
   }, [token, queryClient]);
 
@@ -89,6 +92,13 @@ export function HouseholdSection() {
           )}
         </div>
       ))}
+
+      {/* Error feedback */}
+      {error && (
+        <div className="auth-error" role="alert" style={{ color: 'var(--color-error, #c00)', fontSize: 13 }}>
+          {error}
+        </div>
+      )}
 
       {/* Invite button (admin, solo, no pending) */}
       {canInvite && (
