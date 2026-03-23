@@ -175,10 +175,10 @@ export function SettingsPage() {
           <button
             type="button"
             className="rem-detail-back"
-            onClick={() => void navigate({ to: '/' })}
+            onClick={() => void navigate({ to: '/more' })}
             aria-label="Back to Home"
           >
-            ← Home
+            ← More
           </button>
           <div className="screen-header" style={{ paddingBottom: 8 }}>
             <div className="screen-title">Settings</div>

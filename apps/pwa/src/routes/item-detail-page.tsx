@@ -323,7 +323,7 @@ export function ItemDetailPage() {
         />
       )}
 
-      <BottomNav activeTab="tasks" />
+      <BottomNav activeTab="more" />
     </div>
   );
 }

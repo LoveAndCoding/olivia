@@ -29,7 +29,7 @@ export function WeekPage() {
     <div className="screen">
       <div className="home-header">
         <div className="home-header-row">
-          <Link to="/" className="week-back-btn" aria-label="Back to home">
+          <Link to="/more" className="week-back-btn" aria-label="Back to More">
             <CaretLeft size={20} />
           </Link>
           <div style={{ flex: 1 }}>
@@ -85,13 +85,13 @@ export function WeekPage() {
         )}
 
         <div className="weekly-view-footer">
-          <Link to="/history" className="view-history-link">View history →</Link>
+          <Link to="/more/history" className="view-history-link">View history →</Link>
         </div>
 
         <div className="spacer-bottom" />
       </div>
 
-      <BottomNav activeTab="home" nudgeBadgeCount={nudges.length} />
+      <BottomNav activeTab="more" nudgeBadgeCount={nudges.length} />
     </div>
   );
 }

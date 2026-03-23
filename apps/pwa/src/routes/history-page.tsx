@@ -127,6 +127,7 @@ function DaySection({ day }: { day: ActivityHistoryDay }) {
 }
 
 export function HistoryPage() {
+  const navigate = useNavigate();
   const { role } = useRole();
 
   const { data, isLoading, isError } = useQuery({
@@ -138,6 +139,9 @@ export function HistoryPage() {
   return (
     <div className="screen">
       <div className="screen-scroll">
+        <div style={{ padding: '22px 16px 0' }}>
+          <button type="button" className="rem-detail-back" onClick={() => void navigate({ to: '/more' })}>← More</button>
+        </div>
         <div className="screen-header">
           <div className="screen-title">History</div>
         </div>
@@ -178,7 +182,7 @@ export function HistoryPage() {
         <div className="spacer-bottom" />
       </div>
 
-      <BottomNav activeTab="memory" />
+      <BottomNav activeTab="more" />
     </div>
   );
 }

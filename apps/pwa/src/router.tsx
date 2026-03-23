@@ -3,9 +3,10 @@ import { AppLayout } from './components/layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useAuth } from './lib/auth';
 import { HomePage } from './routes/home-page';
+import { DailyPage } from './routes/daily-page';
 import { TasksPage } from './routes/tasks-page';
 import { OliviaPage } from './routes/olivia-page';
-import { MemoryPage } from './routes/memory-page';
+
 import { ItemDetailPage } from './routes/item-detail-page';
 import { RemindersPage } from './routes/reminders-page';
 import { ReminderDetailPage } from './routes/reminder-detail-page';
@@ -19,6 +20,7 @@ import { MealsPage } from './routes/meals-page';
 import { MealDetailPage } from './routes/meal-detail-page';
 import { HistoryPage } from './routes/history-page';
 import { WeekPage } from './routes/week-page';
+import { MorePage } from './routes/more-page';
 import { ReviewFlowPage } from './routes/review-flow-page';
 import { ReviewRecordDetailPage } from './routes/review-record-detail-page';
 import { OnboardingPage } from './routes/onboarding-page';
@@ -81,13 +83,24 @@ const rootRoute = createRootRoute({
 
 // ── Primary five-tab routes ───────────────────────────────────────────────────
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: HomePage });
-const tasksRoute = createRoute({ getParentRoute: () => rootRoute, path: '/tasks', component: TasksPage });
+const dailyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/daily',
+  validateSearch: (search: Record<string, unknown>) => ({
+    segment: typeof search.segment === 'string' ? search.segment : undefined,
+  }),
+  component: DailyPage,
+});
 const oliviaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/olivia', component: OliviaPage });
 const listsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/lists', component: ListsPage });
 const listDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/lists/$listId', component: ListDetailPage });
-const memoryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/memory', component: MemoryPage });
-const historyRoute = createRoute({ getParentRoute: () => rootRoute, path: '/history', component: HistoryPage });
-const weekRoute = createRoute({ getParentRoute: () => rootRoute, path: '/week', component: WeekPage });
+const moreRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more', component: MorePage });
+
+// ── More sub-routes (nested within More tab context) ──────────────────────────
+const moreTasksRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/tasks', component: TasksPage });
+const moreHistoryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/history', component: HistoryPage });
+const moreWeekRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/week', component: WeekPage });
+const moreSettingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/settings', component: SettingsPage });
 
 // ── Supporting routes (token-compliant, hidden from primary nav) ─────────────
 const itemRoute = createRoute({ getParentRoute: () => rootRoute, path: '/items/$itemId', component: ItemDetailPage });
@@ -108,29 +121,53 @@ const reEntryRoute = createRoute({
   }),
   component: ReEntryPage
 });
-const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage });
 const onboardingRoute = createRoute({ getParentRoute: () => rootRoute, path: '/onboarding', component: OnboardingPage });
 const healthCheckRoute = createRoute({ getParentRoute: () => rootRoute, path: '/health-check', component: HealthCheckPage });
 const authRoute = createRoute({ getParentRoute: () => rootRoute, path: '/auth', component: AuthPage });
 
-// ── Legacy redirects (old routes → new primary nav) ──────────────────────────
+// ── Legacy redirects (old routes → new locations) ────────────────────────────
 const addRedirectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/add',
-  beforeLoad: () => {
-    throw redirect({ to: '/tasks' });
-  }
+  beforeLoad: () => { throw redirect({ to: '/more/tasks' }); }
+});
+const tasksRedirectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tasks',
+  beforeLoad: () => { throw redirect({ to: '/more/tasks' }); }
+});
+const memoryRedirectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/memory',
+  beforeLoad: () => { throw redirect({ to: '/more/history' }); }
+});
+const historyRedirectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/history',
+  beforeLoad: () => { throw redirect({ to: '/more/history' }); }
+});
+const weekRedirectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/week',
+  beforeLoad: () => { throw redirect({ to: '/more/week' }); }
+});
+const settingsRedirectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings',
+  beforeLoad: () => { throw redirect({ to: '/more/settings' }); }
 });
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
-  tasksRoute,
+  dailyRoute,
   oliviaRoute,
   listsRoute,
   listDetailRoute,
-  memoryRoute,
-  historyRoute,
-  weekRoute,
+  moreRoute,
+  moreTasksRoute,
+  moreHistoryRoute,
+  moreWeekRoute,
+  moreSettingsRoute,
   itemRoute,
   remindersRoute,
   reminderDetailRoute,
@@ -141,11 +178,15 @@ const routeTree = rootRoute.addChildren([
   mealsRoute,
   mealDetailRoute,
   reEntryRoute,
-  settingsRoute,
   onboardingRoute,
   healthCheckRoute,
   authRoute,
   addRedirectRoute,
+  tasksRedirectRoute,
+  memoryRedirectRoute,
+  historyRedirectRoute,
+  weekRedirectRoute,
+  settingsRedirectRoute,
 ]);
 
 export const router = createRouter({ routeTree });

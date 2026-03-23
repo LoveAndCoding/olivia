@@ -204,7 +204,7 @@ export function ReviewRecordDetailPage() {
         <div style={{ height: 24 }} />
       </div>
 
-      <BottomNav activeTab="memory" />
+      <BottomNav activeTab="more" />
     </div>
   );
 }

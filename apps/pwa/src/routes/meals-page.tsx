@@ -165,9 +165,9 @@ export function MealsPage() {
           <button
             type="button"
             className="rem-detail-back"
-            onClick={() => void navigate({ to: '/' })}
+            onClick={() => void navigate({ to: '/daily', search: { segment: 'meals' } })}
           >
-            ← Home
+            ← Daily
           </button>
 
           <div className="screen-title">Meal Plans</div>
@@ -317,7 +317,7 @@ export function MealsPage() {
         />
       )}
 
-      <BottomNav activeTab="lists" />
+      <BottomNav activeTab="daily" />
     </div>
   );
 }

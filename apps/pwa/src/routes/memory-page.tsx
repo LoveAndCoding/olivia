@@ -5,7 +5,7 @@ export function MemoryPage() {
   return (
     <div className="screen">
       <MemoryView categories={[]} />
-      <BottomNav activeTab="memory" />
+      <BottomNav activeTab="more" />
     </div>
   );
 }
