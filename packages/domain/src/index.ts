@@ -973,14 +973,6 @@ export type ListSummary = {
   allChecked: boolean;
 };
 
-export function assertStakeholderWrite(actorRole: ActorRole): void {
-  if (actorRole !== 'stakeholder') {
-    const error = new Error('spouse may view lists but may not create, edit, or remove them in this phase');
-    (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
-    (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
-    throw error;
-  }
-}
 
 export function deriveListSummary(items: ListItem[]): ListSummary {
   const activeItemCount = items.length;

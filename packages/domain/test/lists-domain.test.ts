@@ -1,7 +1,7 @@
 import {
   addListItem,
   archiveList,
-  assertStakeholderWrite,
+
   checkItem,
   createItemAddedHistoryEntry,
   createItemsClearedHistoryEntry,
@@ -174,21 +174,6 @@ describe('list domain', () => {
     });
   });
 
-  describe('assertStakeholderWrite', () => {
-    it('does not throw for stakeholder', () => {
-      expect(() => assertStakeholderWrite('stakeholder')).not.toThrow();
-    });
-
-    it('throws a 403 read-only error for spouse', () => {
-      expect(() => assertStakeholderWrite('spouse')).toThrow();
-      try {
-        assertStakeholderWrite('spouse');
-      } catch (error) {
-        expect((error as Error & { statusCode?: number; code?: string }).statusCode).toBe(403);
-        expect((error as Error & { statusCode?: number; code?: string }).code).toBe('ROLE_READ_ONLY');
-      }
-    });
-  });
 
   describe('history entry helpers', () => {
     it('createSharedList produces list_created history', () => {
