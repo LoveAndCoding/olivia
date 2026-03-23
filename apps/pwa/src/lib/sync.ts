@@ -559,133 +559,139 @@ export async function cancelReminderCommand(role: ActorRole, reminderId: string,
   return pendingReminder;
 }
 
+// During auth transition, outbox commands may have optional actorRole.
+// Default to 'stakeholder' for backward compatibility.
+function effectiveRole(role: ActorRole | undefined): ActorRole {
+  return role ?? 'stakeholder';
+}
+
 async function flushOutboxOnce() {
   const commands = await listOutbox();
   for (const command of commands) {
     try {
       if (command.kind === 'create') {
-        const response = await confirmCreate(command.actorRole, command.finalItem);
+        const response = await confirmCreate(effectiveRole(command.actorRole), command.finalItem);
         await cacheItem({ ...response.savedItem, pendingSync: false });
       } else if (command.kind === 'update') {
-        const response = await confirmUpdate(command.actorRole, command.itemId, command.expectedVersion, command.proposedChange);
+        const response = await confirmUpdate(effectiveRole(command.actorRole), command.itemId, command.expectedVersion, command.proposedChange);
         await cacheItem({ ...response.savedItem, pendingSync: false });
       } else if (command.kind === 'reminder_create') {
-        const response = await confirmCreateReminder(command.actorRole, command.finalReminder);
+        const response = await confirmCreateReminder(effectiveRole(command.actorRole), command.finalReminder);
         await cacheReminderMutation(response.savedReminder, response.timelineEntry);
       } else if (command.kind === 'reminder_update') {
-        const response = await confirmUpdateReminder(command.actorRole, command.reminderId, command.expectedVersion, command.proposedChange);
+        const response = await confirmUpdateReminder(effectiveRole(command.actorRole), command.reminderId, command.expectedVersion, command.proposedChange);
         await cacheReminderMutation(response.savedReminder, response.timelineEntry);
       } else if (command.kind === 'reminder_complete') {
-        const response = await completeReminderApi(command.actorRole, command.reminderId, command.expectedVersion);
+        const response = await completeReminderApi(effectiveRole(command.actorRole), command.reminderId, command.expectedVersion);
         await cacheReminderMutation(response.savedReminder, response.timelineEntry);
       } else if (command.kind === 'reminder_snooze') {
-        const response = await snoozeReminderApi(command.actorRole, command.reminderId, command.expectedVersion, command.snoozedUntil);
+        const response = await snoozeReminderApi(effectiveRole(command.actorRole), command.reminderId, command.expectedVersion, command.snoozedUntil);
         await cacheReminderMutation(response.savedReminder, response.timelineEntry);
       } else if (command.kind === 'reminder_cancel') {
-        const response = await cancelReminderApi(command.actorRole, command.reminderId, command.expectedVersion);
+        const response = await cancelReminderApi(effectiveRole(command.actorRole), command.reminderId, command.expectedVersion);
         await cacheReminderMutation(response.savedReminder, response.timelineEntry);
       } else if (command.kind === 'list_create') {
-        const response = await createListApi(command.actorRole, command.title);
+        const response = await createListApi(effectiveRole(command.actorRole), command.title);
         await cacheSharedList({ ...response.savedList, pendingSync: false });
       } else if (command.kind === 'list_title_update') {
-        const updateResponse = await updateListTitleApi(command.actorRole, command.listId, command.expectedVersion, command.title);
+        const updateResponse = await updateListTitleApi(effectiveRole(command.actorRole), command.listId, command.expectedVersion, command.title);
         await cacheSharedList({ ...updateResponse.savedList, pendingSync: false });
       } else if (command.kind === 'list_archive') {
-        const response = await archiveListApi(command.actorRole, command.listId, command.expectedVersion);
+        const response = await archiveListApi(effectiveRole(command.actorRole), command.listId, command.expectedVersion);
         await cacheSharedList({ ...response.savedList, pendingSync: false });
       } else if (command.kind === 'list_restore') {
-        const response = await restoreListApi(command.actorRole, command.listId, command.expectedVersion);
+        const response = await restoreListApi(effectiveRole(command.actorRole), command.listId, command.expectedVersion);
         await cacheSharedList({ ...response.savedList, pendingSync: false });
       } else if (command.kind === 'list_delete') {
-        await deleteListApi(command.actorRole, command.listId);
+        await deleteListApi(effectiveRole(command.actorRole), command.listId);
         await removeListFromCache(command.listId);
       } else if (command.kind === 'item_add') {
-        const response = await addListItemApi(command.actorRole, command.listId, command.body);
+        const response = await addListItemApi(effectiveRole(command.actorRole), command.listId, command.body);
         await cacheListItem({ ...response.savedItem, pendingSync: false });
       } else if (command.kind === 'item_body_update') {
-        const response = await updateListItemBodyApi(command.actorRole, command.listId, command.itemId, command.expectedVersion, command.body);
+        const response = await updateListItemBodyApi(effectiveRole(command.actorRole), command.listId, command.itemId, command.expectedVersion, command.body);
         await cacheListItem({ ...response.savedItem, pendingSync: false });
       } else if (command.kind === 'item_check') {
-        const response = await checkListItemApi(command.actorRole, command.listId, command.itemId, command.expectedVersion);
+        const response = await checkListItemApi(effectiveRole(command.actorRole), command.listId, command.itemId, command.expectedVersion);
         await cacheListItem({ ...response.savedItem, pendingSync: false });
       } else if (command.kind === 'item_uncheck') {
-        const response = await uncheckListItemApi(command.actorRole, command.listId, command.itemId, command.expectedVersion);
+        const response = await uncheckListItemApi(effectiveRole(command.actorRole), command.listId, command.itemId, command.expectedVersion);
         await cacheListItem({ ...response.savedItem, pendingSync: false });
       } else if (command.kind === 'item_remove') {
-        await removeListItemApi(command.actorRole, command.listId, command.itemId);
+        await removeListItemApi(effectiveRole(command.actorRole), command.listId, command.itemId);
         await removeListItemFromCache(command.itemId);
       } else if (command.kind === 'items_clear_completed') {
-        await clearCompletedItemsApi(command.actorRole, command.listId);
+        await clearCompletedItemsApi(effectiveRole(command.actorRole), command.listId);
       } else if (command.kind === 'items_uncheck_all') {
-        await uncheckAllItemsApi(command.actorRole, command.listId);
+        await uncheckAllItemsApi(effectiveRole(command.actorRole), command.listId);
       } else if (command.kind === 'routine_create') {
-        const response = await createRoutineApi(command.actorRole, command.title, command.owner, command.recurrenceRule, command.firstDueDate, command.intervalDays, command.weekdays, command.intervalWeeks);
+        const response = await createRoutineApi(effectiveRole(command.actorRole), command.title, command.owner, command.recurrenceRule, command.firstDueDate, command.intervalDays, command.weekdays, command.intervalWeeks);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
       } else if (command.kind === 'routine_update') {
         const { title, owner, recurrenceRule, intervalDays, intervalWeeks, weekdays } = command;
-        const response = await updateRoutineApi(command.actorRole, command.routineId, command.expectedVersion, { title, owner, recurrenceRule, intervalDays, intervalWeeks, weekdays });
+        const response = await updateRoutineApi(effectiveRole(command.actorRole), command.routineId, command.expectedVersion, { title, owner, recurrenceRule, intervalDays, intervalWeeks, weekdays });
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
       } else if (command.kind === 'routine_complete') {
-        const response = await completeRoutineOccurrenceApi(command.actorRole, command.routineId, command.expectedVersion);
+        const response = await completeRoutineOccurrenceApi(effectiveRole(command.actorRole), command.routineId, command.expectedVersion);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
         await cacheRoutineOccurrence(response.occurrence);
       } else if (command.kind === 'routine_skip') {
-        const response = await skipRoutineOccurrenceApi(command.routineId, command.actorRole, command.expectedVersion);
+        const response = await skipRoutineOccurrenceApi(command.routineId, effectiveRole(command.actorRole), command.expectedVersion);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
         await cacheRoutineOccurrence(response.occurrence);
       } else if (command.kind === 'routine_pause') {
-        const response = await pauseRoutineApi(command.actorRole, command.routineId, command.expectedVersion);
+        const response = await pauseRoutineApi(effectiveRole(command.actorRole), command.routineId, command.expectedVersion);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
       } else if (command.kind === 'routine_resume') {
-        const response = await resumeRoutineApi(command.actorRole, command.routineId, command.expectedVersion);
+        const response = await resumeRoutineApi(effectiveRole(command.actorRole), command.routineId, command.expectedVersion);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
       } else if (command.kind === 'routine_archive') {
-        const response = await archiveRoutineApi(command.actorRole, command.routineId, command.expectedVersion);
+        const response = await archiveRoutineApi(effectiveRole(command.actorRole), command.routineId, command.expectedVersion);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
       } else if (command.kind === 'routine_restore') {
-        const response = await restoreRoutineApi(command.actorRole, command.routineId, command.expectedVersion);
+        const response = await restoreRoutineApi(effectiveRole(command.actorRole), command.routineId, command.expectedVersion);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
       } else if (command.kind === 'routine_delete') {
-        await deleteRoutineApi(command.actorRole, command.routineId);
+        await deleteRoutineApi(effectiveRole(command.actorRole), command.routineId);
         await removeRoutineFromCache(command.routineId);
       } else if (command.kind === 'meal_plan_create') {
-        const response = await createMealPlanApi(command.actorRole, command.title, command.weekStartDate);
+        const response = await createMealPlanApi(effectiveRole(command.actorRole), command.title, command.weekStartDate);
         await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
       } else if (command.kind === 'meal_plan_title_update') {
-        const response = await updateMealPlanTitleApi(command.actorRole, command.planId, command.expectedVersion, command.title);
+        const response = await updateMealPlanTitleApi(effectiveRole(command.actorRole), command.planId, command.expectedVersion, command.title);
         await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
       } else if (command.kind === 'meal_plan_archive') {
-        const response = await archiveMealPlanApi(command.actorRole, command.planId, command.expectedVersion);
+        const response = await archiveMealPlanApi(effectiveRole(command.actorRole), command.planId, command.expectedVersion);
         await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
       } else if (command.kind === 'meal_plan_restore') {
-        const response = await restoreMealPlanApi(command.actorRole, command.planId, command.expectedVersion);
+        const response = await restoreMealPlanApi(effectiveRole(command.actorRole), command.planId, command.expectedVersion);
         await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
       } else if (command.kind === 'meal_plan_delete') {
-        await deleteMealPlanApi(command.actorRole, command.planId);
+        await deleteMealPlanApi(effectiveRole(command.actorRole), command.planId);
         await removeMealPlanFromCache(command.planId);
       } else if (command.kind === 'meal_entry_add') {
-        const response = await addMealEntryApi(command.actorRole, command.planId, command.dayOfWeek, command.name);
+        const response = await addMealEntryApi(effectiveRole(command.actorRole), command.planId, command.dayOfWeek, command.name);
         await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
       } else if (command.kind === 'meal_entry_name_update') {
-        const response = await updateMealEntryApi(command.actorRole, command.planId, command.entryId, command.expectedVersion, { name: command.name });
+        const response = await updateMealEntryApi(effectiveRole(command.actorRole), command.planId, command.entryId, command.expectedVersion, { name: command.name });
         await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
       } else if (command.kind === 'meal_entry_items_update') {
-        const response = await updateMealEntryApi(command.actorRole, command.planId, command.entryId, command.expectedVersion, { shoppingItems: command.shoppingItems });
+        const response = await updateMealEntryApi(effectiveRole(command.actorRole), command.planId, command.entryId, command.expectedVersion, { shoppingItems: command.shoppingItems });
         await cacheMealPlanDetail({ ...response, plan: { ...response.plan, pendingSync: false } });
       } else if (command.kind === 'meal_entry_delete') {
-        await deleteMealEntryApi(command.actorRole, command.planId, command.entryId);
+        await deleteMealEntryApi(effectiveRole(command.actorRole), command.planId, command.entryId);
         await removeMealEntryFromCache(command.entryId);
       } else if (command.kind === 'ritual_complete') {
-        const response = await completeRitualApi(command.routineId, command.occurrenceId, command.actorRole, command.carryForwardNotes, command.recapNarrative, command.overviewNarrative);
+        const response = await completeRitualApi(command.routineId, command.occurrenceId, effectiveRole(command.actorRole), command.carryForwardNotes, command.recapNarrative, command.overviewNarrative);
         // Fetch canonical review record from server and replace provisional local record
-        const canonicalRecord = await fetchReviewRecordApi(response.reviewRecordId, command.actorRole);
+        const canonicalRecord = await fetchReviewRecordApi(response.reviewRecordId, effectiveRole(command.actorRole));
         // Delete provisional record if it had a different ID (should match but handle edge case)
         if (command.provisionalReviewRecordId !== response.reviewRecordId) {
           await clientDb.reviewRecords.delete(command.provisionalReviewRecordId);
         }
         await cacheReviewRecord({ ...canonicalRecord, pendingSync: false });
         // Refresh routine in cache
-        const routineDetail = await fetchRoutineDetail(command.actorRole, command.routineId);
+        const routineDetail = await fetchRoutineDetail(effectiveRole(command.actorRole), command.routineId);
         await cacheRoutineDetail(routineDetail);
       } else {
         throw new Error('Unsupported outbox command kind.');

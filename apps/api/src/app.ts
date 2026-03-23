@@ -194,6 +194,27 @@ function isReadableActorRole(role: unknown): role is ActorRole {
   return role === 'stakeholder' || role === 'spouse';
 }
 
+/**
+ * Resolve the effective actorRole for a request.
+ * Priority: explicit body.actorRole > session identity (always 'stakeholder' for now) > default 'stakeholder'.
+ * During the transition period, the frontend still sends actorRole. Once fully migrated,
+ * identity comes entirely from the session.
+ */
+function resolveActorRole(bodyRole: ActorRole | undefined, request: { user?: { userId: string } }): ActorRole {
+  if (bodyRole) return bodyRole;
+  // When authenticated, default to 'stakeholder' — the role distinction is deprecated
+  if (request.user) return 'stakeholder';
+  return 'stakeholder';
+}
+
+/**
+ * Extract the authenticated userId from the request, if available.
+ * Used when passing userId to repository for user attribution columns.
+ */
+export function resolveUserId(request: { user?: { userId: string } }): string | undefined {
+  return request.user?.userId;
+}
+
 function isPushSubscriptionPayload(payload: Record<string, unknown>): payload is PushSubscriptionPayload {
   return (
     typeof payload.endpoint === 'string' &&
@@ -750,7 +771,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
 
     const response = saveReminderNotificationPreferencesResponseSchema.parse({
-      preferences: repository.saveReminderNotificationPreferences(body.actorRole, body.preferences)
+      preferences: repository.saveReminderNotificationPreferences(resolveActorRole(body.actorRole, request), body.preferences)
     });
 
     return reply.send(response);
@@ -780,7 +801,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       request.log.info({ actorRole: body.actorRole, type: 'web-push' }, 'saved Web Push notification subscription');
     }
 
-    const subscription = repository.saveNotificationSubscription(body.actorRole, endpoint, payload);
+    const subscription = repository.saveNotificationSubscription(resolveActorRole(body.actorRole, request), endpoint, payload);
     return reply.send(saveNotificationSubscriptionResponseSchema.parse({ subscription }));
   });
 
@@ -858,8 +879,9 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   app.post('/api/lists', async (request, reply) => {
     const body = createListRequestSchema.parse(request.body);
 
-    const list = createSharedList(body.title, body.actorRole);
-    const historyEntry = createListCreatedHistoryEntry(list, body.actorRole);
+    const role = resolveActorRole(body.actorRole, request);
+    const list = createSharedList(body.title, role);
+    const historyEntry = createListCreatedHistoryEntry(list, role);
     repository.createSharedList(list, historyEntry);
     request.log.info({ listId: list.id }, 'accepted list create command');
     return reply.status(201).send(listMutationResponseSchema.parse({ savedList: list, historyEntry, newVersion: list.version }));
@@ -879,7 +901,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     const oldTitle = currentList.title;
     const updatedList = updateListTitle(currentList, body.title);
-    const historyEntry = createListTitleUpdatedHistoryEntry(updatedList, oldTitle, body.actorRole);
+    const historyEntry = createListTitleUpdatedHistoryEntry(updatedList, oldTitle, resolveActorRole(body.actorRole, request));
     const saved = repository.updateSharedList(updatedList, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -902,7 +924,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentList.version, retryGuidance: 'Refresh and retry.' });
     }
     const archivedList = archiveList(currentList);
-    const historyEntry = createListArchivedHistoryEntry(archivedList, body.actorRole);
+    const historyEntry = createListArchivedHistoryEntry(archivedList, resolveActorRole(body.actorRole, request));
     const saved = repository.updateSharedList(archivedList, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -925,7 +947,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentList.version, retryGuidance: 'Refresh and retry.' });
     }
     const restoredList = restoreList(currentList);
-    const historyEntry = createListRestoredHistoryEntry(restoredList, body.actorRole);
+    const historyEntry = createListRestoredHistoryEntry(restoredList, resolveActorRole(body.actorRole, request));
     const saved = repository.updateSharedList(restoredList, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -960,7 +982,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     const nextPosition = repository.getNextListItemPosition(params.listId);
     const item = addListItem(params.listId, body.body, nextPosition);
-    const historyEntry = createItemAddedHistoryEntry(item, body.actorRole);
+    const historyEntry = createItemAddedHistoryEntry(item, resolveActorRole(body.actorRole, request));
     repository.addListItem(item, historyEntry);
     request.log.info({ listId: params.listId, itemId: item.id }, 'accepted item add command');
     return reply.status(201).send(listItemMutationResponseSchema.parse({ savedItem: item, historyEntry, newVersion: item.version }));
@@ -981,7 +1003,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     const oldBody = currentItem.body;
     const updatedItem = updateItemBody(currentItem, body.body);
-    const historyEntry = createItemBodyUpdatedHistoryEntry(updatedItem, oldBody, body.actorRole);
+    const historyEntry = createItemBodyUpdatedHistoryEntry(updatedItem, oldBody, resolveActorRole(body.actorRole, request));
     const saved = repository.updateListItem(updatedItem, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -1003,7 +1025,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentItem.version, retryGuidance: 'Refresh and retry.' });
     }
     const checkedItem = checkItem(currentItem);
-    const historyEntry = createItemCheckedHistoryEntry(checkedItem, body.actorRole);
+    const historyEntry = createItemCheckedHistoryEntry(checkedItem, resolveActorRole(body.actorRole, request));
     const saved = repository.updateListItem(checkedItem, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -1025,7 +1047,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentItem.version, retryGuidance: 'Refresh and retry.' });
     }
     const uncheckedItem = uncheckItem(currentItem);
-    const historyEntry = createItemUncheckedHistoryEntry(uncheckedItem, body.actorRole);
+    const historyEntry = createItemUncheckedHistoryEntry(uncheckedItem, resolveActorRole(body.actorRole, request));
     const saved = repository.updateListItem(uncheckedItem, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -1043,7 +1065,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (checkedItems.length === 0) {
       return reply.status(400).send({ code: 'NO_CHECKED_ITEMS', message: 'No completed items to clear.' });
     }
-    const historyEntry = createItemsClearedHistoryEntry(params.listId, checkedItems.length, body.actorRole);
+    const historyEntry = createItemsClearedHistoryEntry(params.listId, checkedItems.length, resolveActorRole(body.actorRole, request));
     const affectedCount = repository.clearCompletedItems(params.listId, historyEntry);
     request.log.info({ listId: params.listId, affectedCount }, 'cleared completed items');
     return reply.send(bulkListActionResponseSchema.parse({ affectedCount }));
@@ -1059,7 +1081,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (checkedItems.length === 0) {
       return reply.status(400).send({ code: 'NO_CHECKED_ITEMS', message: 'No completed items to uncheck.' });
     }
-    const historyEntry = createItemsUncheckedAllHistoryEntry(params.listId, checkedItems.length, body.actorRole);
+    const historyEntry = createItemsUncheckedAllHistoryEntry(params.listId, checkedItems.length, resolveActorRole(body.actorRole, request));
     const affectedCount = repository.uncheckAllItems(params.listId, historyEntry);
     request.log.info({ listId: params.listId, affectedCount }, 'unchecked all items');
     return reply.send(bulkListActionResponseSchema.parse({ affectedCount }));
@@ -1075,7 +1097,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (!currentItem) {
       return reply.status(404).send({ code: 'NOT_FOUND', message: 'Item not found.' });
     }
-    const historyEntry = createItemRemovedHistoryEntry(params.listId, currentItem, body.actorRole);
+    const historyEntry = createItemRemovedHistoryEntry(params.listId, currentItem, resolveActorRole(body.actorRole, request));
     repository.removeListItem(params.itemId, params.listId, historyEntry);
     request.log.info({ listId: params.listId, itemId: params.itemId }, 'accepted item remove command');
     return reply.status(204).send();
@@ -1196,7 +1218,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (currentRoutine.version !== body.expectedVersion) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentRoutine.version, retryGuidance: 'Refresh and retry.' });
     }
-    const { updatedRoutine, occurrence } = completeRoutineOccurrence(currentRoutine, body.actorRole, now);
+    const { updatedRoutine, occurrence } = completeRoutineOccurrence(currentRoutine, resolveActorRole(body.actorRole, request), now);
     const saved = repository.completeRoutineOccurrence(updatedRoutine, occurrence, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -1968,7 +1990,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     };
 
     // Use domain function to advance currentDueDate; we override the occurrence ID and add reviewRecordId
-    const { updatedRoutine, occurrence: domainOccurrence } = completeRoutineOccurrence(routine, body.actorRole, now);
+    const { updatedRoutine, occurrence: domainOccurrence } = completeRoutineOccurrence(routine, resolveActorRole(body.actorRole, request), now);
     const occurrenceWithReview = {
       ...domainOccurrence,
       id: occurrenceId,
@@ -2030,7 +2052,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (currentRoutine.version !== body.expectedVersion) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentRoutine.version, retryGuidance: 'Refresh and retry.' });
     }
-    const { updatedRoutine, occurrence } = skipRoutineOccurrence(currentRoutine, body.actorRole, now);
+    const { updatedRoutine, occurrence } = skipRoutineOccurrence(currentRoutine, resolveActorRole(body.actorRole, request), now);
     const saved = repository.completeRoutineOccurrence(updatedRoutine, occurrence, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
