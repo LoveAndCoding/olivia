@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-068: Operating cadence established — three rolling horizons, milestone transition protocol, momentum rules
+- Date: 2026-03-22
+- Area: company operations / process
+- Decision: Establish a forward-looking operating cadence with three rolling horizons (current sprint, next sprint, strategic direction), a milestone transition protocol (retrospective → feedback → assumptions review → H2 activation → H3 refresh), momentum rules (no idle agents, zero sprint gaps), and backlog management. CEO HEARTBEAT.md updated with strategic planning steps. Full process codified in `docs/strategy/operating-cadence.md`.
+- Rationale: the team's operating model was reactive — wait for board directive, scope, execute, wait again. M30 closed with no M31 defined, no backlog, and no forward view. The board explicitly asked the CEO to "constantly think about what comes next" and ensure "the team never sits idle for long."
+- Alternatives considered: (1) Ad-hoc planning — rejected because it's what we had and it creates sprint gaps. (2) Fixed calendar cadence (weekly planning meetings) — rejected because heartbeat-driven execution doesn't map to calendar time well. (3) Kanban-style continuous flow — considered but milestones provide better strategic framing for a product this early.
+- Trade-offs: the three-horizon model adds planning overhead to each heartbeat. Benefit: eliminates dead air, gives the board visibility into where we're headed, and ensures the team always has a next thing.
+- Status: active
+- Related docs: `docs/strategy/operating-cadence.md`, `agents/ceo/HEARTBEAT.md`, OLI-273
+
 ### D-067: AI chat recalibration spec drafted — conversation-first, tool-use cap, batch dismiss, undo
 - Date: 2026-03-22
 - Area: feature spec / AI chat behavior

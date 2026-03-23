@@ -396,16 +396,33 @@ export async function evaluateNudgePushRule(
 
   // ─── Deliver to Web Push subscriptions ─────────────────────────────────────
   if (push.isConfigured()) {
-    const subscriptions = repository.listPushSubscriptions();
-    for (const subscription of subscriptions) {
-      for (const nudge of nudges) {
+    const allSubscriptions = repository.listPushSubscriptions();
+
+    for (const nudge of nudges) {
+      if (shouldHoldNudge(nudge, repository, config, logger, now)) continue;
+
+      // Per-user targeting: reminder nudges go to the creator's subscriptions only;
+      // household-wide nudges (routines, planning rituals, freshness) go to all.
+      let targetSubscriptions = allSubscriptions;
+      if (nudge.entityType === 'reminder') {
+        const creatorUserId = repository.getReminderCreatorUserId(nudge.entityId);
+        if (creatorUserId) {
+          const userSubs = repository.listPushSubscriptionsForUser(creatorUserId);
+          if (userSubs.length > 0) {
+            targetSubscriptions = userSubs;
+          }
+          // Fall back to all subscriptions if creator has no subscriptions
+        }
+      }
+
+      const notification = buildNudgeNotification(nudge, config.pwaOrigin);
+
+      for (const subscription of targetSubscriptions) {
         const alreadySent = repository.hasPushNotificationLog(
           subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
         );
         if (alreadySent) continue;
-        if (shouldHoldNudge(nudge, repository, config, logger, now)) continue;
 
-        const notification = buildNudgeNotification(nudge, config.pwaOrigin);
         try {
           await push.send(
             { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh_key, auth: subscription.auth_key } },

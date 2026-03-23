@@ -3,13 +3,28 @@
 Olivia is a local-first household command center designed to reduce the mental tax of managing day-to-day life. It is being defined and built as an agentic project, with durable documentation intended to help future agents and collaborators pick up context quickly and make good decisions without rediscovering product intent from scratch.
 
 ## Current Status
-The project now includes the first runnable implementation of the shared household inbox workflow alongside the documentation system that defines product intent and constraints.
 
-The current direction is:
-- focused household coordination rather than a general-purpose assistant
-- advisory-only behavior in the first major phase
-- local-first handling of logic and sensitive household information
-- a documentation-first workflow that supports agentic iteration
+Olivia is at **v0.6.0** and in active household use. The product surface includes:
+
+- **Shared household inbox** — capture, review, and manage household items
+- **First-class reminders** — with date/time picker and snooze
+- **Shared lists** — with completed-item management (clear completed, uncheck all)
+- **Recurring routines** — with flexible scheduling and "last done" tracking
+- **Meal planning** — weekly meal plan with grocery list integration
+- **Unified weekly view** — see everything happening across the household this week
+- **Activity history** — timeline of household actions
+- **Planning rituals** — AI-assisted weekly planning summaries
+- **Proactive nudges** — context-aware household reminders via push notifications
+- **Push notifications** — native iOS delivery via VAPID + service worker
+- **AI chat** — conversational interface powered by Claude (advisory-only)
+
+The current milestone (M30) focuses on **stability and feature depth** — making the existing surface reliable enough for sustained daily use before adding new features.
+
+Core principles:
+- Focused household coordination, not a general-purpose assistant
+- Advisory-only AI behavior — Olivia suggests, never acts unilaterally
+- Local-first: logic and sensitive household data stay on-device
+- Documentation-first workflow supporting agentic iteration
 
 ## Workspace Layout
 - `apps/pwa`: React + Vite installable PWA for capture, review, item detail, role switching, and settings
@@ -62,31 +77,40 @@ The `ios.yml` GitHub Actions workflow builds the iOS project on every PR that to
 ## Documentation Map
 
 ### Start Here
-- `docs/vision/product-vision.md` for the core product thesis, users, outcomes, and non-goals
-- `docs/vision/product-ethos.md` for trust model, product principles, and behavioral boundaries
-- `docs/strategy/agentic-development-principles.md` for the agentic documentation standard and PM operating model
-- `docs/strategy/interface-direction.md` for the current MVP interface recommendation and revisit triggers
+- `docs/vision/product-vision.md` — core product thesis, users, outcomes, and non-goals
+- `docs/vision/product-ethos.md` — trust model, product principles, and behavioral boundaries
+- `docs/strategy/agentic-development-principles.md` — agentic documentation standard and PM operating model
+- `docs/strategy/interface-direction.md` — current interface direction and revisit triggers
+- `docs/strategy/system-architecture.md` — technical architecture overview
 
 ### Product Direction
-- `docs/roadmap/roadmap.md` for the broader, future-looking product trajectory
-- `docs/roadmap/milestones.md` for evidence-based readiness gates before advancing phases
+- `docs/roadmap/roadmap.md` — broader, future-looking product trajectory
+- `docs/roadmap/milestones.md` — evidence-based readiness gates before advancing phases
+
+### Feature Specs
+- `docs/specs/` — feature specifications (inbox, reminders, lists, routines, meal planning, chat, push, AI, etc.)
+- `docs/plans/` — implementation plans and visual implementation specs
+
+### Design
+- `docs/vision/design-foundations.md` — design system foundations (spacing, color, typography)
+- `docs/vision/design-components.md` — reusable UI component patterns
+- `docs/vision/design-screens.md` — screen-level layout references
+- `docs/brand/` — brand identity (essence, tone, color palette, typography, logo)
 
 ### Durable Project Memory
-- `docs/learnings/README.md` for how project memory should be maintained
-- `docs/learnings/assumptions-log.md` for active assumptions and validation paths
-- `docs/learnings/learnings-log.md` for durable lessons over time
-- `docs/learnings/decision-history.md` for important decisions and rationale
+- `docs/learnings/README.md` — how project memory is maintained
+- `docs/learnings/assumptions-log.md` — active assumptions and validation paths
+- `docs/learnings/learnings-log.md` — durable lessons over time
+- `docs/learnings/decision-history.md` — important decisions and rationale
 
-### Planning System
-- `docs/specs/spec-template.md` for future feature specs
-- `docs/glossary.md` for stable product and project terminology
+### Reference
+- `docs/glossary.md` — stable product and project terminology
+- `docs/release-policy.md` — versioning and release process
+- `docs/git-worktrees.md` — git worktree setup for parallel development
 
 ## How To Use This Repo
 - Read the vision and ethos docs before proposing new work.
 - Check the roadmap and milestones before suggesting sequencing or readiness claims.
 - Review the learnings and decision history before reopening settled debates.
-- Use the spec template for any feature that may move toward implementation.
+- Use the spec template (`docs/specs/spec-template.md`) for any feature moving toward implementation.
 - Treat durable docs as the source of truth over transient conversation history.
-
-## Near-Term Goal
-The near-term goal is to validate the shared household inbox in real household use, capture learnings about durability, signal quality, and notification posture, and then decide what the next coordination slice should be.

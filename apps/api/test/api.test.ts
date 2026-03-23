@@ -30,6 +30,7 @@ const createConfig = (dbPath: string): AppConfig => ({
   householdTimezone: 'UTC',
   apns: { keyId: null, teamId: null, privateKey: null, bundleId: 'com.loveandcoding.olivia', useSandbox: true },
   paperclip: { apiUrl: null, apiKey: null, companyId: null, sreAgentId: null },
+  auth: { enabled: false, resendApiKey: null },
 });
 
 const validPushPayload = {
@@ -156,10 +157,11 @@ describe('household inbox api', () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  it('rejects spouse write attempts while allowing read-only access', async () => {
+  it('allows both stakeholder and spouse write access (multi-user household)', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'olivia-api-'));
     const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
 
+    // Spouse can now write — both household members have full access
     const spouseWrite = await app.inject({
       method: 'POST',
       url: '/api/inbox/items/preview-create',
@@ -169,8 +171,8 @@ describe('household inbox api', () => {
       }
     });
 
-    expect(spouseWrite.statusCode).toBe(403);
-    expect(spouseWrite.json().code).toBe('ROLE_READ_ONLY');
+    expect(spouseWrite.statusCode).toBe(200);
+    expect(spouseWrite.json().draftId).toBeTruthy();
 
     const spouseRead = await app.inject({
       method: 'GET',
@@ -296,7 +298,7 @@ describe('reminder migrations and api', () => {
       .all() as Array<{ name: string }>;
 
     expect(repository.listItems()).toHaveLength(1);
-    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql', '0010_data_freshness.sql', '0011_routines_flexible_scheduling.sql']);
+    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql', '0010_data_freshness.sql', '0011_routines_flexible_scheduling.sql', '0012_auth_identity.sql', '0013_user_attribution.sql', '0014_backfill_user_attribution.sql']);
     expect(reminderTables.map((row) => row.name).sort()).toEqual([
       'notification_delivery_log',
       'reminder_notification_preferences',
@@ -427,6 +429,7 @@ describe('reminder migrations and api', () => {
     });
     expect(spouseList.statusCode).toBe(200);
 
+    // Spouse can now write — both household members have full access
     const spouseWrite = await app.inject({
       method: 'POST',
       url: '/api/reminders/preview-create',
@@ -439,8 +442,8 @@ describe('reminder migrations and api', () => {
         }
       }
     });
-    expect(spouseWrite.statusCode).toBe(403);
-    expect(spouseWrite.json().code).toBe('ROLE_READ_ONLY');
+    expect(spouseWrite.statusCode).toBe(200);
+    expect(spouseWrite.json().draftId).toBeTruthy();
 
     const firstUpdate = await app.inject({
       method: 'POST',
@@ -794,7 +797,7 @@ describe('shared list api', () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  it('spouse can read lists and items but cannot write', async () => {
+  it('spouse has full read and write access to lists (multi-user household)', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'olivia-lists-'));
     const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
 
@@ -821,30 +824,30 @@ describe('shared list api', () => {
     expect(detailRes.statusCode).toBe(200);
     expect(detailRes.json().items).toHaveLength(1);
 
-    // Spouse cannot create a list
+    // Spouse can create a list
     const spouseCreateRes = await app.inject({
       method: 'POST',
       url: '/api/lists',
       payload: { actorRole: 'spouse', title: 'Spouse List' }
     });
-    expect(spouseCreateRes.statusCode).toBe(403);
+    expect(spouseCreateRes.statusCode).toBe(201);
 
-    // Spouse cannot add an item
+    // Spouse can add an item
     const spouseAddItemRes = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items`,
       payload: { actorRole: 'spouse', body: 'Eggs' }
     });
-    expect(spouseAddItemRes.statusCode).toBe(403);
+    expect(spouseAddItemRes.statusCode).toBe(201);
 
-    // Spouse cannot check an item
+    // Spouse can check an item
     const items = detailRes.json().items;
     const spouseCheckRes = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items/${items[0].id}/check`,
       payload: { actorRole: 'spouse', expectedVersion: items[0].version }
     });
-    expect(spouseCheckRes.statusCode).toBe(403);
+    expect(spouseCheckRes.statusCode).toBe(200);
 
     await app.close();
     rmSync(directory, { recursive: true, force: true });
@@ -990,19 +993,19 @@ describe('recurring routines api', () => {
     const spouseListRes = await app.inject({ method: 'GET', url: '/api/routines?actorRole=spouse' });
     expect(spouseListRes.statusCode).toBe(200);
 
-    // Spouse cannot create
+    // Spouse can also create routines (full write access)
     const spouseCreateRes = await app.inject({
       method: 'POST',
       url: '/api/routines',
       payload: {
         actorRole: 'spouse',
-        title: 'Unauthorized',
+        title: 'Spouse Routine',
         owner: 'spouse',
         recurrenceRule: 'daily',
         firstDueDate: new Date().toISOString()
       }
     });
-    expect(spouseCreateRes.statusCode).toBe(403);
+    expect(spouseCreateRes.statusCode).toBe(201);
 
     // Complete routine — should advance due date by 1 week from original (schedule-anchored)
     const completeRes = await app.inject({
@@ -1068,9 +1071,10 @@ describe('recurring routines api', () => {
 
     const archivedVersion = archiveRes.json().savedRoutine.version;
 
-    // Should appear in archived index, not active index
+    // Original routine should be archived; spouse routine remains active
     const activeAfterArchive = await app.inject({ method: 'GET', url: '/api/routines?actorRole=stakeholder' });
-    expect(activeAfterArchive.json().routines).toHaveLength(0);
+    expect(activeAfterArchive.json().routines).toHaveLength(1);
+    expect(activeAfterArchive.json().routines[0].title).toBe('Spouse Routine');
 
     const archivedIndex = await app.inject({ method: 'GET', url: '/api/routines/archived?actorRole=stakeholder' });
     expect(archivedIndex.json().routines).toHaveLength(1);
@@ -1097,9 +1101,10 @@ describe('recurring routines api', () => {
     expect(deleteRes.json().deleted).toBe(true);
     void restoredVersion;
 
-    // Should be gone
+    // Original routine should be gone; spouse routine remains
     const afterDelete = await app.inject({ method: 'GET', url: '/api/routines?actorRole=stakeholder' });
-    expect(afterDelete.json().routines).toHaveLength(0);
+    expect(afterDelete.json().routines).toHaveLength(1);
+    expect(afterDelete.json().routines[0].title).toBe('Spouse Routine');
 
     await app.close();
     rmSync(directory, { recursive: true, force: true });
@@ -2292,7 +2297,7 @@ describe('proactive household nudges api', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('skip routine endpoint: rejects spouse role', async () => {
+  it('skip routine endpoint: allows spouse role (full write access)', async () => {
     const { dir, dbPath } = makeDir();
     const db = createDatabase(dbPath);
     const routine = makeOverdueRoutine(db);
@@ -2305,7 +2310,7 @@ describe('proactive household nudges api', () => {
       url: `/api/routines/${routine.id}/skip`,
       payload: { actorRole: 'spouse', expectedVersion: 1 }
     });
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(200);
 
     await app.close();
     rmSync(dir, { recursive: true, force: true });

@@ -148,9 +148,9 @@ export function RemindersPage() {
           <button
             type="button"
             className="rem-detail-back"
-            onClick={() => void navigate({ to: '/' })}
+            onClick={() => void navigate({ to: '/daily', search: { segment: 'reminders' } })}
           >
-            ← Home
+            ← Daily
           </button>
 
           <div className="screen-title">Reminders</div>
@@ -284,7 +284,7 @@ export function RemindersPage() {
         onSelectTime={handleSnoozeSelect}
       />
 
-      <BottomNav activeTab="home" />
+      <BottomNav activeTab="daily" />
     </div>
   );
 }

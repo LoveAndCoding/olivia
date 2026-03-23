@@ -15,7 +15,7 @@ import {
 } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
 import { ListCard } from '../components/lists/ListCard';
-import { SpouseBanner } from '../components/lists/SpouseBanner';
+import { CollaborativeBanner } from '../components/auth/CollaborativeBanner';
 import { CreateListSheet } from '../components/lists/CreateListSheet';
 import { EditTitleSheet } from '../components/lists/EditTitleSheet';
 import { ArchiveListSheet } from '../components/lists/ArchiveListSheet';
@@ -30,8 +30,6 @@ export function ListsPage() {
   const navigate = useNavigate();
   const { role } = useRole();
   const queryClient = useQueryClient();
-  const isSpouse = role === 'spouse';
-
   const [filter, setFilter] = useState<ListFilter>('active');
   const [showCreateSheet, setShowCreateSheet] = useState(false);
   const [overflowTarget, setOverflowTarget] = useState<SharedList | null>(null);
@@ -199,7 +197,7 @@ export function ListsPage() {
             ))}
           </div>
 
-          {!isSpouse && filter === 'active' && (
+          {filter === 'active' && (
             <button
               type="button"
               className="list-new-btn"
@@ -212,7 +210,7 @@ export function ListsPage() {
         </div>
 
         <div style={{ padding: '0 16px' }}>
-          {isSpouse && <SpouseBanner />}
+          <CollaborativeBanner />
 
           {currentQuery.isLoading && (
             <div style={{ padding: '16px 6px', color: 'var(--ink-3)', fontSize: 13 }}>
@@ -248,7 +246,7 @@ export function ListsPage() {
               list={list}
               onClick={() => void navigate({ to: '/lists/$listId', params: { listId: list.id } })}
               onOverflow={() => setOverflowTarget(list)}
-              showOverflow={!isSpouse}
+              showOverflow
             />
           ))}
 

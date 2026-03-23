@@ -23,9 +23,15 @@ export type PaperclipConfig = {
   sreAgentId: string | null;
 };
 
+export type AuthConfig = {
+  enabled: boolean;
+  resendApiKey: string | null;
+};
+
 export type AppConfig = {
   port: number;
   dbPath: string;
+  auth: AuthConfig;
   staleThresholdDays: number;
   dueSoonDays: number;
   aiProvider: 'disabled' | 'claude';
@@ -47,6 +53,10 @@ export function loadConfig(): AppConfig {
   return {
     port: Number(process.env.PORT ?? 3001),
     dbPath: resolveDbPath(),
+    auth: {
+      enabled: process.env.OLIVIA_AUTH_ENABLED === 'true',
+      resendApiKey: process.env.OLIVIA_RESEND_API_KEY ?? null,
+    },
     staleThresholdDays: Number(process.env.OLIVIA_STALE_THRESHOLD_DAYS ?? 14),
     dueSoonDays: Number(process.env.OLIVIA_DUE_SOON_DAYS ?? 7),
     aiProvider: process.env.ANTHROPIC_API_KEY ? 'claude' : 'disabled',

@@ -1,18 +1,18 @@
 import { Link } from '@tanstack/react-router';
-import { House, CheckSquare, Sparkle, ListChecks, FolderSimple } from '@phosphor-icons/react';
+import { House, CalendarCheck, Sparkle, ListChecks, DotsThree } from '@phosphor-icons/react';
 import type { Icon } from '@phosphor-icons/react';
 
-export type NavTab = 'home' | 'tasks' | 'olivia' | 'lists' | 'memory';
+export type NavTab = 'home' | 'daily' | 'olivia' | 'lists' | 'more';
 
 const NAV_ITEMS: Array<{ tab: NavTab; to: string; icon: Icon; label: string }> = [
-  { tab: 'home',   to: '/',        icon: House,        label: 'Home'   },
-  { tab: 'tasks',  to: '/tasks',   icon: CheckSquare,  label: 'Tasks'  },
-  { tab: 'olivia', to: '/olivia',  icon: Sparkle,      label: 'Olivia' },
-  { tab: 'lists',  to: '/lists',   icon: ListChecks,   label: 'Lists'  },
-  { tab: 'memory', to: '/history', icon: FolderSimple,  label: 'Memory' },
+  { tab: 'home',   to: '/',       icon: House,         label: 'Home'   },
+  { tab: 'daily',  to: '/daily',  icon: CalendarCheck,  label: 'Daily'  },
+  { tab: 'olivia', to: '/olivia', icon: Sparkle,        label: 'Olivia' },
+  { tab: 'lists',  to: '/lists',  icon: ListChecks,     label: 'Lists'  },
+  { tab: 'more',   to: '/more',   icon: DotsThree,      label: 'More'   },
 ];
 
-export function BottomNav({ activeTab, nudgeBadgeCount = 0 }: { activeTab: NavTab; nudgeBadgeCount?: number }) {
+export function BottomNav({ activeTab, nudgeBadgeCount = 0, moreBadgeCount = 0 }: { activeTab: NavTab; nudgeBadgeCount?: number; moreBadgeCount?: number }) {
   return (
     <nav className="bottom-nav" aria-label="Main navigation">
       {NAV_ITEMS.map(({ tab, to, icon: IconComponent, label }) => {
@@ -35,6 +35,14 @@ export function BottomNav({ activeTab, nudgeBadgeCount = 0 }: { activeTab: NavTa
                   aria-label={`${nudgeBadgeCount > 9 ? '9+' : nudgeBadgeCount} active nudges`}
                 >
                   {nudgeBadgeCount > 9 ? '9+' : nudgeBadgeCount}
+                </span>
+              )}
+              {tab === 'more' && moreBadgeCount > 0 && (
+                <span
+                  className="more-nav-badge"
+                  aria-label={`${moreBadgeCount > 9 ? '9+' : moreBadgeCount} pending tasks`}
+                >
+                  {moreBadgeCount > 9 ? '9+' : moreBadgeCount}
                 </span>
               )}
             </span>

@@ -25,6 +25,7 @@ const createConfig = (dbPath: string): AppConfig => ({
   householdTimezone: 'UTC',
   apns: { keyId: null, teamId: null, privateKey: null, bundleId: 'com.loveandcoding.olivia', useSandbox: true },
   paperclip: { apiUrl: null, apiKey: null, companyId: null, sreAgentId: null },
+  auth: { enabled: false, resendApiKey: null },
 });
 
 function makeDir() {
@@ -158,7 +159,7 @@ describe('freshness API', () => {
     expect(res.statusCode).toBe(409);
   });
 
-  it('blocks spouse from confirming freshness', async () => {
+  it('allows spouse to confirm freshness (full write access)', async () => {
     const db = createDatabase(dbPath);
     const id = randomUUID();
     insertStaleInboxItem(db, id, 'Spouse test', 20);
@@ -169,7 +170,7 @@ describe('freshness API', () => {
       url: '/api/freshness/confirm',
       payload: { entityType: 'inbox', entityId: id, actorRole: 'spouse', expectedVersion: 1 }
     });
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(200);
   });
 
   // ─── POST /api/freshness/archive ─────────────────────────────────────────
@@ -207,7 +208,7 @@ describe('freshness API', () => {
     expect(res.statusCode).toBe(200);
   });
 
-  it('blocks spouse from archiving', async () => {
+  it('allows spouse to archive (full write access)', async () => {
     const db = createDatabase(dbPath);
     const id = randomUUID();
     insertStaleInboxItem(db, id, 'Spouse archive', 20);
@@ -218,7 +219,7 @@ describe('freshness API', () => {
       url: '/api/freshness/archive',
       payload: { entityType: 'inbox', entityId: id, actorRole: 'spouse', expectedVersion: 1 }
     });
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(200);
   });
 
   // ─── Health Check State ──────────────────────────────────────────────────

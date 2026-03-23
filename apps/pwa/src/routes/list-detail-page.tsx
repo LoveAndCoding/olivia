@@ -19,7 +19,7 @@ import {
 import { BottomNav } from '../components/bottom-nav';
 import { ListItemRow } from '../components/lists/ListItemRow';
 import { InlineAddInput } from '../components/lists/InlineAddInput';
-import { SpouseBanner } from '../components/lists/SpouseBanner';
+import { CollaborativeBanner } from '../components/auth/CollaborativeBanner';
 import { OliviaListMessage } from '../components/lists/OliviaListMessage';
 import { EditTitleSheet } from '../components/lists/EditTitleSheet';
 import { EditItemSheet } from '../components/lists/EditItemSheet';
@@ -37,8 +37,6 @@ export function ListDetailPage() {
   const navigate = useNavigate();
   const { role } = useRole();
   const queryClient = useQueryClient();
-  const isSpouse = role === 'spouse';
-
   const [showEditTitleSheet, setShowEditTitleSheet] = useState(false);
   const [showArchiveSheet, setShowArchiveSheet] = useState(false);
   const [showDeleteListSheet, setShowDeleteListSheet] = useState(false);
@@ -223,7 +221,7 @@ export function ListDetailPage() {
     const actions = [];
     if (!isArchived) {
       actions.push({ label: 'Rename', onClick: () => setShowEditTitleSheet(true) });
-      if (checkedCount > 0 && !isSpouse) {
+      if (checkedCount > 0) {
         actions.push({ label: 'Clear completed', onClick: () => setShowClearConfirm(true) });
         actions.push({ label: 'Uncheck all', onClick: () => setShowUncheckAllConfirm(true) });
       }
@@ -231,7 +229,7 @@ export function ListDetailPage() {
     }
     actions.push({ label: 'Delete', danger: true, onClick: () => setShowDeleteListSheet(true) });
     return actions;
-  }, [list, isArchived, checkedCount, isSpouse]);
+  }, [list, isArchived, checkedCount]);
 
   const subtitle = totalItems === 0
     ? 'No items'
@@ -267,22 +265,20 @@ export function ListDetailPage() {
               </div>
               <div className="screen-sub" style={{ marginBottom: 16 }}>{subtitle}</div>
             </div>
-            {!isSpouse && (
-              <button
-                type="button"
-                className="list-card-overflow"
-                aria-label="List options"
-                style={{ marginTop: 4 }}
-                onClick={() => setShowListOverflow(true)}
-              >
-                ···
-              </button>
-            )}
+            <button
+              type="button"
+              className="list-card-overflow"
+              aria-label="List options"
+              style={{ marginTop: 4 }}
+              onClick={() => setShowListOverflow(true)}
+            >
+              ···
+            </button>
           </div>
         </div>
 
         <div style={{ padding: '0 16px' }}>
-          {isSpouse && <SpouseBanner />}
+          <CollaborativeBanner />
 
           {isOffline && (
             <div className="list-offline-banner">
@@ -318,7 +314,7 @@ export function ListDetailPage() {
                 onCheck={() => void handleCheckItem(item)}
                 onUncheck={() => void handleUncheckItem(item)}
                 onOverflow={() => setItemOverflowTarget(item)}
-                isSpouse={isSpouse}
+                isSpouse={false}
                 disabled={busy}
               />
             ))}
@@ -348,7 +344,7 @@ export function ListDetailPage() {
                       onCheck={() => void handleCheckItem(item)}
                       onUncheck={() => void handleUncheckItem(item)}
                       onOverflow={() => setItemOverflowTarget(item)}
-                      isSpouse={isSpouse}
+                      isSpouse={false}
                       disabled={busy}
                     />
                   ))}
@@ -357,7 +353,7 @@ export function ListDetailPage() {
             </div>
           )}
 
-          {allChecked && !omsgDismissed && !isSpouse && !isArchived && (
+          {allChecked && !omsgDismissed && !isArchived && (
             <OliviaListMessage
               onArchive={() => { setOmsgDismissed(true); setShowArchiveSheet(true); }}
               onDismiss={() => setOmsgDismissed(true)}
@@ -368,7 +364,7 @@ export function ListDetailPage() {
         </div>
       </div>
 
-      {!isSpouse && !isArchived && (
+      {!isArchived && (
         <InlineAddInput onAdd={handleAddItem} disabled={busy} />
       )}
 

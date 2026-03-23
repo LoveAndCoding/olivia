@@ -48,6 +48,7 @@ Full details for completed milestones are archived in `milestones-archive.md`. C
 | M27 | AI-Enhanced Nudge Timing Build | complete | Completion-window timing built — 249 tests, IQR algorithm (D-051) |
 | M28 | Household Validation & Phase 3 Scoping | bypassed | Board directed chat as Phase 3 (D-053) |
 | M29 | Post-Chat Household Validation | complete | First-week feedback processed, stability direction chosen (D-065, D-066) |
+| M30 | Stability & Feature Depth | complete | All 7 priority areas shipped (v0.6.0), team scaled 5→8 (D-068) |
 
 ## M28: Household Validation & Phase 3 Scoping
 
@@ -98,7 +99,7 @@ Notes:
 ## M30: Stability & Feature Depth — Make It Work for Daily Use
 Objective: make the existing product surface reliable and complete enough for sustained daily household use. No new features — deepen what exists until the household can use it without workarounds.
 
-Status: todo
+Status: complete (2026-03-22, v0.6.0)
 
 Context:
 - M29 household feedback (OLI-245, D-065, D-066) identified five friction themes: reliability erosion, incomplete features, missing push integration, unhelpful AI chat, and no in-app feedback path.
@@ -154,6 +155,39 @@ Notes:
 - This is a hardening milestone, not a build milestone. Success is measured by reduced friction, not new capability.
 - The board offered to provide follow-up details on any area — take them up on this for specific UX questions as implementation proceeds.
 - Task steps (OLI-242, D-064) remain deferred until inbox usage is validated through this stability work.
+
+## M31: Post-M30 Household Feedback & Next Direction
+Objective: collect household feedback on the M30 stability and feature depth improvements, then scope the next build cycle based on that signal.
+
+Status: todo
+
+Context:
+- M30 shipped all 7 priority areas: reliability, lists depth, reminders depth, routines depth, push validation, AI chat recalibration, plus team scaling (5 → 8 agents).
+- v0.6.0 released with all M30 changes.
+- The household has been using the app daily through M29 and M30. M30 was specifically a hardening milestone — success should be measured by reduced friction in daily use.
+- The operating cadence (D-068) requires that we scope the next sprint before the current one closes. M31 kicks off this process.
+
+Required artifacts:
+- Second household feedback round — board reports on whether M30 changes reduced daily friction, what still hurts, and what's now possible that wasn't before
+- Updated assumptions log — A-011 (feature breadth vs depth) should be re-evaluated with M30 evidence
+- M32 direction decision — informed by feedback. Candidate tracks:
+  - Track A: Deepen the chat (now that recalibration is done, is chat useful?)
+  - Track B: Broaden the household (spouse write access, multi-user)
+  - Track C: Complete H3 (meal planning if relevant)
+  - Track D: Increase autonomy (rule-based automation, if trust is earned)
+  - Track E: Deepen coordination surface (task steps, shared calendar)
+  - Track F: New — in-app feedback mechanism (if friction reporting remains a gap)
+- M32 defined with objectives tracing back to feedback
+
+Exit criteria:
+- Board has provided post-M30 household feedback
+- At least 3 qualitative observations documented as learnings
+- Direction decision recorded
+- M32 milestone defined and ready for execution
+
+Notes:
+- Per operating cadence (D-068), this milestone should be fast — its purpose is feedback collection and direction-setting, not building.
+- The team should not be idle during this milestone. Backlog items and tech debt can fill the gap while waiting for board feedback.
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

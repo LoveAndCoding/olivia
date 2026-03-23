@@ -15,10 +15,12 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
 import { RoleProvider } from './lib/role';
+import { AuthProvider } from './lib/auth';
 import { showErrorToast } from './lib/error-toast';
 import { reportError, errorMessage, errorStack } from './lib/error-reporter';
 import { router } from './router';
 import './styles.css';
+import './components/auth/auth.css';
 
 // ─── Global error handlers ──────────────────────────────────────────────────
 
@@ -67,9 +69,11 @@ const queryClient = new QueryClient({ queryCache, mutationCache });
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RoleProvider>
-        <RouterProvider router={router} />
-      </RoleProvider>
+      <AuthProvider>
+        <RoleProvider>
+          <RouterProvider router={router} />
+        </RoleProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>
 );

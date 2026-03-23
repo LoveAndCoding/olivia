@@ -407,7 +407,7 @@ export function MealDetailPage() {
         />
       )}
 
-      <BottomNav activeTab="lists" />
+      <BottomNav activeTab="daily" />
     </div>
   );
 }

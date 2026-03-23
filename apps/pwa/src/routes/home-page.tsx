@@ -15,7 +15,7 @@ import { NudgeTray, useNudges } from './nudge-tray';
 import { CreateReminderSheet } from '../components/reminders/CreateReminderSheet';
 import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
-import { SpouseBanner } from '../components/lists/SpouseBanner';
+import { CollaborativeBanner } from '../components/auth/CollaborativeBanner';
 import { formatSnoozeUntil } from '../lib/reminder-helpers';
 import type { NudgeData } from '../types/display';
 import { fetchOnboardingState, startOnboarding, finishOnboarding, fetchHealthCheckState, dismissHealthCheck, type OnboardingState, type HealthCheckState } from '../lib/api';
@@ -222,7 +222,7 @@ export function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderC
         <div className="wv-workflow-section">
           <div className="wv-workflow-header">
             <div className="wv-workflow-label">ROUTINES</div>
-            <Link to="/routines" className="wv-section-link" aria-label="View all routines">All →</Link>
+            <Link to="/daily" search={{ segment: 'routines' }} className="wv-section-link" aria-label="View all routines">All →</Link>
           </div>
           {day.routines.length > 0
             ? day.routines.map((r, i) => (
@@ -235,7 +235,7 @@ export function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderC
         <div className="wv-workflow-section">
           <div className="wv-workflow-header">
             <div className="wv-workflow-label">REMINDERS</div>
-            <Link to="/reminders" className="wv-section-link" aria-label="View all reminders">All →</Link>
+            <Link to="/daily" search={{ segment: 'reminders' }} className="wv-section-link" aria-label="View all reminders">All →</Link>
           </div>
           {day.reminders.length > 0
             ? day.reminders.map((r) => (
@@ -248,7 +248,7 @@ export function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderC
         <div className="wv-workflow-section">
           <div className="wv-workflow-header">
             <div className="wv-workflow-label">MEALS</div>
-            <Link to="/meals" className="wv-section-link" aria-label="View all meals">All →</Link>
+            <Link to="/daily" search={{ segment: 'meals' }} className="wv-section-link" aria-label="View all meals">All →</Link>
           </div>
           {day.meals.length > 0
             ? day.meals.map((m) => (
@@ -285,16 +285,17 @@ function getGreeting(): string {
 interface TodayWorkflowSectionProps {
   label: string;
   linkTo: string;
+  linkSearch?: Record<string, string>;
   linkLabel: string;
   children: ReactNode;
 }
 
-function TodayWorkflowSection({ label, linkTo, linkLabel, children }: TodayWorkflowSectionProps) {
+function TodayWorkflowSection({ label, linkTo, linkSearch, linkLabel, children }: TodayWorkflowSectionProps) {
   return (
     <div className="wv-workflow-section">
       <div className="wv-workflow-header">
         <div className="wv-workflow-label">{label}</div>
-        <Link to={linkTo} className="wv-section-link" aria-label={linkLabel}>All →</Link>
+        <Link to={linkTo} search={linkSearch} className="wv-section-link" aria-label={linkLabel}>All →</Link>
       </div>
       {children}
     </div>
@@ -313,9 +314,9 @@ function EmptyTodayMessage() {
         or plan the week ahead.
       </p>
       <div className="home-empty-today-actions">
-        <Link to="/routines" className="home-empty-today-btn">Browse routines →</Link>
-        <Link to="/reminders" className="home-empty-today-btn">Browse reminders →</Link>
-        <Link to="/meals" className="home-empty-today-btn">Browse meals →</Link>
+        <Link to="/daily" search={{ segment: 'routines' }} className="home-empty-today-btn">Browse routines →</Link>
+        <Link to="/daily" search={{ segment: 'reminders' }} className="home-empty-today-btn">Browse reminders →</Link>
+        <Link to="/daily" search={{ segment: 'meals' }} className="home-empty-today-btn">Browse meals →</Link>
       </div>
     </div>
   );
@@ -326,9 +327,9 @@ function EmptyTodayMessage() {
 function WorkflowNavRow() {
   return (
     <nav className="home-workflow-nav" aria-label="Workflows">
-      <Link to="/routines" className="home-workflow-pill">Routines</Link>
-      <Link to="/reminders" className="home-workflow-pill">Reminders</Link>
-      <Link to="/meals" className="home-workflow-pill">Meals</Link>
+      <Link to="/daily" search={{ segment: 'routines' }} className="home-workflow-pill">Routines</Link>
+      <Link to="/daily" search={{ segment: 'reminders' }} className="home-workflow-pill">Reminders</Link>
+      <Link to="/daily" search={{ segment: 'meals' }} className="home-workflow-pill">Meals</Link>
       <Link to="/lists" className="home-workflow-pill">Lists</Link>
     </nav>
   );
@@ -374,7 +375,7 @@ function UpcomingPreview({ days, todayStr }: { days: WeeklyDayView[]; todayStr: 
       <div className="home-upcoming-card">
         {rows.map((row, i) => (
           <div key={row.date}>
-            <Link to="/week" className="home-upcoming-row">
+            <Link to="/more/week" className="home-upcoming-row">
               <span className="home-upcoming-day">{row.dayLabel}</span>
               <span className="home-upcoming-summary">
                 {row.summaryParts.map((part, j) => (
@@ -389,7 +390,7 @@ function UpcomingPreview({ days, todayStr }: { days: WeeklyDayView[]; todayStr: 
           </div>
         ))}
       </div>
-      <Link to="/week" className="home-week-link">This week →</Link>
+      <Link to="/more/week" className="home-week-link">This week →</Link>
     </section>
   );
 }
@@ -565,7 +566,7 @@ export function HomePage() {
               type="button"
               className="settings-btn"
               aria-label="Settings"
-              onClick={() => void navigate({ to: '/settings' })}
+              onClick={() => void navigate({ to: '/more/settings' })}
             >
               <GearSix size={20} aria-hidden="true" />
             </button>
@@ -575,11 +576,9 @@ export function HomePage() {
         <div className="greeting"><em>{displayName}.</em></div>
         <div className="greeting-sub">{subtitleText}</div>
 
-        {role === 'spouse' && (
-          <div style={{ marginTop: 12 }}>
-            <SpouseBanner />
-          </div>
-        )}
+        <div style={{ marginTop: 12 }}>
+          <CollaborativeBanner />
+        </div>
       </header>
 
       <div className="screen-scroll" ref={scrollAreaRef}>
@@ -803,48 +802,48 @@ export function HomePage() {
               <div className="home-today-content">
                 {/* Routines — only if items exist */}
                 {todayData.routines.length > 0 && (
-                  <TodayWorkflowSection label="ROUTINES" linkTo="/routines" linkLabel="View all routines">
+                  <TodayWorkflowSection label="ROUTINES" linkTo="/daily" linkSearch={{ segment: 'routines' }} linkLabel="View all routines">
                     {todayData.routines.slice(0, MAX_TODAY_ITEMS).map((r, i) => (
                       <RoutineCard key={`${r.routineId}-today-${i}`} item={r} onClick={() => void navigate({ to: '/routines/$routineId', params: { routineId: r.routineId } })} />
                     ))}
                     {todayData.routines.length > MAX_TODAY_ITEMS && (
-                      <Link to="/routines" className="home-more-link">{todayData.routines.length - MAX_TODAY_ITEMS} more →</Link>
+                      <Link to="/daily" search={{ segment: 'routines' }} className="home-more-link">{todayData.routines.length - MAX_TODAY_ITEMS} more →</Link>
                     )}
                   </TodayWorkflowSection>
                 )}
 
                 {/* Reminders — only if items exist */}
                 {todayData.reminders.length > 0 && (
-                  <TodayWorkflowSection label="REMINDERS" linkTo="/reminders" linkLabel="View all reminders">
+                  <TodayWorkflowSection label="REMINDERS" linkTo="/daily" linkSearch={{ segment: 'reminders' }} linkLabel="View all reminders">
                     {todayData.reminders.slice(0, MAX_TODAY_ITEMS).map((r) => (
                       <ReminderCard key={r.reminderId} item={r} onClick={() => void navigate({ to: '/reminders/$reminderId', params: { reminderId: r.reminderId } })} />
                     ))}
                     {todayData.reminders.length > MAX_TODAY_ITEMS && (
-                      <Link to="/reminders" className="home-more-link">{todayData.reminders.length - MAX_TODAY_ITEMS} more →</Link>
+                      <Link to="/daily" search={{ segment: 'reminders' }} className="home-more-link">{todayData.reminders.length - MAX_TODAY_ITEMS} more →</Link>
                     )}
                   </TodayWorkflowSection>
                 )}
 
                 {/* Meals — only if items exist */}
                 {todayData.meals.length > 0 && (
-                  <TodayWorkflowSection label="MEALS" linkTo="/meals" linkLabel="View all meals">
+                  <TodayWorkflowSection label="MEALS" linkTo="/daily" linkSearch={{ segment: 'meals' }} linkLabel="View all meals">
                     {todayData.meals.slice(0, MAX_TODAY_ITEMS).map((m) => (
                       <MealCard key={m.entryId} item={m} onClick={() => void navigate({ to: '/meals/$planId', params: { planId: m.planId } })} />
                     ))}
                     {todayData.meals.length > MAX_TODAY_ITEMS && (
-                      <Link to="/meals" className="home-more-link">{todayData.meals.length - MAX_TODAY_ITEMS} more →</Link>
+                      <Link to="/daily" search={{ segment: 'meals' }} className="home-more-link">{todayData.meals.length - MAX_TODAY_ITEMS} more →</Link>
                     )}
                   </TodayWorkflowSection>
                 )}
 
                 {/* Inbox — only if items exist */}
                 {todayData.inboxItems.length > 0 && (
-                  <TodayWorkflowSection label="INBOX" linkTo="/tasks" linkLabel="View all inbox items">
+                  <TodayWorkflowSection label="INBOX" linkTo="/more/tasks" linkLabel="View all inbox items">
                     {todayData.inboxItems.slice(0, MAX_TODAY_ITEMS).map((item) => (
                       <InboxItemCard key={item.itemId} item={item} onClick={() => void navigate({ to: '/items/$itemId', params: { itemId: item.itemId } })} />
                     ))}
                     {todayData.inboxItems.length > MAX_TODAY_ITEMS && (
-                      <Link to="/tasks" className="home-more-link">{todayData.inboxItems.length - MAX_TODAY_ITEMS} more →</Link>
+                      <Link to="/more/tasks" className="home-more-link">{todayData.inboxItems.length - MAX_TODAY_ITEMS} more →</Link>
                     )}
                   </TodayWorkflowSection>
                 )}
@@ -873,7 +872,7 @@ export function HomePage() {
         {/* This week link (always visible even if no upcoming) */}
         {weeklyQuery.data && !hasUpcomingItems && (
           <div style={{ padding: '12px 22px' }}>
-            <Link to="/week" className="home-week-link">This week →</Link>
+            <Link to="/more/week" className="home-week-link">This week →</Link>
           </div>
         )}
 

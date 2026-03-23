@@ -377,10 +377,7 @@ describe('list contracts', () => {
       expect(result.affectedCount).toBe(0);
     });
 
-    it('rejects clear completed items with spouse role at API boundary', () => {
-      // The schema itself accepts any valid actorRole, but the API layer
-      // calls assertStakeholderWrite before executing. This test validates
-      // the schema parses — the role guard is tested at the domain level.
+    it('accepts clear completed items with spouse role (both roles have write access)', () => {
       const result = clearCompletedItemsRequestSchema.parse({
         actorRole: 'spouse',
         listId,

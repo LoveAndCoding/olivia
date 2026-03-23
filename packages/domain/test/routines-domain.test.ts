@@ -9,7 +9,7 @@ import {
   archiveRoutine,
   restoreRoutine,
   scheduleNextRoutineOccurrence,
-  assertStakeholderWrite,
+
   formatRecurrenceLabel,
   calculateFirstDueDate,
   skipRoutineOccurrence,
@@ -326,22 +326,6 @@ describe('archiveRoutine and restoreRoutine', () => {
   });
 });
 
-describe('assertStakeholderWrite (role enforcement)', () => {
-  it('does not throw for stakeholder', () => {
-    expect(() => assertStakeholderWrite('stakeholder')).not.toThrow();
-  });
-
-  it('throws 403 ROLE_READ_ONLY for spouse', () => {
-    expect(() => assertStakeholderWrite('spouse')).toThrow();
-    try {
-      assertStakeholderWrite('spouse');
-    } catch (err) {
-      const error = err as Error & { statusCode?: number; code?: string };
-      expect(error.statusCode).toBe(403);
-      expect(error.code).toBe('ROLE_READ_ONLY');
-    }
-  });
-});
 
 // ─── Flexible Scheduling Tests ────────────────────────────────────────────────
 

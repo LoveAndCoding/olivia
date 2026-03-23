@@ -5,6 +5,7 @@ export const inboxItemsTable = sqliteTable('inbox_items', {
   title: text('title').notNull(),
   description: text('description'),
   owner: text('owner').notNull(),
+  createdByUserId: text('created_by_user_id'),
   status: text('status').notNull(),
   dueAt: text('due_at'),
   dueText: text('due_text'),
@@ -21,6 +22,7 @@ export const inboxItemHistoryTable = sqliteTable('inbox_item_history', {
   id: text('id').primaryKey(),
   itemId: text('item_id').notNull(),
   actorRole: text('actor_role').notNull(),
+  userId: text('user_id'),
   eventType: text('event_type').notNull(),
   fromValue: text('from_value'),
   toValue: text('to_value'),
@@ -36,6 +38,7 @@ export const deviceSyncStateTable = sqliteTable('device_sync_state', {
 export const notificationSubscriptionsTable = sqliteTable('notification_subscriptions', {
   id: text('id').primaryKey(),
   actorRole: text('actor_role').notNull(),
+  userId: text('user_id'),
   endpoint: text('endpoint').notNull(),
   payload: text('payload').notNull(),
   createdAt: text('created_at').notNull()
@@ -46,6 +49,7 @@ export const remindersTable = sqliteTable('reminders', {
   title: text('title').notNull(),
   note: text('note'),
   owner: text('owner').notNull(),
+  createdByUserId: text('created_by_user_id'),
   linkedInboxItemId: text('linked_inbox_item_id'),
   recurrenceCadence: text('recurrence_cadence').notNull(),
   scheduledAt: text('scheduled_at').notNull(),
@@ -62,6 +66,7 @@ export const reminderTimelineTable = sqliteTable('reminder_timeline', {
   id: text('id').primaryKey(),
   reminderId: text('reminder_id').notNull(),
   actorRole: text('actor_role').notNull(),
+  userId: text('user_id'),
   eventType: text('event_type').notNull(),
   fromValue: text('from_value'),
   toValue: text('to_value'),
@@ -71,6 +76,7 @@ export const reminderTimelineTable = sqliteTable('reminder_timeline', {
 
 export const reminderNotificationPreferencesTable = sqliteTable('reminder_notification_preferences', {
   actorRole: text('actor_role').primaryKey(),
+  userId: text('user_id'),
   enabled: integer('enabled', { mode: 'boolean' }).notNull(),
   dueRemindersEnabled: integer('due_reminders_enabled', { mode: 'boolean' }).notNull(),
   dailySummaryEnabled: integer('daily_summary_enabled', { mode: 'boolean' }).notNull(),
@@ -81,6 +87,7 @@ export const notificationDeliveryLogTable = sqliteTable('notification_delivery_l
   id: text('id').primaryKey(),
   notificationType: text('notification_type').notNull(),
   actorRole: text('actor_role').notNull(),
+  userId: text('user_id'),
   reminderId: text('reminder_id'),
   deliveryBucket: text('delivery_bucket').notNull(),
   deliveredAt: text('delivered_at').notNull()
@@ -95,6 +102,7 @@ export const sharedListsTable = sqliteTable('shared_lists', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   owner: text('owner').notNull(),
+  createdByUserId: text('created_by_user_id'),
   status: text('status').notNull(),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -120,6 +128,7 @@ export const listItemHistoryTable = sqliteTable('list_item_history', {
   listId: text('list_id').notNull(),
   itemId: text('item_id'),
   actorRole: text('actor_role').notNull(),
+  userId: text('user_id'),
   eventType: text('event_type').notNull(),
   fromValue: text('from_value'),
   toValue: text('to_value'),
@@ -130,6 +139,7 @@ export const routinesTable = sqliteTable('routines', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   owner: text('owner').notNull(),
+  createdByUserId: text('created_by_user_id'),
   recurrenceRule: text('recurrence_rule').notNull(),
   intervalDays: integer('interval_days'),
   intervalWeeks: integer('interval_weeks'),
@@ -150,6 +160,7 @@ export const routineOccurrencesTable = sqliteTable('routine_occurrences', {
   dueDate: text('due_date').notNull(),
   completedAt: text('completed_at'),
   completedBy: text('completed_by'),
+  completedByUserId: text('completed_by_user_id'),
   skipped: integer('skipped', { mode: 'boolean' }).notNull(),
   createdAt: text('created_at').notNull()
 });
@@ -201,6 +212,7 @@ export const pushNotificationLogTable = sqliteTable('push_notification_log', {
 export const conversationsTable = sqliteTable('conversations', {
   id: text('id').primaryKey(),
   type: text('type').notNull().default('general'),
+  userId: text('user_id'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull()
 });
@@ -208,6 +220,7 @@ export const conversationsTable = sqliteTable('conversations', {
 export const onboardingSessionsTable = sqliteTable('onboarding_sessions', {
   id: text('id').primaryKey(),
   conversationId: text('conversation_id').notNull(),
+  userId: text('user_id'),
   status: text('status').notNull().default('started'),
   topicsCompleted: text('topics_completed').notNull().default('[]'),
   currentTopic: text('current_topic'),

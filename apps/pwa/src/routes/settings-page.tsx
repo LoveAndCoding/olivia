@@ -7,10 +7,11 @@ import { PushNotifications } from '@capacitor/push-notifications';
 import { clientDb } from '../lib/client-db';
 import { useRole } from '../lib/role';
 import { effectiveApiBaseUrl, resolveApiUrl } from '../lib/api';
+import { HouseholdSection } from '../components/auth/HouseholdSection';
 import { runDiagnosticProbe, type ConnectivityDiagnostic } from '../lib/connectivity';
 import { loadNotificationState, saveDemoNotificationSubscription, saveNativeNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
 import { OliviaMessage } from '../components/reminders/OliviaMessage';
-import type { ActorRole, ReminderNotificationPreferencesInput } from '@olivia/contracts';
+import type { ReminderNotificationPreferencesInput } from '@olivia/contracts';
 
 type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -66,7 +67,7 @@ function ConnectivityProbe() {
 
 export function SettingsPage() {
   const navigate = useNavigate();
-  const { role, setRole } = useRole();
+  const { role } = useRole();
   const queryClient = useQueryClient();
   const [activeTheme, setActiveTheme] = useState<ThemeMode>(readSavedTheme);
   const notificationQuery = useQuery({ queryKey: ['notification-subscriptions', role], queryFn: () => loadNotificationState(role) });
@@ -174,10 +175,10 @@ export function SettingsPage() {
           <button
             type="button"
             className="rem-detail-back"
-            onClick={() => void navigate({ to: '/' })}
+            onClick={() => void navigate({ to: '/more' })}
             aria-label="Back to Home"
           >
-            ← Home
+            ← More
           </button>
           <div className="screen-header" style={{ paddingBottom: 8 }}>
             <div className="screen-title">Settings</div>
@@ -203,27 +204,7 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <div className="card stack-md">
-            <div className="section-header">
-              <h3 className="card-title">Active role</h3>
-              <span className="section-note">For development / testing</span>
-            </div>
-            <p className="muted">Switch which household member you're viewing as.</p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['stakeholder', 'spouse'] as ActorRole[]).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  className={role === r ? 'primary-button' : 'secondary-button'}
-                  style={{ flex: 1 }}
-                  onClick={() => setRole(r)}
-                >
-                  {r === 'stakeholder' ? 'Lexi' : 'Christian'}
-                </button>
-              ))}
-            </div>
-            <p className="muted" style={{ fontSize: 12 }}>Current: {role === 'stakeholder' ? 'Lexi (stakeholder)' : 'Christian (spouse)'}</p>
-          </div>
+          <HouseholdSection />
 
           {/* Notification Settings */}
           <div className="card stack-md">

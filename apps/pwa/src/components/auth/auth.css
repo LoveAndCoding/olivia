@@ -1,0 +1,559 @@
+/* ─── Auth Screens ─────────────────────────────────────────────────────── */
+
+.auth-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top, 20px) 24px 24px;
+  padding-top: calc(env(safe-area-inset-top, 20px) + 20px);
+  background: var(--bg);
+  animation: auth-fadeUp 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes auth-fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-wordmark {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 30px;
+  font-weight: 400;
+  color: var(--violet);
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.auth-title {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.auth-subtitle {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-2);
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+/* ─── Form Inputs ──────────────────────────────────────────────────────── */
+
+.auth-input-group {
+  width: 100%;
+  max-width: 340px;
+  margin-bottom: 14px;
+}
+
+.auth-input-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.auth-input {
+  width: 100%;
+  height: 48px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 2px solid var(--lavender-mid);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms;
+  box-sizing: border-box;
+}
+
+.auth-input::placeholder {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.auth-input:focus {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 4px var(--violet-glow);
+}
+
+.auth-input.error {
+  border-color: var(--rose);
+}
+
+.auth-input-error {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--rose);
+  margin-top: 4px;
+}
+
+/* ─── Buttons ──────────────────────────────────────────────────────────── */
+
+.auth-btn-primary {
+  width: 100%;
+  max-width: 340px;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  background: var(--violet);
+  color: #fff;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 150ms;
+}
+
+.auth-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.auth-btn-ghost {
+  width: 100%;
+  max-width: 340px;
+  height: 48px;
+  border-radius: 12px;
+  border: 2px solid var(--violet);
+  background: transparent;
+  color: var(--violet);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 150ms;
+}
+
+.auth-btn-ghost:active {
+  transform: scale(0.98);
+}
+
+.auth-btn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 340px;
+}
+
+/* ─── Olivia Message (auth variant) ───────────────────────────────────── */
+
+.auth-omsg {
+  width: 100%;
+  max-width: 340px;
+  margin-top: 24px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: var(--surface-2);
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+/* ─── Magic Link Confirmation Card ─────────────────────────────────────── */
+
+.auth-magic-card {
+  max-width: 340px;
+  padding: 32px 24px;
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md, 0 4px 24px rgba(0,0,0,0.08));
+  text-align: center;
+  animation: auth-popIn 250ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes auth-popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.auth-magic-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.auth-magic-title {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.auth-magic-body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-2);
+  margin-bottom: 24px;
+}
+
+.auth-magic-body strong {
+  color: var(--ink);
+}
+
+.auth-magic-resend {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--violet);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.auth-magic-resend:disabled {
+  color: var(--ink-3);
+  text-decoration: none;
+  cursor: default;
+}
+
+.auth-magic-spam {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-top: 12px;
+}
+
+/* ─── Success Card ─────────────────────────────────────────────────────── */
+
+.auth-success-card {
+  max-width: 340px;
+  padding: 32px 24px;
+  border-radius: 24px;
+  background: var(--mint-soft);
+  text-align: center;
+  animation: auth-popIn 250ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-success-icon {
+  font-size: 32px;
+  color: var(--mint);
+  margin-bottom: 12px;
+}
+
+.auth-success-title {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ─── Invite Code Entry ────────────────────────────────────────────────── */
+
+.auth-code-cells {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.auth-code-cell {
+  width: 42px;
+  height: 48px;
+  border-radius: 12px;
+  border: 2px solid var(--ink-4);
+  background: var(--surface-2);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+  text-transform: uppercase;
+  outline: none;
+  caret-color: transparent;
+  transition: border-color 150ms, background 150ms;
+}
+
+.auth-code-cell:focus {
+  border-color: var(--violet);
+  background: var(--violet-dim);
+}
+
+.auth-code-cell.error {
+  border-color: var(--rose);
+  animation: auth-shake 300ms ease-out;
+}
+
+@keyframes auth-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-code-cell.error {
+    animation: none;
+  }
+  .auth-screen {
+    animation: none;
+  }
+  .auth-magic-card,
+  .auth-success-card {
+    animation: none;
+  }
+}
+
+/* ─── Invite Code Display (admin side) ─────────────────────────────────── */
+
+.auth-invite-display {
+  width: 100%;
+  max-width: 340px;
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--violet-dim);
+  border: 1.5px solid var(--violet-glow);
+  text-align: center;
+}
+
+.auth-invite-display-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--violet);
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.auth-invite-display-code {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--violet);
+  letter-spacing: 8px;
+  text-align: center;
+}
+
+.auth-invite-display-divider {
+  height: 1px;
+  background: var(--ink-4);
+  margin: 16px 0;
+}
+
+.auth-invite-display-share {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+}
+
+.auth-invite-btn-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.auth-invite-expiry {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-top: 12px;
+}
+
+/* ─── User Avatar ──────────────────────────────────────────────────────── */
+
+.auth-avatar {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  border: 2.5px solid var(--bg);
+  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0,0,0,0.08));
+  flex-shrink: 0;
+}
+
+.auth-avatar.admin {
+  background: linear-gradient(135deg, #6C5CE7, #8B7FF5);
+}
+
+.auth-avatar.member {
+  background: linear-gradient(135deg, #FF7EB3, #FF9EC6);
+}
+
+.auth-avatar.size-sm {
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+  border-width: 1.5px;
+}
+
+.auth-avatar.size-md {
+  width: 36px;
+  height: 36px;
+  font-size: 15px;
+}
+
+.auth-avatar.size-lg {
+  width: 40px;
+  height: 40px;
+  font-size: 17px;
+}
+
+/* ─── Collaborative Banner ─────────────────────────────────────────────── */
+
+.collab-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--lavender-soft);
+  margin-bottom: 12px;
+}
+
+.collab-banner-icon {
+  font-size: 14px;
+  color: var(--violet);
+}
+
+.collab-banner-text {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--violet);
+}
+
+/* ─── Member Card (Settings) ───────────────────────────────────────────── */
+
+.member-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1.5px solid var(--ink-4);
+  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0,0,0,0.08));
+}
+
+.member-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-card-name {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.member-card-email {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+
+.member-card-joined {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.member-card-badge {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.member-card-badge.admin {
+  background: var(--lavender-soft);
+  color: var(--violet-2);
+}
+
+.member-card-badge.member {
+  background: var(--mint-soft);
+  color: var(--mint);
+}
+
+/* ─── Pending Invite Card (Settings) ───────────────────────────────────── */
+
+.pending-invite-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1.5px dashed var(--lavender-mid);
+  background: transparent;
+}
+
+.pending-invite-code {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--violet);
+  letter-spacing: 4px;
+}
+
+.pending-invite-expiry {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-top: 4px;
+}
+
+.pending-invite-cancel {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rose);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 8px;
+}
