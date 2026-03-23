@@ -1649,3 +1649,129 @@ export type StaleItemsResponse = z.infer<typeof staleItemsResponseSchema>;
 export type FreshnessConfirmRequest = z.infer<typeof freshnessConfirmRequestSchema>;
 export type FreshnessArchiveRequest = z.infer<typeof freshnessArchiveRequestSchema>;
 export type HealthCheckState = z.infer<typeof healthCheckStateSchema>;
+
+// ─── Auth & Identity (M32) ───────────────────────────────────────────
+
+export const userRoleSchema = z.enum(['admin', 'member']);
+
+export const userSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1),
+  email: z.string().email(),
+  householdId: z.string(),
+  role: userRoleSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
+export const authUserSchema = z.object({
+  userId: z.string().uuid(),
+  householdId: z.string(),
+  role: userRoleSchema,
+  name: z.string(),
+  email: z.string().email()
+});
+
+export const requestMagicLinkRequestSchema = z.object({
+  email: z.string().email()
+});
+
+export const requestMagicLinkResponseSchema = z.object({
+  sent: z.boolean(),
+  message: z.string()
+});
+
+export const verifyMagicLinkRequestSchema = z.object({
+  token: z.string().min(1)
+});
+
+export const verifyMagicLinkResponseSchema = z.object({
+  user: userSchema,
+  sessionToken: z.string()
+});
+
+export const setupAccountRequestSchema = z.object({
+  name: z.string().trim().min(1),
+  email: z.string().email()
+});
+
+export const setupAccountResponseSchema = z.object({
+  user: userSchema,
+  sessionToken: z.string(),
+  magicLinkSent: z.boolean(),
+  message: z.string()
+});
+
+export const setPinRequestSchema = z.object({
+  pin: z.string().regex(/^\d{4,6}$/, 'PIN must be 4–6 digits')
+});
+
+export const setPinResponseSchema = z.object({
+  ok: z.boolean()
+});
+
+export const verifyPinRequestSchema = z.object({
+  userId: z.string().uuid(),
+  pin: z.string().regex(/^\d{4,6}$/)
+});
+
+export const verifyPinResponseSchema = z.object({
+  user: userSchema,
+  sessionToken: z.string()
+});
+
+export const authMeResponseSchema = z.object({
+  user: userSchema
+});
+
+export const generateInviteRequestSchema = z.object({
+  email: z.string().email().optional()
+});
+
+export const generateInviteResponseSchema = z.object({
+  code: z.string(),
+  expiresAt: z.string().datetime()
+});
+
+export const claimInviteRequestSchema = z.object({
+  code: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  email: z.string().email()
+});
+
+export const claimInviteResponseSchema = z.object({
+  user: userSchema,
+  sessionToken: z.string(),
+  magicLinkSent: z.boolean(),
+  message: z.string()
+});
+
+export const householdMembersResponseSchema = z.object({
+  members: z.array(userSchema),
+  pendingInvitations: z.array(z.object({
+    id: z.string().uuid(),
+    code: z.string(),
+    email: z.string().email().nullable(),
+    status: z.enum(['pending', 'claimed', 'expired']),
+    expiresAt: z.string().datetime(),
+    createdAt: z.string().datetime()
+  }))
+});
+
+export type UserRole = z.infer<typeof userRoleSchema>;
+export type User = z.infer<typeof userSchema>;
+export type AuthUser = z.infer<typeof authUserSchema>;
+export type RequestMagicLinkRequest = z.infer<typeof requestMagicLinkRequestSchema>;
+export type RequestMagicLinkResponse = z.infer<typeof requestMagicLinkResponseSchema>;
+export type VerifyMagicLinkRequest = z.infer<typeof verifyMagicLinkRequestSchema>;
+export type VerifyMagicLinkResponse = z.infer<typeof verifyMagicLinkResponseSchema>;
+export type SetupAccountRequest = z.infer<typeof setupAccountRequestSchema>;
+export type SetupAccountResponse = z.infer<typeof setupAccountResponseSchema>;
+export type SetPinRequest = z.infer<typeof setPinRequestSchema>;
+export type VerifyPinRequest = z.infer<typeof verifyPinRequestSchema>;
+export type AuthMeResponse = z.infer<typeof authMeResponseSchema>;
+export type GenerateInviteRequest = z.infer<typeof generateInviteRequestSchema>;
+export type GenerateInviteResponse = z.infer<typeof generateInviteResponseSchema>;
+export type ClaimInviteRequest = z.infer<typeof claimInviteRequestSchema>;
+export type ClaimInviteResponse = z.infer<typeof claimInviteResponseSchema>;
+export type HouseholdMembersResponse = z.infer<typeof householdMembersResponseSchema>;

@@ -180,6 +180,9 @@ import { DraftStore } from './drafts';
 import { startBackgroundJobs } from './jobs';
 import { createPushProvider, createApnsPushProvider, type PushSubscriptionPayload } from './push';
 import { InboxRepository } from './repository';
+import { AuthRepository } from './auth-repository';
+import { authMiddleware } from './auth-middleware';
+import { registerAuthRoutes, createLogOnlyEmailProvider } from './auth-routes';
 
 type BuildAppOptions = {
   config: AppConfig;
@@ -264,6 +267,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   const db = createDatabase(config.dbPath);
   const repository = new InboxRepository(db);
+  const authRepo = new AuthRepository(db);
   const drafts = new DraftStore();
   const aiProvider = createAiProvider(config.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY, app.log);
   const push = createPushProvider(config);
@@ -271,6 +275,20 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   const errorReporter = createErrorReporter(config.paperclip, app.log);
   const stopJobs = startBackgroundJobs(repository, push, apns, config, app.log);
   app.addHook('onClose', async () => stopJobs());
+
+  // Auth middleware — validates session tokens on non-public routes
+  const emailProvider = createLogOnlyEmailProvider(app.log);
+  await app.register(authMiddleware, {
+    authRepository: authRepo,
+    enabled: config.auth.enabled
+  });
+
+  // Auth routes — magic link, PIN, session management, invitations
+  await registerAuthRoutes(app, {
+    authRepository: authRepo,
+    emailProvider,
+    config
+  });
 
   app.get('/api/health', async () => ({ ok: true }));
 

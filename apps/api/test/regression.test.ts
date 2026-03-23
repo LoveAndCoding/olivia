@@ -28,6 +28,7 @@ const createConfig = (dbPath: string): AppConfig => ({
   householdTimezone: 'UTC',
   apns: { keyId: null, teamId: null, privateKey: null, bundleId: 'com.loveandcoding.olivia', useSandbox: true },
   paperclip: { apiUrl: null, apiKey: null, companyId: null, sreAgentId: null },
+  auth: { enabled: false, resendApiKey: null },
 });
 
 function makeDir() {

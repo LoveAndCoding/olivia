@@ -30,6 +30,7 @@ const createConfig = (dbPath: string): AppConfig => ({
   householdTimezone: 'UTC',
   apns: { keyId: null, teamId: null, privateKey: null, bundleId: 'com.loveandcoding.olivia', useSandbox: true },
   paperclip: { apiUrl: null, apiKey: null, companyId: null, sreAgentId: null },
+  auth: { enabled: false, resendApiKey: null },
 });
 
 const validPushPayload = {
@@ -296,7 +297,7 @@ describe('reminder migrations and api', () => {
       .all() as Array<{ name: string }>;
 
     expect(repository.listItems()).toHaveLength(1);
-    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql', '0010_data_freshness.sql', '0011_routines_flexible_scheduling.sql']);
+    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql', '0010_data_freshness.sql', '0011_routines_flexible_scheduling.sql', '0012_auth_identity.sql']);
     expect(reminderTables.map((row) => row.name).sort()).toEqual([
       'notification_delivery_log',
       'reminder_notification_preferences',
