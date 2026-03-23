@@ -1,4 +1,4 @@
-import { randomUUID, randomBytes, createHash } from 'node:crypto';
+import { randomUUID, randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type { User, AuthUser, UserRole } from '@olivia/contracts';
 
@@ -35,7 +35,11 @@ function verifyPin(pin: string, storedHash: string): boolean {
   const [salt, hash] = storedHash.split(':');
   if (!salt || !hash) return false;
   const computed = createHash('sha256').update(salt + pin).digest('hex');
-  return computed === hash;
+  // Use timingSafeEqual to prevent timing attacks on PIN hash comparison
+  const computedBuf = Buffer.from(computed, 'utf-8');
+  const storedBuf = Buffer.from(hash, 'utf-8');
+  if (computedBuf.length !== storedBuf.length) return false;
+  return timingSafeEqual(computedBuf, storedBuf);
 }
 
 // ─── Row Mapping ────────────────────────────────────────────────────

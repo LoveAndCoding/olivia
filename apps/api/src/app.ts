@@ -286,7 +286,21 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   const apns = createApnsPushProvider(config.apns);
   const errorReporter = createErrorReporter(config.paperclip, app.log);
   const stopJobs = startBackgroundJobs(repository, push, apns, config, app.log);
-  app.addHook('onClose', async () => stopJobs());
+
+  // Periodic expired session cleanup (every hour)
+  const sessionCleanupId = setInterval(() => {
+    try {
+      const cleaned = authRepo.cleanExpiredSessions();
+      if (cleaned > 0) app.log.info({ cleaned }, 'cleaned expired sessions');
+    } catch (err) {
+      app.log.error({ err }, 'session cleanup failed');
+    }
+  }, 3_600_000);
+
+  app.addHook('onClose', async () => {
+    stopJobs();
+    clearInterval(sessionCleanupId);
+  });
 
   // Auth middleware — validates session tokens on non-public routes
   const emailProvider = createLogOnlyEmailProvider(app.log);

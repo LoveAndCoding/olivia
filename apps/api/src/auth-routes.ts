@@ -98,7 +98,15 @@ export async function registerAuthRoutes(
     }
 
     const token = authRepository.createMagicLinkToken(body.email);
-    await emailProvider.sendMagicLink(body.email, token, config.pwaOrigin);
+    try {
+      await emailProvider.sendMagicLink(body.email, token, config.pwaOrigin);
+    } catch (err) {
+      request.log.error({ err, email: body.email }, 'Failed to send magic link email');
+      return reply.status(502).send({
+        sent: false,
+        message: 'Unable to send sign-in email. Please try again shortly.'
+      });
+    }
 
     return reply.send({
       sent: true,
@@ -253,6 +261,15 @@ export async function registerAuthRoutes(
       return reply.status(404).send({
         error: 'INVALID_INVITE',
         message: 'This invite code is invalid or has expired.'
+      });
+    }
+
+    // M32: enforce two-user household cap
+    const existingMembers = authRepository.findUsersByHousehold(invitation.householdId);
+    if (existingMembers.length >= 2) {
+      return reply.status(409).send({
+        error: 'HOUSEHOLD_FULL',
+        message: 'This household already has two members.'
       });
     }
 

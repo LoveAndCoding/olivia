@@ -1706,8 +1706,8 @@ export const verifyMagicLinkResponseSchema = z.object({
 });
 
 export const setupAccountRequestSchema = z.object({
-  name: z.string().trim().min(1),
-  email: z.string().email()
+  name: z.string().trim().min(1).max(100),
+  email: z.string().email().max(254)
 });
 
 export const setupAccountResponseSchema = z.object({
@@ -1749,9 +1749,9 @@ export const generateInviteResponseSchema = z.object({
 });
 
 export const claimInviteRequestSchema = z.object({
-  code: z.string().trim().min(1),
-  name: z.string().trim().min(1),
-  email: z.string().email()
+  code: z.string().trim().min(1).max(20),
+  name: z.string().trim().min(1).max(100),
+  email: z.string().email().max(254)
 });
 
 export const claimInviteResponseSchema = z.object({
