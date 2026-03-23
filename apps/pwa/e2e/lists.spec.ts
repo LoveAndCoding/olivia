@@ -107,14 +107,14 @@ test.describe('List lifecycle', () => {
     await expect(page.locator('.list-card-title', { hasText: listName })).toBeVisible({ timeout: 10_000 });
   });
 
-  test('spouse view is read-only on lists page', async ({ page }) => {
-    // Switch to spouse via localStorage
+  test('spouse can access lists page with write access (OLI-283)', async ({ page }) => {
+    // Switch to spouse via localStorage — OLI-283 granted spouse write access
     await page.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
     await page.goto('/lists');
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
-    // No "New list" button for spouse
-    await expect(page.locator('.list-new-btn-label')).toHaveCount(0);
+    // Spouse now has write access — "New list" button should be visible
+    await expect(page.locator('.list-new-btn-label')).toBeVisible();
 
     // Restore stakeholder role
     await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
