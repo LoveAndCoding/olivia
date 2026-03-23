@@ -2,13 +2,13 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Reminder lifecycle', () => {
   test.beforeEach(async ({ page }) => {
-    // Ensure stakeholder role
-    await page.goto('/settings');
-    await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
-    await page.getByRole('button', { name: 'Lexi' }).click();
+    // Ensure stakeholder role via localStorage
+    await page.goto('/');
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 
   test('stakeholder can create a reminder with a date chip', async ({ page }) => {
+    const reminderName = `Call dentist ${Date.now()}`;
     await page.goto('/reminders');
     await expect(page.locator('.screen-title')).toContainText('Reminders', { timeout: 10_000 });
 
@@ -16,7 +16,7 @@ test.describe('Reminder lifecycle', () => {
     await page.locator('.add-label', { hasText: 'Add a reminder…' }).click();
 
     // Fill title
-    await page.getByPlaceholder('What do you want to remember?').fill('Call the dentist');
+    await page.getByPlaceholder('What do you want to remember?').fill(reminderName);
 
     // Select "Today" date chip
     await page.locator('.rem-chip', { hasText: 'Today' }).click();
@@ -28,23 +28,24 @@ test.describe('Reminder lifecycle', () => {
     await expect(page.getByText('Reminder created')).toBeVisible({ timeout: 10_000 });
 
     // The reminder should appear in the list
-    await expect(page.locator('.rem-title', { hasText: 'Call the dentist' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.rem-title', { hasText: reminderName })).toBeVisible({ timeout: 10_000 });
   });
 
   test('stakeholder can complete a reminder from the detail page', async ({ page }) => {
+    const reminderName = `Complete me ${Date.now()}`;
     // Create a reminder with "Today" chip (upcoming state)
     await page.goto('/reminders');
     await expect(page.locator('.screen-title')).toContainText('Reminders', { timeout: 10_000 });
 
     await page.locator('.add-label', { hasText: 'Add a reminder…' }).click();
-    await page.getByPlaceholder('What do you want to remember?').fill('Complete me test');
+    await page.getByPlaceholder('What do you want to remember?').fill(reminderName);
     await page.locator('.rem-chip', { hasText: 'Today' }).click();
     await page.getByRole('button', { name: 'Save reminder' }).click();
     await expect(page.getByText('Reminder created')).toBeVisible({ timeout: 10_000 });
 
     // Navigate to detail page
-    await page.locator('.rem-title', { hasText: 'Complete me test' }).click();
-    await expect(page.locator('.rem-detail-title', { hasText: 'Complete me test' })).toBeVisible({ timeout: 10_000 });
+    await page.locator('.rem-title', { hasText: reminderName }).click();
+    await expect(page.locator('.rem-detail-title', { hasText: reminderName })).toBeVisible({ timeout: 10_000 });
 
     // Upcoming state: snooze the reminder to get it into snoozed state
     const snoozeBtn = page.locator('.rem-btn-secondary', { hasText: 'Snooze' });
@@ -69,19 +70,20 @@ test.describe('Reminder lifecycle', () => {
   });
 
   test('stakeholder can snooze a reminder from the detail page', async ({ page }) => {
+    const reminderName = `Snooze me ${Date.now()}`;
     // Create a reminder due today
     await page.goto('/reminders');
     await expect(page.locator('.screen-title')).toContainText('Reminders', { timeout: 10_000 });
 
     await page.locator('.add-label', { hasText: 'Add a reminder…' }).click();
-    await page.getByPlaceholder('What do you want to remember?').fill('Snooze me test');
+    await page.getByPlaceholder('What do you want to remember?').fill(reminderName);
     await page.locator('.rem-chip', { hasText: 'Today' }).click();
     await page.getByRole('button', { name: 'Save reminder' }).click();
     await expect(page.getByText('Reminder created')).toBeVisible({ timeout: 10_000 });
 
     // Click on the reminder to go to detail page
-    await page.locator('.rem-title', { hasText: 'Snooze me test' }).click();
-    await expect(page.locator('.rem-detail-title', { hasText: 'Snooze me test' })).toBeVisible({ timeout: 10_000 });
+    await page.locator('.rem-title', { hasText: reminderName }).click();
+    await expect(page.locator('.rem-detail-title', { hasText: reminderName })).toBeVisible({ timeout: 10_000 });
 
     // Click "Snooze" button
     const snoozeBtn = page.locator('.rem-btn-secondary', { hasText: 'Snooze' });
@@ -100,18 +102,19 @@ test.describe('Reminder lifecycle', () => {
   });
 
   test('completed reminder appears in the Done filter', async ({ page }) => {
+    const reminderName = `Done filter ${Date.now()}`;
     await page.goto('/reminders');
     await expect(page.locator('.screen-title')).toContainText('Reminders', { timeout: 10_000 });
 
     // Create a reminder with "Today" chip (upcoming state)
     await page.locator('.add-label', { hasText: 'Add a reminder…' }).click();
-    await page.getByPlaceholder('What do you want to remember?').fill('Done filter test');
+    await page.getByPlaceholder('What do you want to remember?').fill(reminderName);
     await page.locator('.rem-chip', { hasText: 'Today' }).click();
     await page.getByRole('button', { name: 'Save reminder' }).click();
     await expect(page.getByText('Reminder created')).toBeVisible({ timeout: 10_000 });
 
     // Navigate to detail and snooze to get "Mark done now" available
-    await page.locator('.rem-title', { hasText: 'Done filter test' }).click();
+    await page.locator('.rem-title', { hasText: reminderName }).click();
     await expect(page.locator('.rem-detail-title')).toBeVisible({ timeout: 10_000 });
 
     const snoozeBtn = page.locator('.rem-btn-secondary', { hasText: 'Snooze' });
@@ -135,22 +138,19 @@ test.describe('Reminder lifecycle', () => {
     await page.locator('.ftab', { hasText: 'Done' }).click();
 
     // The reminder should appear in completed list
-    await expect(page.locator('.rem-title', { hasText: 'Done filter test' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.rem-title', { hasText: reminderName })).toBeVisible({ timeout: 10_000 });
   });
 
   test('spouse view is read-only on reminders page', async ({ page }) => {
-    // Switch to spouse
-    await page.goto('/settings');
-    await page.getByRole('button', { name: 'Christian' }).click();
-
+    // Switch to spouse via localStorage
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
     await page.goto('/reminders');
     await expect(page.locator('.screen-title')).toContainText('Reminders', { timeout: 10_000 });
 
     // No "Add a reminder" button for spouse
     await expect(page.locator('.add-label', { hasText: 'Add a reminder…' })).toHaveCount(0);
 
-    // Switch back to stakeholder
-    await page.goto('/settings');
-    await page.getByRole('button', { name: 'Lexi' }).click();
+    // Restore stakeholder role
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 });

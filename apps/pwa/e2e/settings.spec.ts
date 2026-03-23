@@ -14,10 +14,8 @@ test.describe('Settings page', () => {
     await expect(page.getByRole('button', { name: 'Dark' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Auto (OS)' })).toBeVisible();
 
-    // Active role section
-    await expect(page.getByText('Active role')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Lexi' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Christian' })).toBeVisible();
+    // Household section
+    await expect(page.getByText('Household')).toBeVisible();
 
     // Notifications section
     await expect(page.locator('.screen-title').filter({ hasText: 'Notifications' })).toBeVisible();
@@ -64,45 +62,22 @@ test.describe('Settings page', () => {
     expect(autoTheme).toBeNull();
   });
 
-  test('role switching changes current role display', async ({ page }) => {
-    await page.goto('/settings');
-    await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
-
-    // Switch to stakeholder (Lexi)
-    await page.getByRole('button', { name: 'Lexi' }).click();
-    await expect(page.getByText('Current: Lexi (stakeholder)')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Lexi' })).toHaveClass(/primary-button/);
-
-    // Switch to spouse (Christian)
-    await page.getByRole('button', { name: 'Christian' }).click();
-    await expect(page.getByText('Current: Christian (spouse)')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Christian' })).toHaveClass(/primary-button/);
-  });
-
-  test('role switch to spouse makes tasks page read-only (regression OLI-177)', async ({ page }) => {
-    // Switch to spouse
-    await page.goto('/settings');
-    await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
-    await page.getByRole('button', { name: 'Christian' }).click();
-    await expect(page.getByText('Current: Christian (spouse)')).toBeVisible();
-
-    // Navigate to tasks — should be read-only
+  test('spouse role makes tasks page read-only (regression OLI-177)', async ({ page }) => {
+    // Set spouse role via localStorage
+    await page.goto('/');
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
     await page.goto('/tasks');
     await expect(page.locator('.screen-title')).toContainText('Tasks', { timeout: 10_000 });
     await expect(page.getByRole('button', { name: 'Add a new task' })).toHaveCount(0);
     await expect(page.getByText('read-only')).toBeVisible();
 
-    // Switch back to stakeholder
-    await page.goto('/settings');
-    await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
-    await page.getByRole('button', { name: 'Lexi' }).click();
+    // Restore stakeholder role
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 
   test('notification toggles are interactive', async ({ page }) => {
-    // Ensure stakeholder role for notification settings
     await page.goto('/settings');
     await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
-    await page.getByRole('button', { name: 'Lexi' }).click();
 
     // Notification section should be visible
     await expect(page.locator('.screen-title').filter({ hasText: 'Notifications' })).toBeVisible();
@@ -123,14 +98,14 @@ test.describe('Settings page', () => {
     await expect(page.locator('.omsg')).toBeVisible({ timeout: 5_000 });
   });
 
-  test('back button navigates to home', async ({ page }) => {
+  test('back button navigates to More', async ({ page }) => {
     await page.goto('/settings');
     await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
 
     // Click the back button
     await page.getByLabel('Back to Home').click();
 
-    // Should navigate to home
-    await expect(page).toHaveURL('/', { timeout: 5_000 });
+    // Should navigate to /more
+    await expect(page).toHaveURL(/\/more/, { timeout: 5_000 });
   });
 });

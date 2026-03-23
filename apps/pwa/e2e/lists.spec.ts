@@ -2,13 +2,13 @@ import { expect, test } from '@playwright/test';
 
 test.describe('List lifecycle', () => {
   test.beforeEach(async ({ page }) => {
-    // Ensure stakeholder role
-    await page.goto('/settings');
-    await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
-    await page.getByRole('button', { name: 'Lexi' }).click();
+    // Ensure stakeholder role via localStorage
+    await page.goto('/');
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 
   test('stakeholder can create a list', async ({ page }) => {
+    const listName = `Weekend errands ${Date.now()}`;
     await page.goto('/lists');
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
@@ -16,7 +16,7 @@ test.describe('List lifecycle', () => {
     await page.locator('.list-new-btn-label', { hasText: 'New list' }).click();
 
     // Fill title
-    await page.getByPlaceholder('Grocery run, Packing list…').fill('Weekend errands');
+    await page.getByPlaceholder('Grocery run, Packing list…').fill(listName);
 
     // Submit
     await page.getByRole('button', { name: 'Create list' }).click();
@@ -27,7 +27,7 @@ test.describe('List lifecycle', () => {
 
     // Navigate back to the lists index and verify the card appears
     await page.goto('/lists');
-    await expect(page.locator('.list-card-title', { hasText: 'Weekend errands' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.list-card-title', { hasText: listName })).toBeVisible({ timeout: 10_000 });
   });
 
   test('stakeholder can add items to a list and check/uncheck them', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('List lifecycle', () => {
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
     await page.locator('.list-new-btn-label', { hasText: 'New list' }).click();
-    await page.getByPlaceholder('Grocery run, Packing list…').fill('Checklist test');
+    await page.getByPlaceholder('Grocery run, Packing list…').fill(`Checklist ${Date.now()}`);
     await page.getByRole('button', { name: 'Create list' }).click();
 
     // Already on the detail page after creation
@@ -73,20 +73,21 @@ test.describe('List lifecycle', () => {
   });
 
   test('stakeholder can archive a list via overflow menu', async ({ page }) => {
+    const listName = `Archive me ${Date.now()}`;
     // Create a list — the app navigates to detail page after creation
     await page.goto('/lists');
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
     await page.locator('.list-new-btn-label', { hasText: 'New list' }).click();
-    await page.getByPlaceholder('Grocery run, Packing list…').fill('Archive me');
+    await page.getByPlaceholder('Grocery run, Packing list…').fill(listName);
     await page.getByRole('button', { name: 'Create list' }).click();
 
     // Navigate back to lists index after creation redirects to detail
     await page.goto('/lists');
-    await expect(page.locator('.list-card-title', { hasText: 'Archive me' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.list-card-title', { hasText: listName })).toBeVisible({ timeout: 10_000 });
 
     // Open overflow menu on that card
-    const card = page.locator('.list-card', { hasText: 'Archive me' });
+    const card = page.locator('.list-card', { hasText: listName });
     await card.locator('[aria-label="List options"]').click();
 
     // Click Archive option in the overflow menu
@@ -99,26 +100,23 @@ test.describe('List lifecycle', () => {
     await expect(page.locator('.confirm-banner', { hasText: 'Archived' })).toBeVisible({ timeout: 10_000 });
 
     // The list should no longer appear in the active tab
-    await expect(page.locator('.list-card-title', { hasText: 'Archive me' })).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('.list-card-title', { hasText: listName })).not.toBeVisible({ timeout: 5_000 });
 
     // Switch to archived tab — it should be there
     await page.locator('.ftab', { hasText: 'Archived' }).click();
-    await expect(page.locator('.list-card-title', { hasText: 'Archive me' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.list-card-title', { hasText: listName })).toBeVisible({ timeout: 10_000 });
   });
 
-  test('spouse view is read-only on lists page', async ({ page }) => {
-    // Switch to spouse
-    await page.goto('/settings');
-    await page.getByRole('button', { name: 'Christian' }).click();
-
+  test('spouse can access lists page with write access (OLI-283)', async ({ page }) => {
+    // Switch to spouse via localStorage — OLI-283 granted spouse write access
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
     await page.goto('/lists');
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
-    // No "New list" button for spouse
-    await expect(page.locator('.list-new-btn-label')).toHaveCount(0);
+    // Spouse now has write access — "New list" button should be visible
+    await expect(page.locator('.list-new-btn-label')).toBeVisible();
 
-    // Switch back to stakeholder
-    await page.goto('/settings');
-    await page.getByRole('button', { name: 'Lexi' }).click();
+    // Restore stakeholder role
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 });

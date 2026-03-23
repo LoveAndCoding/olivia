@@ -43,8 +43,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     void (async () => {
       try {
-        const { initialized } = await checkAuthStatus();
+        const { initialized, authEnabled } = await checkAuthStatus();
         if (cancelled) return;
+
+        // When server-side auth is disabled, skip the auth gate entirely
+        if (!authEnabled) {
+          setState({ status: 'authenticated', user: { id: 'local', name: 'Local User', email: '', role: 'admin' } as import('@olivia/contracts').User });
+          return;
+        }
 
         if (!initialized) {
           setState({ status: 'uninitialized' });
