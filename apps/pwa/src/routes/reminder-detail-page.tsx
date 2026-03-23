@@ -399,7 +399,7 @@ export function ReminderDetailPage() {
         </>
       )}
 
-      <BottomNav activeTab="home" />
+      <BottomNav activeTab="daily" />
     </div>
   );
 }

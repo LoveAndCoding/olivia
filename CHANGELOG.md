@@ -6,6 +6,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-23
+
+### Added
+- New "Daily" tab in the bottom navigation — your reminders, routines, and meals are now reachable in one or two taps from anywhere in the app
+- Combined "Today" view shows everything on your plate for the day at a glance, with quick access to individual sections
+- New "More" tab replaces Tasks and Memory in the bottom nav — tasks, activity history, week view, and settings are now one extra tap away under "More"
+
+### Changed
+- Bottom navigation updated from Home/Tasks/Olivia/Lists/Memory to Home/Daily/Olivia/Lists/More
+- Home screen links to reminders, routines, and meals now open the Daily tab instead of separate pages
+- Old bookmarks and links to /tasks, /history, /week, and /settings automatically redirect to their new locations
+
 ## [0.6.0] - 2026-03-22
 
 ### Added

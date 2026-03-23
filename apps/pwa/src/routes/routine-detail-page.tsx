@@ -502,7 +502,7 @@ export function RoutineDetailPage() {
         </div>
       </BottomSheet>
 
-      <BottomNav activeTab="home" />
+      <BottomNav activeTab="daily" />
     </div>
   );
 }

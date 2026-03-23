@@ -91,6 +91,9 @@ export function TasksPage() {
 
   return (
     <div className="screen">
+      <div style={{ padding: '22px 16px 0' }}>
+        <button type="button" className="rem-detail-back" onClick={() => void navigate({ to: '/more' })}>← More</button>
+      </div>
       <TasksView
         openTasks={openTasks}
         doneTasks={doneTasks}
@@ -102,7 +105,7 @@ export function TasksPage() {
         onPreviewTask={handlePreviewTask}
         onConfirmTask={handleConfirmTask}
       />
-      <BottomNav activeTab="tasks" />
+      <BottomNav activeTab="more" />
     </div>
   );
 }

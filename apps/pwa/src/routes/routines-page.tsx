@@ -373,9 +373,9 @@ export function RoutinesPage() {
           <button
             type="button"
             className="rem-detail-back"
-            onClick={() => void navigate({ to: '/' })}
+            onClick={() => void navigate({ to: '/daily', search: { segment: 'routines' } })}
           >
-            ← Home
+            ← Daily
           </button>
 
           <div className="screen-title">Routines</div>
@@ -680,7 +680,7 @@ export function RoutinesPage() {
         </div>
       </BottomSheet>
 
-      <BottomNav activeTab="home" />
+      <BottomNav activeTab="daily" />
     </div>
   );
 }
