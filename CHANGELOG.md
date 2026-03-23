@@ -6,6 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-23
+
+### Added
+- Multi-user household support — invite your spouse or partner to collaborate as a full peer with their own login
+- Magic link authentication — sign in securely via email link, no passwords needed
+- PIN unlock for quick access on shared devices
+- Invitation system — generate a code, share it, and your household member joins in under a minute
+- New "Daily" tab in bottom navigation — reminders, routines, and meals are now one tap away instead of buried in the home screen
+- "More" tab for less-frequent features — Tasks, Activity History, Week View, and Settings are neatly organized
+- Per-user push notifications — each household member receives their own relevant notifications on their own device
+
+### Changed
+- Activity history and item attribution now show real names instead of generic role labels
+- Bottom navigation restructured from 5 generic tabs to a layout that matches how the household actually uses the app
+- All entities now track who created or completed them by user identity
+
 ## [0.6.0] - 2026-03-22
 
 ### Added
