@@ -47,7 +47,8 @@ export async function registerAuthRoutes(
     const hasUsers = authRepository.hasAnyUsers();
     return reply.send({
       initialized: hasUsers,
-      requiresSetup: !hasUsers
+      requiresSetup: !hasUsers,
+      authEnabled: config.auth.enabled,
     });
   });
 

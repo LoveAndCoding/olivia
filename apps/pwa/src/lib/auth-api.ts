@@ -46,8 +46,8 @@ function authHeaders(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function checkAuthStatus(): Promise<{ initialized: boolean }> {
-  return authRequest<{ initialized: boolean }>('/api/auth/status');
+export async function checkAuthStatus(): Promise<{ initialized: boolean; authEnabled: boolean }> {
+  return authRequest<{ initialized: boolean; authEnabled: boolean }>('/api/auth/status');
 }
 
 export async function setupAccount(req: SetupAccountRequest): Promise<SetupAccountResponse> {
