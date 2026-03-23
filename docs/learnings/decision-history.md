@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-069: Dynamic user assignment — replace hardcoded names with household members API
+- Date: 2026-03-23
+- Area: multi-user / assignment UX
+- Decision: Replace the role-based `Owner` enum (`stakeholder | spouse | unassigned`) and hardcoded user names ("Lexi", "Christian") with userId-based assignment driven by the household members API. All assignment pickers and display labels will resolve real user names from authenticated household member data.
+- Rationale: M32 shipped full multi-user auth and household members infrastructure, but the assignment UI was not updated. Board feedback (OLI-296): "I can still assign to myself or my spouse as hardcoded items. With multiple users, I can't assign to the actual users. This feels like faux multi-user rather than an actual multi-user experience."
+- Alternatives considered: (1) Name mapping table — rejected; adds indirection when the User type already has `name`. (2) Keep role enum and add name config — rejected; doesn't scale beyond 2 users and maintains the wrong abstraction.
+- Trade-offs: requires a data migration (role → userId) and touches 14+ files. Benefit: removes the last major gap in the multi-user experience and unblocks future features like per-user filtering.
+- Status: active
+- Related docs: `docs/specs/dynamic-user-assignment.md`, OLI-296
+
 ### D-068: Operating cadence established — three rolling horizons, milestone transition protocol, momentum rules
 - Date: 2026-03-22
 - Area: company operations / process
