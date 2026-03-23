@@ -251,6 +251,7 @@ export function createInboxItem(draft: DraftItem, now: Date = new Date()): { ite
     eventType: 'created',
     fromValue: null,
     toValue: item,
+    userId: undefined,
     createdAt: timestamp
   });
 
@@ -849,7 +850,8 @@ function createHistoryEntry(
   eventType: HistoryEntry['eventType'],
   fromValue: unknown,
   toValue: unknown,
-  createdAt: string
+  createdAt: string,
+  userId?: string
 ): HistoryEntry {
   return historyEntrySchema.parse({
     id: createId(),
@@ -858,6 +860,7 @@ function createHistoryEntry(
     eventType,
     fromValue,
     toValue,
+    userId,
     createdAt
   });
 }
@@ -869,7 +872,8 @@ function createReminderTimelineEntry(
   fromValue: unknown,
   toValue: unknown,
   createdAt: string,
-  metadata: Record<string, unknown> | null = null
+  metadata: Record<string, unknown> | null = null,
+  userId?: string
 ): ReminderTimelineEntry {
   return reminderTimelineEntrySchema.parse({
     id: createId(),
@@ -879,6 +883,7 @@ function createReminderTimelineEntry(
     fromValue,
     toValue,
     metadata,
+    userId,
     createdAt
   });
 }
@@ -1086,7 +1091,8 @@ function createListHistoryEntry(
   eventType: ListEventType,
   fromValue: unknown,
   toValue: unknown,
-  createdAt: string
+  createdAt: string,
+  userId?: string
 ): ListItemHistoryEntry {
   return listItemHistoryEntrySchema.parse({
     id: createId(),
@@ -1096,6 +1102,7 @@ function createListHistoryEntry(
     eventType,
     fromValue,
     toValue,
+    userId,
     createdAt
   });
 }

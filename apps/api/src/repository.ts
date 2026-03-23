@@ -83,6 +83,7 @@ const mapItemRow = (row: Record<string, unknown>): InboxItem =>
     title: row.title,
     description: row.description ?? null,
     owner: row.owner,
+    createdByUserId: row.created_by_user_id ?? null,
     status: row.status,
     dueAt: row.due_at ?? null,
     dueText: row.due_text ?? null,
@@ -100,6 +101,7 @@ const mapHistoryRow = (row: Record<string, unknown>): HistoryEntry =>
     id: row.id,
     itemId: row.item_id,
     actorRole: row.actor_role,
+    userId: row.user_id ?? null,
     eventType: row.event_type,
     fromValue: parseJsonColumn(row.from_value),
     toValue: parseJsonColumn(row.to_value),
@@ -112,6 +114,7 @@ const mapReminderRow = (row: Record<string, unknown>, now: Date = new Date()): R
     title: String(row.title),
     note: row.note ? String(row.note) : null,
     owner: row.owner,
+    createdByUserId: row.created_by_user_id ?? null,
     scheduledAt: String(row.scheduled_at),
     recurrenceCadence: row.recurrence_cadence,
     linkedInboxItemId: row.linked_inbox_item_id ? String(row.linked_inbox_item_id) : null,
@@ -145,6 +148,7 @@ const mapReminderTimelineRow = (row: Record<string, unknown>): ReminderTimelineE
     id: row.id,
     reminderId: row.reminder_id,
     actorRole: row.actor_role,
+    userId: row.user_id ?? null,
     eventType: row.event_type,
     fromValue: parseJsonColumn(row.from_value),
     toValue: parseJsonColumn(row.to_value),
@@ -169,6 +173,7 @@ const mapSharedListRow = (row: Record<string, unknown>): SharedList =>
     id: row.id,
     title: row.title,
     owner: row.owner,
+    createdByUserId: row.created_by_user_id ?? null,
     status: row.status,
     // Summary counts are computed separately and not stored on the row; default to 0
     activeItemCount: 0,
@@ -200,6 +205,7 @@ const mapListItemHistoryRow = (row: Record<string, unknown>): ListItemHistoryEnt
     listId: row.list_id,
     itemId: row.item_id ?? null,
     actorRole: row.actor_role,
+    userId: row.user_id ?? null,
     eventType: row.event_type,
     fromValue: parseJsonColumn(row.from_value),
     toValue: parseJsonColumn(row.to_value),
@@ -229,12 +235,12 @@ export class InboxRepository {
   createItem(item: InboxItem, historyEntry: HistoryEntry): void {
     const insertItem = this.db.prepare(`
       INSERT INTO inbox_items (
-        id, title, description, owner, status, due_at, due_text, created_at, updated_at, version, last_status_changed_at, last_note_at, archived_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, title, description, owner, created_by_user_id, status, due_at, due_text, created_at, updated_at, version, last_status_changed_at, last_note_at, archived_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO inbox_item_history (id, item_id, actor_role, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO inbox_item_history (id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const transaction = this.db.transaction(() => {
@@ -243,6 +249,7 @@ export class InboxRepository {
         item.title,
         item.description,
         item.owner,
+        item.createdByUserId ?? null,
         item.status,
         item.dueAt,
         item.dueText,
@@ -257,6 +264,7 @@ export class InboxRepository {
         historyEntry.id,
         historyEntry.itemId,
         historyEntry.actorRole,
+        historyEntry.userId ?? null,
         historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
@@ -274,8 +282,8 @@ export class InboxRepository {
       WHERE id = ? AND version = ?
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO inbox_item_history (id, item_id, actor_role, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO inbox_item_history (id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const transaction = this.db.transaction(() => {
@@ -301,6 +309,7 @@ export class InboxRepository {
         historyEntry.id,
         historyEntry.itemId,
         historyEntry.actorRole,
+        historyEntry.userId ?? null,
         historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
@@ -336,13 +345,13 @@ export class InboxRepository {
   createReminder(reminder: Reminder, timelineEntries: ReminderTimelineEntry[]): void {
     const insertReminder = this.db.prepare(`
       INSERT INTO reminders (
-        id, title, note, owner, linked_inbox_item_id, recurrence_cadence, scheduled_at, snoozed_until,
+        id, title, note, owner, created_by_user_id, linked_inbox_item_id, recurrence_cadence, scheduled_at, snoozed_until,
         completed_at, cancelled_at, created_at, updated_at, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertTimeline = this.db.prepare(`
-      INSERT INTO reminder_timeline (id, reminder_id, actor_role, event_type, from_value, to_value, metadata, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO reminder_timeline (id, reminder_id, actor_role, user_id, event_type, from_value, to_value, metadata, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.db.transaction(() => {
@@ -351,6 +360,7 @@ export class InboxRepository {
         reminder.title,
         reminder.note,
         reminder.owner,
+        reminder.createdByUserId ?? null,
         reminder.linkedInboxItemId,
         reminder.recurrenceCadence,
         reminder.scheduledAt,
@@ -367,6 +377,7 @@ export class InboxRepository {
           timelineEntry.id,
           timelineEntry.reminderId,
           timelineEntry.actorRole,
+          timelineEntry.userId ?? null,
           timelineEntry.eventType,
           timelineEntry.fromValue ? JSON.stringify(timelineEntry.fromValue) : null,
           timelineEntry.toValue ? JSON.stringify(timelineEntry.toValue) : null,
@@ -383,8 +394,8 @@ export class InboxRepository {
     }
 
     const insertTimeline = this.db.prepare(`
-      INSERT OR IGNORE INTO reminder_timeline (id, reminder_id, actor_role, event_type, from_value, to_value, metadata, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO reminder_timeline (id, reminder_id, actor_role, user_id, event_type, from_value, to_value, metadata, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.db.transaction(() => {
@@ -393,6 +404,7 @@ export class InboxRepository {
           timelineEntry.id,
           timelineEntry.reminderId,
           timelineEntry.actorRole,
+          timelineEntry.userId ?? null,
           timelineEntry.eventType,
           timelineEntry.fromValue ? JSON.stringify(timelineEntry.fromValue) : null,
           timelineEntry.toValue ? JSON.stringify(timelineEntry.toValue) : null,
@@ -411,8 +423,8 @@ export class InboxRepository {
       WHERE id = ? AND version = ?
     `);
     const insertTimeline = this.db.prepare(`
-      INSERT INTO reminder_timeline (id, reminder_id, actor_role, event_type, from_value, to_value, metadata, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO reminder_timeline (id, reminder_id, actor_role, user_id, event_type, from_value, to_value, metadata, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     return this.db.transaction(() => {
@@ -441,6 +453,7 @@ export class InboxRepository {
           timelineEntry.id,
           timelineEntry.reminderId,
           timelineEntry.actorRole,
+          timelineEntry.userId ?? null,
           timelineEntry.eventType,
           timelineEntry.fromValue ? JSON.stringify(timelineEntry.fromValue) : null,
           timelineEntry.toValue ? JSON.stringify(timelineEntry.toValue) : null,
@@ -639,22 +652,22 @@ export class InboxRepository {
 
   createSharedList(list: SharedList, historyEntry: ListItemHistoryEntry): void {
     const insertList = this.db.prepare(`
-      INSERT INTO shared_lists (id, title, owner, status, created_at, updated_at, archived_at, version)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO shared_lists (id, title, owner, created_by_user_id, status, created_at, updated_at, archived_at, version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.db.transaction(() => {
       insertList.run(
-        list.id, list.title, list.owner, list.status,
+        list.id, list.title, list.owner, list.createdByUserId ?? null, list.status,
         list.createdAt, list.updatedAt, list.archivedAt, list.version
       );
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -669,8 +682,8 @@ export class InboxRepository {
       WHERE id = ? AND version = ?
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     return this.db.transaction(() => {
@@ -683,7 +696,7 @@ export class InboxRepository {
       }
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -703,8 +716,8 @@ export class InboxRepository {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.db.transaction(() => {
@@ -714,7 +727,7 @@ export class InboxRepository {
       );
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -729,8 +742,8 @@ export class InboxRepository {
       WHERE id = ? AND version = ?
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     return this.db.transaction(() => {
@@ -743,7 +756,7 @@ export class InboxRepository {
       }
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -755,15 +768,15 @@ export class InboxRepository {
   removeListItem(itemId: string, listId: string, historyEntry: ListItemHistoryEntry): void {
     const deleteItem = this.db.prepare('DELETE FROM list_items WHERE id = ? AND list_id = ?');
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.db.transaction(() => {
       deleteItem.run(itemId, listId);
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -774,15 +787,15 @@ export class InboxRepository {
   clearCompletedItems(listId: string, historyEntry: ListItemHistoryEntry): number {
     const deleteChecked = this.db.prepare('DELETE FROM list_items WHERE list_id = ? AND checked = 1');
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     return this.db.transaction(() => {
       const result = deleteChecked.run(listId);
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -797,15 +810,15 @@ export class InboxRepository {
       'UPDATE list_items SET checked = 0, checked_at = NULL, updated_at = ?, version = version + 1 WHERE list_id = ? AND checked = 1'
     );
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     return this.db.transaction(() => {
       const result = uncheckAll.run(now, listId);
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -833,6 +846,7 @@ export class InboxRepository {
       id: row.id,
       title: row.title,
       owner: row.owner,
+      createdByUserId: row.created_by_user_id ?? null,
       recurrenceRule: row.recurrence_rule,
       intervalDays: row.interval_days ?? null,
       intervalWeeks: row.interval_weeks ?? null,
@@ -856,6 +870,7 @@ export class InboxRepository {
       dueDate: row.due_date,
       completedAt: row.completed_at ?? null,
       completedBy: row.completed_by ?? null,
+      completedByUserId: row.completed_by_user_id ?? null,
       skipped: Boolean(row.skipped),
       reviewRecordId: row.review_record_id ?? null,
       createdAt: row.created_at
@@ -903,11 +918,11 @@ export class InboxRepository {
   createRoutine(routine: Routine): void {
     this.db.prepare(`
       INSERT INTO routines (
-        id, title, owner, recurrence_rule, interval_days, interval_weeks, weekdays, status, current_due_date,
+        id, title, owner, created_by_user_id, recurrence_rule, interval_days, interval_weeks, weekdays, status, current_due_date,
         ritual_type, created_at, updated_at, archived_at, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      routine.id, routine.title, routine.owner, routine.recurrenceRule, routine.intervalDays,
+      routine.id, routine.title, routine.owner, routine.createdByUserId ?? null, routine.recurrenceRule, routine.intervalDays,
       routine.intervalWeeks, routine.weekdays ? JSON.stringify(routine.weekdays) : null,
       routine.status, routine.currentDueDate, routine.ritualType ?? null,
       routine.createdAt, routine.updatedAt, routine.archivedAt, routine.version
@@ -965,8 +980,8 @@ export class InboxRepository {
     expectedVersion: number
   ): boolean {
     const insertOccurrence = this.db.prepare(`
-      INSERT INTO routine_occurrences (id, routine_id, due_date, completed_at, completed_by, skipped, review_record_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO routine_occurrences (id, routine_id, due_date, completed_at, completed_by, completed_by_user_id, skipped, review_record_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const updateRoutine = this.db.prepare(`
       UPDATE routines
@@ -991,6 +1006,7 @@ export class InboxRepository {
         occurrence.dueDate,
         occurrence.completedAt,
         occurrence.completedBy,
+        occurrence.completedByUserId ?? null,
         occurrence.skipped ? 1 : 0,
         occurrence.reviewRecordId ?? null,
         occurrence.createdAt
@@ -1477,8 +1493,8 @@ export class InboxRepository {
   ): boolean {
     const insertOccurrence = this.db.prepare(`
       INSERT INTO routine_occurrences (
-        id, routine_id, due_date, completed_at, completed_by, skipped, review_record_id, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)
+        id, routine_id, due_date, completed_at, completed_by, completed_by_user_id, skipped, review_record_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)
     `);
     const insertRecord = this.db.prepare(`
       INSERT INTO review_records (
@@ -1516,6 +1532,7 @@ export class InboxRepository {
         occurrence.dueDate,
         occurrence.completedAt,
         occurrence.completedBy,
+        occurrence.completedByUserId ?? null,
         occurrence.skipped ? 1 : 0,
         occurrence.createdAt
       );

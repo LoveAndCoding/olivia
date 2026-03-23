@@ -37,7 +37,7 @@ export const draftItemSchema = z.object({
 });
 
 // Optional userId field for schemas transitioning from actorRole to user-based identity
-const optionalUserId = z.string().uuid().optional();
+const optionalUserId = z.string().uuid().nullish();
 
 export const inboxItemSchema = draftItemSchema.extend({
   createdAt: z.string().datetime(),
