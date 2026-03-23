@@ -414,6 +414,135 @@ describe('completion window push timing', () => {
   });
 });
 
+// ─── Per-User Push Targeting (OLI-286) ──────────────────────────────────────
+
+function insertUser(db: ReturnType<typeof createDatabase>, id: string, email: string, role = 'admin') {
+  const now = new Date().toISOString();
+  db.prepare(`
+    INSERT INTO users (id, name, email, household_id, role, created_at, updated_at)
+    VALUES (?, ?, ?, 'household', ?, ?, ?)
+  `).run(id, email.split('@')[0], email, role, now, now);
+}
+
+function insertReminder(db: ReturnType<typeof createDatabase>, id: string, title: string, scheduledAt: string, createdByUserId?: string) {
+  db.prepare(`
+    INSERT INTO reminders (id, title, owner, created_by_user_id, recurrence_cadence, scheduled_at, created_at, updated_at, version)
+    VALUES (?, ?, 'stakeholder', ?, 'none', ?, datetime('now'), datetime('now'), 1)
+  `).run(id, title, createdByUserId ?? null, scheduledAt);
+}
+
+describe('per-user push targeting', () => {
+  let directory: string;
+  let db: ReturnType<typeof createDatabase>;
+  let repository: InboxRepository;
+  let config: AppConfig;
+
+  beforeEach(() => {
+    directory = mkdtempSync(join(tmpdir(), 'olivia-user-push-'));
+    const dbPath = join(directory, 'test.sqlite');
+    db = createDatabase(dbPath);
+    repository = new InboxRepository(db);
+    config = createConfig(dbPath);
+  });
+
+  afterEach(() => {
+    db.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('saves push subscription with userId', () => {
+    insertUser(db, 'user-1', 'alice@test.com');
+    const sub = repository.savePushSubscription('https://push.example.com/sub1', 'key', 'auth', 'user-1');
+    expect(sub.user_id).toBe('user-1');
+  });
+
+  it('listPushSubscriptionsForUser returns only that user subscriptions', () => {
+    insertUser(db, 'user-1', 'alice@test.com');
+    insertUser(db, 'user-2', 'bob@test.com', 'member');
+    repository.savePushSubscription('https://push.example.com/alice', 'key1', 'auth1', 'user-1');
+    repository.savePushSubscription('https://push.example.com/bob', 'key2', 'auth2', 'user-2');
+
+    const aliceSubs = repository.listPushSubscriptionsForUser('user-1');
+    expect(aliceSubs).toHaveLength(1);
+    expect(aliceSubs[0].endpoint).toBe('https://push.example.com/alice');
+
+    const allSubs = repository.listPushSubscriptions();
+    expect(allSubs).toHaveLength(2);
+  });
+
+  it('reminder nudge targets only the creator user subscriptions', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T10:00:00Z');
+    insertUser(db, 'user-1', 'alice@test.com');
+    insertUser(db, 'user-2', 'bob@test.com', 'member');
+
+    // Alice's reminder, approaching in 2 hours
+    insertReminder(db, 'rem1', 'Call dentist', new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(), 'user-1');
+
+    // Both users have push subscriptions
+    repository.savePushSubscription('https://push.example.com/alice', 'key1', 'auth1', 'user-1');
+    repository.savePushSubscription('https://push.example.com/bob', 'key2', 'auth2', 'user-2');
+
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
+
+    // Only Alice's subscription should receive the reminder nudge
+    expect(push.sends).toHaveLength(1);
+    expect(push.sends[0].sub.endpoint).toBe('https://push.example.com/alice');
+  });
+
+  it('routine nudge broadcasts to all user subscriptions', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T10:00:00Z');
+    insertUser(db, 'user-1', 'alice@test.com');
+    insertUser(db, 'user-2', 'bob@test.com', 'member');
+
+    insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
+
+    repository.savePushSubscription('https://push.example.com/alice', 'key1', 'auth1', 'user-1');
+    repository.savePushSubscription('https://push.example.com/bob', 'key2', 'auth2', 'user-2');
+
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
+
+    // Both users should receive the routine nudge
+    expect(push.sends).toHaveLength(2);
+  });
+
+  it('reminder nudge falls back to all subscriptions when creator has none', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T10:00:00Z');
+    insertUser(db, 'user-1', 'alice@test.com');
+    insertUser(db, 'user-2', 'bob@test.com', 'member');
+
+    // Alice's reminder, but Alice has no push subscription
+    insertReminder(db, 'rem1', 'Call dentist', new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(), 'user-1');
+
+    // Only Bob has a push subscription
+    repository.savePushSubscription('https://push.example.com/bob', 'key2', 'auth2', 'user-2');
+
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
+
+    // Falls back to all subscriptions (Bob gets it)
+    expect(push.sends).toHaveLength(1);
+    expect(push.sends[0].sub.endpoint).toBe('https://push.example.com/bob');
+  });
+
+  it('reminder nudge without creator broadcasts to all', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T10:00:00Z');
+
+    // Reminder with no created_by_user_id (legacy data)
+    insertReminder(db, 'rem1', 'Call dentist', new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString());
+
+    repository.savePushSubscription('https://push.example.com/sub1', 'key1', 'auth1');
+    repository.savePushSubscription('https://push.example.com/sub2', 'key2', 'auth2');
+
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
+
+    // Both subscriptions should receive it (no user targeting)
+    expect(push.sends).toHaveLength(2);
+  });
+});
+
 describe('isApnsSubscriptionPayload', () => {
   it('returns true for valid APNs payloads', () => {
     expect(isApnsSubscriptionPayload({ type: 'apns', token: 'abc123' })).toBe(true);

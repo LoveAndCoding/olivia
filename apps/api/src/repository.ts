@@ -1688,6 +1688,17 @@ export class InboxRepository {
     return this.db.prepare("SELECT * FROM push_subscriptions WHERE household_id = 'household'").all() as PushSubscriptionRecord[];
   }
 
+  listPushSubscriptionsForUser(userId: string): PushSubscriptionRecord[] {
+    return this.db.prepare(
+      "SELECT * FROM push_subscriptions WHERE household_id = 'household' AND user_id = ?"
+    ).all(userId) as PushSubscriptionRecord[];
+  }
+
+  getReminderCreatorUserId(reminderId: string): string | null {
+    const row = this.db.prepare('SELECT created_by_user_id FROM reminders WHERE id = ?').get(reminderId) as { created_by_user_id: string | null } | undefined;
+    return row?.created_by_user_id ?? null;
+  }
+
   // ─── Push Notification Log (dedup) ───────────────────────────────────────────
 
   hasPushNotificationLog(subscriptionId: string, entityType: string, entityId: string, windowMs: number, now: Date): boolean {

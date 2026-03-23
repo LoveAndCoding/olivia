@@ -2131,7 +2131,8 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(400).send({ code: 'BAD_REQUEST', message: parsed.error.message });
     }
     const { endpoint, keys } = parsed.data;
-    const record = repository.savePushSubscription(endpoint, keys.p256dh, keys.auth);
+    const userId = resolveUserId(request);
+    const record = repository.savePushSubscription(endpoint, keys.p256dh, keys.auth, userId);
     return reply.status(201).send({ id: record.id, endpoint: record.endpoint });
   });
 
