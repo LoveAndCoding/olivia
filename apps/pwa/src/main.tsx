@@ -22,6 +22,13 @@ import { router } from './router';
 import './styles.css';
 import './components/auth/auth.css';
 
+// ─── Service worker registration ────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch((err) => {
+    console.warn('Service worker registration failed', err);
+  });
+}
+
 // ─── Global error handlers ──────────────────────────────────────────────────
 
 window.addEventListener('error', (event) => {
