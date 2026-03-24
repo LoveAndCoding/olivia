@@ -16,6 +16,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ### Added
 - Service worker for web push notifications — the app can now receive and display push notifications in the browser
+- "Send Test Notification" button in Settings — verify push notifications work on your device
+- "Scheduled Notifications" section in Settings — see when your next notifications are expected to fire
 - 39 new end-to-end tests covering invitation flow, auth sessions, push subscriptions, and multi-user data integrity
 
 ## [0.7.0] - 2026-03-23
