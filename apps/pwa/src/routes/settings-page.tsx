@@ -1,4 +1,3 @@
-import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState, useCallback, useEffect } from 'react';
@@ -66,7 +65,6 @@ function ConnectivityProbe() {
 }
 
 export function SettingsPage() {
-  const navigate = useNavigate();
   const { role } = useRole();
   const queryClient = useQueryClient();
   const [activeTheme, setActiveTheme] = useState<ThemeMode>(readSavedTheme);
@@ -175,10 +173,10 @@ export function SettingsPage() {
           <button
             type="button"
             className="rem-detail-back"
-            onClick={() => void navigate({ to: '/more' })}
-            aria-label="Back to Home"
+            onClick={() => window.history.back()}
+            aria-label="Go back"
           >
-            ← More
+            ← Back
           </button>
           <div className="screen-header" style={{ paddingBottom: 8 }}>
             <div className="screen-title">Settings</div>
