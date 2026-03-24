@@ -28,14 +28,14 @@ function isPushSubscriptionPayload(payload: Record<string, unknown>): payload is
   );
 }
 
-async function deliverToStakeholderSubscriptions(
+async function deliverToAllHouseholdSubscriptions(
   repository: InboxRepository,
   push: PushProvider,
   apns: ApnsPushProvider,
   notification: { title: string; body: string; url: string; tag: string },
   logger: FastifyBaseLogger
 ): Promise<NotificationRecord[]> {
-  const subscriptions = repository.listNotificationSubscriptions('stakeholder');
+  const subscriptions = repository.listAllNotificationSubscriptions();
   const results: NotificationRecord[] = [];
 
   for (const subscription of subscriptions) {
@@ -77,12 +77,14 @@ function hasEnabledReminderNotificationPreference(
   repository: InboxRepository,
   notificationType: NotificationDeliveryRecord['notificationType']
 ): boolean {
-  const preferences = repository.getReminderNotificationPreferences('stakeholder');
-  if (!preferences.enabled) {
-    return false;
+  // Check preferences for all roles — if any household member has enabled, deliver
+  for (const role of ['stakeholder', 'spouse'] as const) {
+    const preferences = repository.getReminderNotificationPreferences(role);
+    if (!preferences.enabled) continue;
+    const enabled = notificationType === 'due_reminder' ? preferences.dueRemindersEnabled : preferences.dailySummaryEnabled;
+    if (enabled) return true;
   }
-
-  return notificationType === 'due_reminder' ? preferences.dueRemindersEnabled : preferences.dailySummaryEnabled;
+  return false;
 }
 
 function reminderDeliveryBucket(reminder: Reminder): string {
@@ -140,7 +142,7 @@ export async function evaluateDueReminderRule(
       ? `${reminder.title} — linked to "${reminder.linkedInboxItem.title}".`
       : reminder.title;
     const url = `${config.pwaOrigin}/re-entry?reason=reminder-review&reminderId=${reminder.id}`;
-    const results = await deliverToStakeholderSubscriptions(
+    const results = await deliverToAllHouseholdSubscriptions(
       repository,
       push,
       apns,
@@ -191,7 +193,7 @@ export async function evaluateDailySummaryRule(
     return;
   }
 
-  const results = await deliverToStakeholderSubscriptions(
+  const results = await deliverToAllHouseholdSubscriptions(
     repository,
     push,
     apns,
@@ -234,7 +236,7 @@ export async function evaluateDueSoonRule(
   for (const suggestion of dueSoon) {
     const url = `${config.pwaOrigin}/re-entry?reason=due-soon-review&itemId=${suggestion.itemId}`;
     logger.info({ itemId: suggestion.itemId, rule: 'due_soon' }, 'notification generated');
-    await deliverToStakeholderSubscriptions(
+    await deliverToAllHouseholdSubscriptions(
       repository,
       push,
       apns,
@@ -273,7 +275,7 @@ export async function evaluateStaleItemRule(
   for (const suggestion of stale) {
     const url = `${config.pwaOrigin}/re-entry?reason=stale-item-review&itemId=${suggestion.itemId}`;
     logger.info({ itemId: suggestion.itemId, rule: 'stale_item' }, 'notification generated');
-    await deliverToStakeholderSubscriptions(
+    await deliverToAllHouseholdSubscriptions(
       repository,
       push,
       apns,
@@ -307,7 +309,7 @@ export async function evaluateDigestRule(
 
   const url = `${config.pwaOrigin}/re-entry?reason=digest-review`;
   logger.info({ activeCount: active.length, rule: 'digest' }, 'notification generated');
-  await deliverToStakeholderSubscriptions(
+  await deliverToAllHouseholdSubscriptions(
     repository,
     push,
     apns,
@@ -445,7 +447,7 @@ export async function evaluateNudgePushRule(
 
   // ─── Deliver to APNs subscriptions (native iOS) ────────────────────────────
   if (apns.isConfigured()) {
-    const notifSubs = repository.listNotificationSubscriptions('stakeholder');
+    const notifSubs = repository.listAllNotificationSubscriptions();
     const apnsSubs = notifSubs.filter((s) => isApnsSubscriptionPayload(s.payload as Record<string, unknown>));
 
     for (const subscription of apnsSubs) {
