@@ -53,7 +53,7 @@ async function createInboxItemViaApi(app: Awaited<ReturnType<typeof buildApp>>, 
       actorRole: 'stakeholder',
       structuredInput: {
         title,
-        owner: 'stakeholder'
+        assigneeUserId: null
       }
     }
   });
@@ -85,7 +85,7 @@ async function createReminderViaApi(
       actorRole: 'stakeholder',
       structuredInput: {
         title: 'Bring the vet records',
-        owner: 'stakeholder',
+        assigneeUserId: null,
         scheduledAt: addHours(new Date(), 2).toISOString(),
         recurrenceCadence: 'none',
         note: null,
@@ -121,7 +121,7 @@ describe('household inbox api', () => {
       url: '/api/inbox/items/preview-create',
       payload: {
         actorRole: 'stakeholder',
-        inputText: 'Add: schedule HVAC service, owner me, due next Friday'
+        inputText: 'Add: schedule HVAC service, due next Friday'
       }
     });
 
@@ -194,7 +194,7 @@ describe('household inbox api', () => {
       url: '/api/inbox/items/preview-create',
       payload: {
         actorRole: 'stakeholder',
-        inputText: 'Add: call the plumber, owner me'
+        inputText: 'Add: call the plumber'
       }
     });
     const previewBody = preview.json();
@@ -298,7 +298,7 @@ describe('reminder migrations and api', () => {
       .all() as Array<{ name: string }>;
 
     expect(repository.listItems()).toHaveLength(1);
-    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql', '0010_data_freshness.sql', '0011_routines_flexible_scheduling.sql', '0012_auth_identity.sql', '0013_user_attribution.sql', '0014_backfill_user_attribution.sql']);
+    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql', '0010_data_freshness.sql', '0011_routines_flexible_scheduling.sql', '0012_auth_identity.sql', '0013_user_attribution.sql', '0014_backfill_user_attribution.sql', '0015_dynamic_user_assignment.sql']);
     expect(reminderTables.map((row) => row.name).sort()).toEqual([
       'notification_delivery_log',
       'reminder_notification_preferences',
@@ -437,7 +437,7 @@ describe('reminder migrations and api', () => {
         actorRole: 'spouse',
         structuredInput: {
           title: 'Order detergent',
-          owner: 'stakeholder',
+          assigneeUserId: null,
           scheduledAt: addDays(new Date(), 1).toISOString()
         }
       }
@@ -487,7 +487,7 @@ describe('reminder migrations and api', () => {
         actorRole: 'stakeholder',
         structuredInput: {
           title: 'Review camp forms',
-          owner: 'stakeholder',
+          assigneeUserId: null,
           scheduledAt: addDays(new Date(), 2).toISOString(),
           recurrenceCadence: 'monthly',
           note: 'Check the signature line.'
@@ -570,7 +570,7 @@ describe('reminder notification jobs', () => {
       id: crypto.randomUUID(),
       title: 'Call the pediatrician',
       note: null,
-      owner: 'stakeholder',
+      assigneeUserId: null,
       scheduledAt: subDays(now, 1).toISOString(),
       recurrenceCadence: 'none',
       linkedInboxItemId: null
@@ -624,7 +624,7 @@ describe('reminder notification jobs', () => {
       id: crypto.randomUUID(),
       title: 'Water the herbs',
       note: null,
-      owner: 'stakeholder',
+      assigneeUserId: null,
       scheduledAt: addMinutes(summaryWindowNow, 45).toISOString(),
       recurrenceCadence: 'none',
       linkedInboxItemId: null
@@ -974,7 +974,7 @@ describe('recurring routines api', () => {
       payload: {
         actorRole: 'stakeholder',
         title: 'Take out trash',
-        owner: 'stakeholder',
+        assigneeUserId: null,
         recurrenceRule: 'weekly',
         firstDueDate: subDays(new Date(), 1).toISOString()
       }
@@ -1000,7 +1000,7 @@ describe('recurring routines api', () => {
       payload: {
         actorRole: 'spouse',
         title: 'Spouse Routine',
-        owner: 'spouse',
+        assigneeUserId: null,
         recurrenceRule: 'daily',
         firstDueDate: new Date().toISOString()
       }
@@ -1120,7 +1120,7 @@ describe('recurring routines api', () => {
       payload: {
         actorRole: 'stakeholder',
         title: 'Deep clean',
-        owner: 'stakeholder',
+        assigneeUserId: null,
         recurrenceRule: 'every_n_days',
         intervalDays: 14,
         firstDueDate: subDays(new Date(), 1).toISOString()
@@ -1217,7 +1217,7 @@ describe('unified weekly view api', () => {
       payload: {
         actorRole: 'stakeholder',
         title: 'Daily vitamins',
-        owner: 'stakeholder',
+        assigneeUserId: null,
         recurrenceRule: 'daily',
         firstDueDate: mondayNoon.toISOString()
       }
@@ -1250,7 +1250,7 @@ describe('unified weekly view api', () => {
       payload: {
         actorRole: 'stakeholder',
         title: 'Watering plants',
-        owner: 'stakeholder',
+        assigneeUserId: null,
         recurrenceRule: 'weekly',
         firstDueDate: thursday.toISOString()
       }
@@ -1461,7 +1461,7 @@ describe('unified weekly view api', () => {
       payload: {
         actorRole: 'stakeholder',
         title: 'Paused routine',
-        owner: 'stakeholder',
+        assigneeUserId: null,
         recurrenceRule: 'daily',
         firstDueDate: mondayNoon.toISOString()
       }
@@ -1524,7 +1524,7 @@ describe('activity history api', () => {
       payload: {
         actorRole: 'stakeholder',
         title: 'Morning walk',
-        owner: 'stakeholder',
+        assigneeUserId: null,
         recurrenceRule: 'daily',
         firstDueDate: today.toISOString()
       }
@@ -1565,7 +1565,7 @@ describe('activity history api', () => {
       payload: {
         actorRole: 'stakeholder',
         title: 'Archived routine',
-        owner: 'stakeholder',
+        assigneeUserId: null,
         recurrenceRule: 'daily',
         firstDueDate: today.toISOString()
       }
@@ -1876,7 +1876,7 @@ describe('planning ritual AI summaries api', () => {
     const ritual = {
       id: randomUUID(),
       title: 'Weekly Review',
-      owner: 'stakeholder' as const,
+      assigneeUserId: null,
       recurrenceRule: 'weekly' as const,
       intervalDays: null,
       status: 'active' as const,
@@ -1955,7 +1955,7 @@ describe('planning ritual AI summaries api', () => {
       payload: {
         actorRole: 'stakeholder',
         title: 'Take out trash',
-        owner: 'stakeholder',
+        assigneeUserId: null,
         recurrenceRule: 'weekly',
         firstDueDate: new Date().toISOString()
       }
@@ -2072,7 +2072,7 @@ describe('proactive household nudges api', () => {
     const routine: Parameters<typeof repo.createRoutine>[0] = {
       id: randomUUID(),
       title: 'Morning routine',
-      owner: 'stakeholder',
+      assigneeUserId: null,
       recurrenceRule: 'weekly',
       intervalDays: null,
       intervalWeeks: null,
@@ -2096,7 +2096,7 @@ describe('proactive household nudges api', () => {
     const ritual = {
       id: randomUUID(),
       title: 'Weekly household review',
-      owner: 'stakeholder' as const,
+      assigneeUserId: null,
       recurrenceRule: 'weekly' as const,
       intervalDays: null,
       status: 'active' as const,

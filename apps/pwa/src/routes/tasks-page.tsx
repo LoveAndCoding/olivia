@@ -1,36 +1,46 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { computeFlags } from '@olivia/domain';
-import type { InboxItem } from '@olivia/contracts';
+import type { InboxItem, User } from '@olivia/contracts';
 import { useRole } from '../lib/role';
 import { loadInboxView, previewCreateCommand, confirmCreateCommand } from '../lib/sync';
-import { ownerToDisplay } from '../lib/demo-data';
+import { useAuth } from '../lib/auth';
+import { getHouseholdMembers } from '../lib/auth-api';
+import { resolveUserName } from '../lib/reminder-helpers';
 import { BottomNav } from '../components/bottom-nav';
 import { TasksView } from '../components/screens/TasksView';
 import type { AddTaskPreview, CompletedTask, FullTask } from '../types/display';
-
-function toFullTask(item: InboxItem): FullTask {
-  const flags = computeFlags(item);
-  const accent: FullTask['accent'] = flags.overdue ? 'rose' : flags.dueSoon ? 'peach' : item.owner === 'spouse' ? 'mint' : '';
-  const badge: FullTask['badge'] = flags.overdue
-    ? { label: 'Needs attention', cls: 'badge-rose' }
-    : flags.dueSoon
-    ? { label: 'Soon', cls: 'badge-peach' }
-    : item.owner === 'spouse'
-    ? { label: 'Shared', cls: 'badge-violet' }
-    : null;
-  const assignee: FullTask['assignee'] =
-    item.owner === 'stakeholder' ? { initial: 'L', name: 'Lexi', cls: '' }
-    : item.owner === 'spouse'    ? { initial: 'C', name: 'Christian', cls: 'rose-av' }
-    : null;
-  return { id: item.id, title: item.title, dueText: item.dueText, accent, badge, assignee, pendingSync: item.pendingSync };
-}
 
 export function TasksPage() {
   const navigate = useNavigate();
   const { role } = useRole();
   const queryClient = useQueryClient();
+  const { user: currentUser, getSessionToken } = useAuth();
+  const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    getHouseholdMembers(token).then(res => setMembers(res.members)).catch(() => {});
+  }, [getSessionToken]);
+
+  function toFullTask(item: InboxItem): FullTask {
+    const flags = computeFlags(item);
+    const isOtherUser = item.assigneeUserId !== null && item.assigneeUserId !== currentUser?.id;
+    const accent: FullTask['accent'] = flags.overdue ? 'rose' : flags.dueSoon ? 'peach' : isOtherUser ? 'mint' : '';
+    const badge: FullTask['badge'] = flags.overdue
+      ? { label: 'Needs attention', cls: 'badge-rose' }
+      : flags.dueSoon
+      ? { label: 'Soon', cls: 'badge-peach' }
+      : isOtherUser
+      ? { label: 'Shared', cls: 'badge-violet' }
+      : null;
+    const userName = resolveUserName(item.assigneeUserId, members);
+    const assignee: FullTask['assignee'] = item.assigneeUserId
+      ? { initial: userName.charAt(0).toUpperCase(), name: userName, cls: isOtherUser ? 'rose-av' : '' }
+      : null;
+    return { id: item.id, title: item.title, dueText: item.dueText, accent, badge, assignee, pendingSync: item.pendingSync };
+  }
 
   const inboxQuery = useQuery({
     queryKey: ['inbox-view', role, 'active'],
@@ -70,7 +80,7 @@ export function TasksPage() {
     const res = await previewCreateCommand(role, inputText);
     return {
       title: res.parsedItem.title,
-      ownerDisplay: ownerToDisplay(res.parsedItem.owner),
+      ownerDisplay: resolveUserName(res.parsedItem.assigneeUserId, members),
       dueText: res.parsedItem.dueText,
       draftId: res.draftId,
     };

@@ -50,24 +50,24 @@ describe('freshness API', () => {
   function insertStaleInboxItem(db: ReturnType<typeof createDatabase>, id: string, title: string, daysAgo: number) {
     const date = subDays(new Date(), daysAgo).toISOString();
     db.prepare(`
-      INSERT INTO inbox_items (id, title, owner, status, created_at, updated_at, version, last_status_changed_at)
-      VALUES (?, ?, 'stakeholder', 'open', ?, ?, 1, ?)
+      INSERT INTO inbox_items (id, title, assignee_user_id, status, created_at, updated_at, version, last_status_changed_at)
+      VALUES (?, ?, NULL, 'open', ?, ?, 1, ?)
     `).run(id, title, date, date, date);
   }
 
   function insertStaleReminder(db: ReturnType<typeof createDatabase>, id: string, title: string, daysAgoPastDue: number) {
     const date = subDays(new Date(), daysAgoPastDue).toISOString();
     db.prepare(`
-      INSERT INTO reminders (id, title, owner, recurrence_cadence, scheduled_at, created_at, updated_at, version)
-      VALUES (?, ?, 'stakeholder', 'none', ?, ?, ?, 1)
+      INSERT INTO reminders (id, title, assignee_user_id, recurrence_cadence, scheduled_at, created_at, updated_at, version)
+      VALUES (?, ?, NULL, 'none', ?, ?, ?, 1)
     `).run(id, title, date, date, date);
   }
 
   function insertStaleRoutine(db: ReturnType<typeof createDatabase>, id: string, title: string, daysAgoCreated: number) {
     const date = subDays(new Date(), daysAgoCreated).toISOString();
     db.prepare(`
-      INSERT INTO routines (id, title, owner, recurrence_rule, interval_days, status, current_due_date, created_at, updated_at, version)
-      VALUES (?, ?, 'stakeholder', 'every_n_days', 7, 'active', ?, ?, ?, 1)
+      INSERT INTO routines (id, title, assignee_user_id, recurrence_rule, interval_days, status, current_due_date, created_at, updated_at, version)
+      VALUES (?, ?, NULL, 'every_n_days', 7, 'active', ?, ?, ?, 1)
     `).run(id, title, date, date, date);
   }
 
@@ -294,8 +294,8 @@ describe('freshness API', () => {
     const routineId = randomUUID();
     const pastDate = subDays(new Date(), 3).toISOString();
     db.prepare(`
-      INSERT INTO routines (id, title, owner, recurrence_rule, interval_days, status, current_due_date, created_at, updated_at, version)
-      VALUES (?, 'Overdue routine', 'stakeholder', 'weekly', NULL, 'active', ?, ?, ?, 1)
+      INSERT INTO routines (id, title, assignee_user_id, recurrence_rule, interval_days, status, current_due_date, created_at, updated_at, version)
+      VALUES (?, 'Overdue routine', NULL, 'weekly', NULL, 'active', ?, ?, ?, 1)
     `).run(routineId, pastDate, pastDate, pastDate);
     db.close();
 

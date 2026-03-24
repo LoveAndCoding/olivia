@@ -1,11 +1,14 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, formatDistanceToNow } from 'date-fns';
-import type { RoutineDueState } from '@olivia/contracts';
+import type { RoutineDueState, User } from '@olivia/contracts';
 import { computeRoutineDueState as computeDueState, formatRecurrenceLabel as formatRecurrenceLabelDomain } from '@olivia/domain';
 import { Check } from '@phosphor-icons/react';
 import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
+import { getHouseholdMembers } from '../lib/auth-api';
+import { resolveUserName } from '../lib/reminder-helpers';
 import {
   loadRoutineDetail,
   completeRoutineOccurrenceCommand,
@@ -19,14 +22,6 @@ import { BottomNav } from '../components/bottom-nav';
 import { BottomSheet } from '../components/reminders/BottomSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
 import { showErrorToast } from '../lib/error-toast';
-
-function formatOwnerLabel(owner: string): string {
-  switch (owner) {
-    case 'stakeholder': return 'Lexi';
-    case 'spouse': return 'Christian';
-    default: return 'Unassigned';
-  }
-}
 
 function dueStateBadge(state: RoutineDueState): { label: string; className: string } {
   switch (state) {
@@ -54,6 +49,13 @@ export function RoutineDetailPage() {
   const navigate = useNavigate();
   const { role } = useRole();
   const queryClient = useQueryClient();
+  const { user: currentUser, getSessionToken } = useAuth();
+  const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    getHouseholdMembers(token).then(res => setMembers(res.members)).catch(() => {});
+  }, [getSessionToken]);
 
   const [showPauseSheet, setShowPauseSheet] = useState(false);
   const [showArchiveSheet, setShowArchiveSheet] = useState(false);
@@ -183,10 +185,10 @@ export function RoutineDetailPage() {
     }
   }, [routine, role, busy, queryClient, navigate]);
 
-  const isSpouse = role === 'spouse';
+  const isReadOnly = currentUser?.role === 'member';
   const isPaused = routine?.status === 'paused';
   const isArchived = routine?.status === 'archived';
-  const canComplete = !isSpouse && (isAdHoc || (dueState && (dueState === 'due' || dueState === 'overdue')));
+  const canComplete = !isReadOnly && (isAdHoc || (dueState && (dueState === 'due' || dueState === 'overdue')));
 
   const recentOccurrences = occurrences.slice(0, 30);
 
@@ -216,9 +218,9 @@ export function RoutineDetailPage() {
               <div className="rem-detail-label">Routine</div>
               <div className="rem-detail-title">{routine.title}</div>
 
-              {isSpouse && (
+              {isReadOnly && (
                 <div className="rem-status-banner rem-status-banner-sky" style={{ marginBottom: 16 }}>
-                  View only — actions are available to Lexi
+                  View only — read-only access
                 </div>
               )}
 
@@ -263,13 +265,13 @@ export function RoutineDetailPage() {
                   </span>
                 </div>
                 <div className="rem-detail-field">
-                  <span className="rem-detail-field-label">Owner</span>
-                  <span className="rem-detail-field-value">{formatOwnerLabel(routine.owner)}</span>
+                  <span className="rem-detail-field-label">Assignee</span>
+                  <span className="rem-detail-field-value">{resolveUserName(routine.assigneeUserId, members)}</span>
                 </div>
               </div>
 
               {/* Actions */}
-              {!isSpouse && !isArchived && (
+              {!isReadOnly && !isArchived && (
                 <div style={{ marginBottom: 20 }}>
                   {canComplete && (
                     <div className="rem-actions-row" style={{ marginBottom: 10 }}>
@@ -332,7 +334,7 @@ export function RoutineDetailPage() {
                 </div>
               )}
 
-              {!isSpouse && isArchived && (
+              {!isReadOnly && isArchived && (
                 <div style={{ marginBottom: 20 }}>
                   <div className="rem-status-banner rem-status-banner-sky" style={{ marginBottom: 12 }}>
                     Archived — {routine.archivedAt ? format(new Date(routine.archivedAt), 'MMM d, yyyy') : ''}
@@ -372,7 +374,7 @@ export function RoutineDetailPage() {
                               <strong>{occ.skipped ? 'Skipped' : 'Completed'}</strong>
                               {' · '}
                               {format(new Date(occ.completedAt), 'MMM d')}
-                              {occ.completedBy && occ.completedBy !== 'unassigned' && ` · by ${formatOwnerLabel(occ.completedBy)}`}
+                              {occ.completedByUserId && ` · by ${resolveUserName(occ.completedByUserId, members)}`}
                               {!isAdHoc && (
                                 <span style={{ color: 'var(--ink-4)', marginLeft: 4, fontSize: 11 }}>
                                   (cycle: {format(new Date(occ.dueDate), 'MMM d')})

@@ -58,7 +58,7 @@ const makeRoutine = (completedAt: string, id = '00000000-0000-4000-8000-00000000
   type: 'routine',
   routineId: id,
   routineTitle: 'Morning walk',
-  owner: 'stakeholder',
+  assigneeUserId: null,
   dueDate: completedAt.split('T')[0],
   completedAt
 });
@@ -67,7 +67,7 @@ const makeReminder = (resolvedAt: string, id = '00000000-0000-4000-8000-00000000
   type: 'reminder',
   reminderId: id,
   title: 'Call doctor',
-  owner: 'stakeholder',
+  assigneeUserId: null,
   resolvedAt,
   resolution: 'completed'
 });
@@ -86,7 +86,7 @@ const makeInbox = (completedAt: string, id = '00000000-0000-4000-8000-0000000000
   type: 'inbox',
   itemId: id,
   title: 'Pay bill',
-  owner: 'stakeholder',
+  assigneeUserId: null,
   completedAt
 });
 

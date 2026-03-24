@@ -146,16 +146,16 @@ export class ClaudeAiProvider implements AiProvider {
     for (const item of input.recapItems) {
       switch (item.type) {
         case 'routine':
-          lines.push(`- Routine completed: "${item.routineTitle}" (owner: ${item.owner}, due: ${item.dueDate})`);
+          lines.push(`- Routine completed: "${item.routineTitle}" (assignee: ${item.assigneeUserId ?? 'unassigned'}, due: ${item.dueDate})`);
           break;
         case 'reminder':
-          lines.push(`- Reminder ${item.resolution}: "${item.title}" (owner: ${item.owner})`);
+          lines.push(`- Reminder ${item.resolution}: "${item.title}" (assignee: ${item.assigneeUserId ?? 'unassigned'})`);
           break;
         case 'meal':
           lines.push(`- Meal entry: "${item.name}" from plan "${item.planTitle}" on ${item.date}`);
           break;
         case 'inbox':
-          lines.push(`- Task completed: "${item.title}" (owner: ${item.owner})`);
+          lines.push(`- Task completed: "${item.title}" (assignee: ${item.assigneeUserId ?? 'unassigned'})`);
           break;
         case 'listItem':
           lines.push(`- List item checked: "${item.body}" from list "${item.listName}"`);
@@ -181,16 +181,16 @@ export class ClaudeAiProvider implements AiProvider {
     for (const day of input.overviewDays) {
       const dayItems: string[] = [];
       for (const r of day.routines) {
-        dayItems.push(`routine "${r.routineTitle}" (owner: ${r.owner})`);
+        dayItems.push(`routine "${r.routineTitle}" (assignee: ${r.assigneeUserId ?? 'unassigned'})`);
       }
       for (const r of day.reminders) {
-        dayItems.push(`reminder "${r.title}" (owner: ${r.owner})`);
+        dayItems.push(`reminder "${r.title}" (assignee: ${r.assigneeUserId ?? 'unassigned'})`);
       }
       for (const m of day.meals) {
         dayItems.push(`meal "${m.name}"`);
       }
       for (const i of day.inboxItems) {
-        dayItems.push(`task "${i.title}" (owner: ${i.owner})`);
+        dayItems.push(`task "${i.title}" (assignee: ${i.assigneeUserId ?? 'unassigned'})`);
       }
       if (dayItems.length > 0) {
         lines.push(`${day.date}: ${dayItems.join(', ')}`);

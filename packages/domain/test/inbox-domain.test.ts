@@ -4,12 +4,12 @@ import { createDraft, createInboxItem, applyUpdate, buildSuggestions, computeFla
 describe('inbox domain', () => {
   it('parses a natural language inbox draft', () => {
     const result = createDraft({
-      inputText: 'Add: schedule HVAC service, due next Friday, owner spouse',
+      inputText: 'Add: schedule HVAC service, due next Friday',
       now: new Date('2026-03-11T12:00:00.000Z')
     });
 
     expect(result.draft.title).toBe('schedule HVAC service');
-    expect(result.draft.owner).toBe('spouse');
+    expect(result.draft.assigneeUserId).toBeNull();
     expect(result.draft.status).toBe('open');
     expect(result.draft.dueText).toBe('next Friday');
     expect(result.draft.dueAt).not.toBeNull();
@@ -22,7 +22,7 @@ describe('inbox domain', () => {
       id: crypto.randomUUID(),
       title: 'Pay water bill',
       description: null,
-      owner: 'stakeholder',
+      assigneeUserId: null,
       status: 'open',
       dueText: 'yesterday',
       dueAt: subDays(now, 1).toISOString()
@@ -32,7 +32,7 @@ describe('inbox domain', () => {
         id: crypto.randomUUID(),
         title: 'Call the electrician',
         description: null,
-        owner: 'stakeholder',
+        assigneeUserId: null,
         status: 'open',
         dueText: null,
         dueAt: null
@@ -43,7 +43,7 @@ describe('inbox domain', () => {
       id: crypto.randomUUID(),
       title: 'Schedule dog groomer',
       description: null,
-      owner: 'unassigned',
+      assigneeUserId: null,
       status: 'open',
       dueText: 'next week',
       dueAt: addDays(now, 3).toISOString()
@@ -63,7 +63,7 @@ describe('inbox domain', () => {
       id: crypto.randomUUID(),
       title: 'Schedule HVAC service',
       description: null,
-      owner: 'stakeholder',
+      assigneeUserId: null,
       status: 'open',
       dueText: 'end of March',
       dueAt: '2026-03-31T12:00:00.000Z'

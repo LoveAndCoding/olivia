@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { Reminder, Owner, RecurrenceCadence, ReminderUpdateChange } from '@olivia/contracts';
+import type { Reminder, RecurrenceCadence, ReminderUpdateChange } from '@olivia/contracts';
 import { BottomSheet } from './BottomSheet';
 import { DateTimePicker } from './DateTimePicker';
-import { ownerLabel, formatScheduledLabel } from '../../lib/reminder-helpers';
+import { formatScheduledLabel } from '../../lib/reminder-helpers';
+import { useAuth } from '../../lib/auth';
+import { getHouseholdMembers } from '../../lib/auth-api';
 
 type EditReminderSheetProps = {
   open: boolean;
@@ -11,23 +13,35 @@ type EditReminderSheetProps = {
   onSave: (change: ReminderUpdateChange) => void;
 };
 
-const OWNERS: Owner[] = ['stakeholder', 'spouse', 'unassigned'];
+type MemberOption = { id: string; name: string };
 
 export function EditReminderSheet({ open, onClose, reminder, onSave }: EditReminderSheetProps) {
+  const { getSessionToken } = useAuth();
   const [title, setTitle] = useState(reminder.title);
   const [scheduledAt, setScheduledAt] = useState(reminder.scheduledAt);
-  const [owner, setOwner] = useState<Owner>(reminder.owner);
+  const [assigneeUserId, setAssigneeUserId] = useState<string | null>(reminder.assigneeUserId);
   const [recurring, setRecurring] = useState(reminder.recurrenceCadence !== 'none');
   const [cadence, setCadence] = useState<RecurrenceCadence>(
     reminder.recurrenceCadence === 'none' ? 'weekly' : reminder.recurrenceCadence
   );
   const [note, setNote] = useState(reminder.note ?? '');
+  const [members, setMembers] = useState<MemberOption[]>([]);
+
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    let cancelled = false;
+    void getHouseholdMembers(token).then((res) => {
+      if (!cancelled) setMembers(res.members.map((m) => ({ id: m.id, name: m.name })));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [getSessionToken]);
 
   useEffect(() => {
     if (open) {
       setTitle(reminder.title);
       setScheduledAt(reminder.scheduledAt);
-      setOwner(reminder.owner);
+      setAssigneeUserId(reminder.assigneeUserId);
       setRecurring(reminder.recurrenceCadence !== 'none');
       setCadence(reminder.recurrenceCadence === 'none' ? 'weekly' : reminder.recurrenceCadence);
       setNote(reminder.note ?? '');
@@ -49,7 +63,7 @@ export function EditReminderSheet({ open, onClose, reminder, onSave }: EditRemin
     const change: ReminderUpdateChange = {};
     if (title.trim() !== reminder.title) change.title = title.trim();
     if (scheduledAt !== reminder.scheduledAt) change.scheduledAt = scheduledAt;
-    if (owner !== reminder.owner) change.owner = owner;
+    if (assigneeUserId !== reminder.assigneeUserId) change.assigneeUserId = assigneeUserId;
     const newCadence = recurring ? cadence : 'none';
     if (newCadence !== reminder.recurrenceCadence) change.recurrenceCadence = newCadence;
     const newNote = note.trim() || null;
@@ -60,7 +74,7 @@ export function EditReminderSheet({ open, onClose, reminder, onSave }: EditRemin
     } else {
       onClose();
     }
-  }, [title, scheduledAt, owner, recurring, cadence, note, reminder, onSave, onClose]);
+  }, [title, scheduledAt, assigneeUserId, recurring, cadence, note, reminder, onSave, onClose]);
 
   return (
     <BottomSheet open={open} onClose={onClose} title="Edit reminder">
@@ -90,18 +104,25 @@ export function EditReminderSheet({ open, onClose, reminder, onSave }: EditRemin
       </div>
 
       <div className="rem-form-group">
-        <span className="rem-form-label">Owner</span>
+        <span className="rem-form-label">Assignee</span>
         <div className="rem-form-chips">
-          {OWNERS.map((o) => (
+          {members.map((m) => (
             <button
-              key={o}
+              key={m.id}
               type="button"
-              className={`rem-chip${owner === o ? ' active' : ''}`}
-              onClick={() => setOwner(o)}
+              className={`rem-chip${assigneeUserId === m.id ? ' active' : ''}`}
+              onClick={() => setAssigneeUserId(m.id)}
             >
-              {ownerLabel(o)}
+              {m.name}
             </button>
           ))}
+          <button
+            type="button"
+            className={`rem-chip${assigneeUserId === null ? ' active' : ''}`}
+            onClick={() => setAssigneeUserId(null)}
+          >
+            Unassigned
+          </button>
         </div>
       </div>
 

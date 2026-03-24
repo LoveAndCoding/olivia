@@ -19,7 +19,7 @@ function buildReminder(overrides: Record<string, unknown> = {}) {
     id: reminderId,
     title: 'Bring the vet records',
     note: 'Paper copies are in the file cabinet.',
-    owner: 'stakeholder',
+    assigneeUserId: null,
     scheduledAt: '2026-03-20T15:00:00.000Z',
     recurrenceCadence: 'weekly',
     linkedInboxItemId: linkedItemId,
@@ -28,7 +28,7 @@ function buildReminder(overrides: Record<string, unknown> = {}) {
       id: linkedItemId,
       title: 'Vet appointment prep',
       status: 'open',
-      owner: 'stakeholder',
+      assigneeUserId: null,
       dueAt: '2026-03-21T18:00:00.000Z'
     },
     snoozedUntil: null,
@@ -102,7 +102,7 @@ describe('reminder contracts', () => {
         id: reminderId,
         title: 'Bring the vet records',
         note: null,
-        owner: 'stakeholder',
+        assigneeUserId: null,
         scheduledAt: '2026-03-20T15:00:00.000Z',
         recurrenceCadence: 'none',
         linkedInboxItemId: null
@@ -157,7 +157,7 @@ describe('reminder contracts', () => {
           id: reminderId,
           title: 'Bring the vet records',
           note: null,
-          owner: 'stakeholder',
+          assigneeUserId: null,
           scheduledAt: '2026-03-20T15:00:00.000Z',
           recurrenceCadence: 'none',
           linkedInboxItemId: null

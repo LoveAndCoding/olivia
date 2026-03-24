@@ -60,8 +60,8 @@ function create410Push(): PushProvider & { sends: Array<{ sub: PushSubscriptionP
 // Helper: insert an overdue routine directly so nudge payloads exist
 function insertOverdueRoutine(db: ReturnType<typeof createDatabase>, id: string, title: string, dueDate: string) {
   db.prepare(`
-    INSERT INTO routines (id, title, owner, recurrence_rule, interval_days, status, current_due_date, created_at, updated_at, version)
-    VALUES (?, ?, 'stakeholder', 'every_n_days', 7, 'active', ?, datetime('now'), datetime('now'), 1)
+    INSERT INTO routines (id, title, assignee_user_id, recurrence_rule, interval_days, status, current_due_date, created_at, updated_at, version)
+    VALUES (?, ?, NULL, 'every_n_days', 7, 'active', ?, datetime('now'), datetime('now'), 1)
   `).run(id, title, dueDate);
 }
 
@@ -275,8 +275,8 @@ function insertCompletedOccurrences(
   for (const completedAt of completedAtTimes) {
     const id = crypto.randomUUID();
     db.prepare(`
-      INSERT INTO routine_occurrences (id, routine_id, due_date, completed_at, completed_by, skipped, created_at)
-      VALUES (?, ?, ?, ?, 'stakeholder', 0, datetime('now'))
+      INSERT INTO routine_occurrences (id, routine_id, due_date, completed_at, completed_by_user_id, skipped, created_at)
+      VALUES (?, ?, ?, ?, NULL, 0, datetime('now'))
     `).run(id, routineId, completedAt.slice(0, 10), completedAt);
   }
 }
@@ -350,8 +350,8 @@ describe('completion window push timing', () => {
     const now = new Date('2026-03-15T06:00:00Z');
     // Insert approaching reminder due in 2 hours
     db.prepare(`
-      INSERT INTO reminders (id, title, owner, recurrence_cadence, scheduled_at, created_at, updated_at, version)
-      VALUES ('rem1', 'Call dentist', 'stakeholder', 'none', ?, datetime('now'), datetime('now'), 1)
+      INSERT INTO reminders (id, title, assignee_user_id, recurrence_cadence, scheduled_at, created_at, updated_at, version)
+      VALUES ('rem1', 'Call dentist', NULL, 'none', ?, datetime('now'), datetime('now'), 1)
     `).run(new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString());
     repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
 
@@ -426,8 +426,8 @@ function insertUser(db: ReturnType<typeof createDatabase>, id: string, email: st
 
 function insertReminder(db: ReturnType<typeof createDatabase>, id: string, title: string, scheduledAt: string, createdByUserId?: string) {
   db.prepare(`
-    INSERT INTO reminders (id, title, owner, created_by_user_id, recurrence_cadence, scheduled_at, created_at, updated_at, version)
-    VALUES (?, ?, 'stakeholder', ?, 'none', ?, datetime('now'), datetime('now'), 1)
+    INSERT INTO reminders (id, title, assignee_user_id, created_by_user_id, recurrence_cadence, scheduled_at, created_at, updated_at, version)
+    VALUES (?, ?, NULL, ?, 'none', ?, datetime('now'), datetime('now'), 1)
   `).run(id, title, createdByUserId ?? null, scheduledAt);
 }
 

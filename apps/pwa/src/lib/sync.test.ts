@@ -163,7 +163,7 @@ function createDraftReminder(overrides: Partial<DraftReminder> = {}): DraftRemin
     id: overrides.id ?? crypto.randomUUID(),
     title: overrides.title ?? 'Bring the vet records',
     note: overrides.note ?? null,
-    owner: overrides.owner ?? 'stakeholder',
+    assigneeUserId: overrides.assigneeUserId ?? null,
     scheduledAt: overrides.scheduledAt ?? new Date('2026-03-20T12:00:00.000Z').toISOString(),
     recurrenceCadence: overrides.recurrenceCadence ?? 'none',
     linkedInboxItemId: overrides.linkedInboxItemId ?? null
@@ -176,7 +176,7 @@ function createReminder(overrides: Partial<Reminder> = {}): Reminder {
     id: overrides.id ?? crypto.randomUUID(),
     title: overrides.title ?? 'Bring the vet records',
     note: overrides.note ?? null,
-    owner: overrides.owner ?? 'stakeholder',
+    assigneeUserId: overrides.assigneeUserId ?? null,
     scheduledAt,
     recurrenceCadence: overrides.recurrenceCadence ?? 'none',
     linkedInboxItemId: overrides.linkedInboxItemId ?? null,

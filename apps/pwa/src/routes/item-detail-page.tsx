@@ -1,8 +1,11 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { UpdateChange, DraftReminder, Reminder, ReminderUpdateChange } from '@olivia/contracts';
+import type { UpdateChange, DraftReminder, Reminder, ReminderUpdateChange, User } from '@olivia/contracts';
 import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
+import { getHouseholdMembers } from '../lib/auth-api';
+import { resolveUserName } from '../lib/reminder-helpers';
 import {
   confirmUpdateCommand,
   loadItemDetail,
@@ -29,6 +32,13 @@ export function ItemDetailPage() {
   const navigate = useNavigate();
   const { role } = useRole();
   const queryClient = useQueryClient();
+  const { user: currentUser, getSessionToken } = useAuth();
+  const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    getHouseholdMembers(token).then(res => setMembers(res.members)).catch(() => {});
+  }, [getSessionToken]);
   const [showEditTask, setShowEditTask] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -191,7 +201,7 @@ export function ItemDetailPage() {
                       <span className="eyebrow">Item detail</span>
                       <h2 className="card-title">{item.title}</h2>
                       <p className="muted">
-                        Owner: {item.owner === 'spouse' ? 'Christian' : item.owner === 'stakeholder' ? 'Lexi' : 'Unassigned'} · Status: {item.status.replace('_', ' ')}
+                        Assignee: {resolveUserName(item.assigneeUserId, members)} · Status: {item.status.replace('_', ' ')}
                       </p>
                     </div>
                     {item.pendingSync ? <span className="chip info">Pending sync</span> : null}
@@ -236,7 +246,7 @@ export function ItemDetailPage() {
                   />
                 )}
 
-                {role === 'stakeholder' ? (
+                {currentUser?.role === 'admin' ? (
                   <div>
                     <button
                       type="button"
@@ -251,7 +261,7 @@ export function ItemDetailPage() {
                   </div>
                 ) : (
                   <div className="card">
-                    <p className="muted">You're viewing as Christian. Updates are made by Lexi.</p>
+                    <p className="muted">You're viewing as {currentUser?.name ?? 'a household member'}. Updates are made by admins.</p>
                   </div>
                 )}
 

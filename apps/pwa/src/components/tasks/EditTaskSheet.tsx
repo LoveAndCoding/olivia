@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { InboxItem, Owner, UpdateChange } from '@olivia/contracts';
+import type { InboxItem, UpdateChange } from '@olivia/contracts';
 import { BottomSheet } from '../reminders/BottomSheet';
+import { useAuth } from '../../lib/auth';
+import { getHouseholdMembers } from '../../lib/auth-api';
 
 type EditTaskSheetProps = {
   open: boolean;
@@ -9,11 +11,7 @@ type EditTaskSheetProps = {
   onSave: (change: UpdateChange) => void;
 };
 
-const OWNERS: { value: Owner; label: string }[] = [
-  { value: 'stakeholder', label: 'Lexi' },
-  { value: 'spouse', label: 'Christian' },
-  { value: 'unassigned', label: 'Unassigned' },
-];
+type MemberOption = { id: string; name: string };
 
 const STATUSES: { value: InboxItem['status']; label: string }[] = [
   { value: 'open', label: 'Open' },
@@ -23,15 +21,27 @@ const STATUSES: { value: InboxItem['status']; label: string }[] = [
 ];
 
 export function EditTaskSheet({ open, onClose, item, onSave }: EditTaskSheetProps) {
+  const { getSessionToken } = useAuth();
   const [status, setStatus] = useState(item.status);
-  const [owner, setOwner] = useState<Owner>(item.owner);
+  const [assigneeUserId, setAssigneeUserId] = useState<string | null>(item.assigneeUserId);
   const [dueText, setDueText] = useState(item.dueText ?? '');
   const [description, setDescription] = useState(item.description ?? '');
+  const [members, setMembers] = useState<MemberOption[]>([]);
+
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    let cancelled = false;
+    void getHouseholdMembers(token).then((res) => {
+      if (!cancelled) setMembers(res.members.map((m) => ({ id: m.id, name: m.name })));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [getSessionToken]);
 
   useEffect(() => {
     if (open) {
       setStatus(item.status);
-      setOwner(item.owner);
+      setAssigneeUserId(item.assigneeUserId);
       setDueText(item.dueText ?? '');
       setDescription(item.description ?? '');
     }
@@ -40,7 +50,7 @@ export function EditTaskSheet({ open, onClose, item, onSave }: EditTaskSheetProp
   const handleSave = useCallback(() => {
     const change: UpdateChange = {};
     if (status !== item.status) change.status = status;
-    if (owner !== item.owner) change.owner = owner;
+    if (assigneeUserId !== item.assigneeUserId) change.assigneeUserId = assigneeUserId;
     const newDueText = dueText.trim() || null;
     if (newDueText !== item.dueText) change.dueText = newDueText;
     const newDescription = description.trim() || null;
@@ -51,7 +61,7 @@ export function EditTaskSheet({ open, onClose, item, onSave }: EditTaskSheetProp
     } else {
       onClose();
     }
-  }, [status, owner, dueText, description, item, onSave, onClose]);
+  }, [status, assigneeUserId, dueText, description, item, onSave, onClose]);
 
   return (
     <BottomSheet open={open} onClose={onClose} title="Edit task">
@@ -72,18 +82,25 @@ export function EditTaskSheet({ open, onClose, item, onSave }: EditTaskSheetProp
       </div>
 
       <div className="rem-form-group">
-        <span className="rem-form-label">Owner</span>
+        <span className="rem-form-label">Assignee</span>
         <div className="rem-form-chips">
-          {OWNERS.map((o) => (
+          {members.map((m) => (
             <button
-              key={o.value}
+              key={m.id}
               type="button"
-              className={`rem-chip${owner === o.value ? ' active' : ''}`}
-              onClick={() => setOwner(o.value)}
+              className={`rem-chip${assigneeUserId === m.id ? ' active' : ''}`}
+              onClick={() => setAssigneeUserId(m.id)}
             >
-              {o.label}
+              {m.name}
             </button>
           ))}
+          <button
+            type="button"
+            className={`rem-chip${assigneeUserId === null ? ' active' : ''}`}
+            onClick={() => setAssigneeUserId(null)}
+          >
+            Unassigned
+          </button>
         </div>
       </div>
 

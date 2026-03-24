@@ -1,15 +1,16 @@
 import { useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix, Stethoscope } from '@phosphor-icons/react';
 import { rankRemindersForSurfacing } from '@olivia/domain';
 import { getWeekBounds } from '@olivia/domain';
-import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, WeeklyReminder, WeeklyMealEntry, WeeklyInboxItem } from '@olivia/contracts';
+import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, WeeklyReminder, WeeklyMealEntry, WeeklyInboxItem, User } from '@olivia/contracts';
 import { useRole } from '../lib/role';
 import { loadWeeklyView, confirmCreateReminderCommand, snoozeReminderCommand, loadReminderView } from '../lib/sync';
-import { getDisplayName } from '../lib/demo-data';
+import { useAuth } from '../lib/auth';
+import { getHouseholdMembers } from '../lib/auth-api';
 import { BottomNav } from '../components/bottom-nav';
 import { NudgeTray, useNudges } from './nudge-tray';
 import { CreateReminderSheet } from '../components/reminders/CreateReminderSheet';
@@ -402,6 +403,13 @@ export function HomePage() {
   const { role } = useRole();
   const queryClient = useQueryClient();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { user: currentUser, getSessionToken } = useAuth();
+  const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    getHouseholdMembers(token).then(res => setMembers(res.members)).catch(() => {});
+  }, [getSessionToken]);
 
   const [showCreateSheet, setShowCreateSheet] = useState(false);
   const [snoozeTarget, setSnoozeTarget] = useState<Reminder | null>(null);
@@ -518,7 +526,7 @@ export function HomePage() {
     return `${dayName}, ${dateStr} · Your week looks clear`;
   }, [todayItemCount, hasUpcomingItems]);
 
-  const displayName = useMemo(() => getDisplayName(role), [role]);
+  const displayName = currentUser?.name ?? 'there';
   const greeting = useMemo(() => getGreeting(), []);
 
   const handleCreateSave = useCallback(async (draft: DraftReminder) => {
@@ -559,8 +567,9 @@ export function HomePage() {
           <div className="wordmark" style={{ color: 'var(--violet-text)' }}>olivia</div>
           <div className="home-header-actions">
             <div className="avatar-stack" aria-label="Household members">
-              <div className="av av-l" title="Lexi">L</div>
-              <div className="av av-a" title="Christian">C</div>
+              {members.map((m, idx) => (
+                <div key={m.id} className={`av${idx === 0 ? ' av-l' : ' av-a'}`} title={m.name}>{m.name.charAt(0).toUpperCase()}</div>
+              ))}
             </div>
             <button
               type="button"

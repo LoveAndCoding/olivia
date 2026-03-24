@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const actorRoleSchema = z.enum(['stakeholder', 'spouse']);
-export const ownerSchema = z.enum(['stakeholder', 'spouse', 'unassigned']);
+export const assigneeUserIdSchema = z.string().uuid().nullable();
 export const itemStatusSchema = z.enum(['open', 'in_progress', 'done', 'deferred']);
 export const parseConfidenceSchema = z.enum(['high', 'medium', 'low']);
 export const parserSourceSchema = z.enum(['ai', 'rules']);
@@ -10,7 +10,7 @@ export const suggestionTypeSchema = z.enum(['overdue', 'stale', 'unassigned', 'd
 export const eventTypeSchema = z.enum([
   'created',
   'status_changed',
-  'owner_changed',
+  'assignee_changed',
   'due_changed',
   'description_changed',
   'note_added'
@@ -20,7 +20,7 @@ export const structuredInputSchema = z.object({
   id: z.string().uuid().optional(),
   title: z.string().trim().min(1),
   description: z.string().trim().min(1).nullable().optional(),
-  owner: ownerSchema.default('unassigned'),
+  assigneeUserId: z.string().uuid().nullable().default(null),
   status: itemStatusSchema.default('open'),
   dueText: z.string().trim().min(1).nullable().optional(),
   dueAt: z.string().datetime().nullable().optional()
@@ -30,7 +30,7 @@ export const draftItemSchema = z.object({
   id: z.string().uuid(),
   title: z.string().trim().min(1),
   description: z.string().trim().min(1).nullable(),
-  owner: ownerSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   status: itemStatusSchema,
   dueText: z.string().trim().min(1).nullable(),
   dueAt: z.string().datetime().nullable()
@@ -124,7 +124,7 @@ export const confirmCreateResponseSchema = z.object({
 
 export const updateChangeSchema = z.object({
   status: itemStatusSchema.optional(),
-  owner: ownerSchema.optional(),
+  assigneeUserId: z.string().uuid().nullable().optional(),
   dueText: z.string().trim().min(1).nullable().optional(),
   dueAt: z.string().datetime().nullable().optional(),
   description: z.string().trim().min(1).nullable().optional(),
@@ -191,7 +191,7 @@ export const structuredReminderInputSchema = z.object({
   id: z.string().uuid().optional(),
   title: z.string().trim().min(1),
   note: z.string().trim().min(1).nullable().optional(),
-  owner: ownerSchema.default('unassigned'),
+  assigneeUserId: z.string().uuid().nullable().default(null),
   scheduledAt: z.string().datetime(),
   recurrenceCadence: recurrenceCadenceSchema.default('none'),
   linkedInboxItemId: z.string().uuid().nullable().optional()
@@ -201,7 +201,7 @@ export const draftReminderSchema = z.object({
   id: z.string().uuid(),
   title: z.string().trim().min(1),
   note: z.string().trim().min(1).nullable(),
-  owner: ownerSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   scheduledAt: z.string().datetime(),
   recurrenceCadence: recurrenceCadenceSchema,
   linkedInboxItemId: z.string().uuid().nullable()
@@ -211,7 +211,7 @@ export const linkedInboxSummarySchema = z.object({
   id: z.string().uuid(),
   title: z.string().trim().min(1),
   status: itemStatusSchema,
-  owner: ownerSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   dueAt: z.string().datetime().nullable()
 });
 
@@ -304,7 +304,7 @@ export const confirmCreateReminderRequestSchema = z.object({
 export const reminderUpdateChangeSchema = z.object({
   title: z.string().trim().min(1).optional(),
   note: z.string().trim().min(1).nullable().optional(),
-  owner: ownerSchema.optional(),
+  assigneeUserId: z.string().uuid().nullable().optional(),
   scheduledAt: z.string().datetime().optional(),
   recurrenceCadence: recurrenceCadenceSchema.optional()
 });
@@ -422,7 +422,7 @@ export const listEventTypeSchema = z.enum([
 export const sharedListSchema = z.object({
   id: z.string().uuid(),
   title: z.string().trim().min(1),
-  owner: actorRoleSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   status: listStatusSchema,
   activeItemCount: z.number().int().nonnegative(),
   checkedItemCount: z.number().int().nonnegative(),
@@ -596,7 +596,7 @@ export const ritualTypeSchema = z.enum(['weekly_review']);
 export const routineSchema = z.object({
   id: z.string().uuid(),
   title: z.string().trim().min(1),
-  owner: ownerSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   recurrenceRule: routineRecurrenceRuleSchema,
   intervalDays: z.number().int().positive().nullable(),
   intervalWeeks: z.number().int().min(2).max(12).nullable().default(null),
@@ -632,7 +632,6 @@ export const routineOccurrenceSchema = z.object({
   routineId: z.string().uuid(),
   dueDate: z.string().datetime(),
   completedAt: z.string().datetime().nullable(),
-  completedBy: ownerSchema.nullable(),
   completedByUserId: optionalUserId,
   skipped: z.boolean(),
   reviewRecordId: z.string().uuid().nullable().optional(),
@@ -660,7 +659,7 @@ export const routineDetailResponseSchema = z.object({
 export const createRoutineRequestSchema = z.object({
   actorRole: actorRoleSchema.optional(),
   title: z.string().trim().min(1),
-  owner: ownerSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   recurrenceRule: routineRecurrenceRuleSchema,
   intervalDays: z.number().int().positive().nullable().optional(),
   intervalWeeks: z.number().int().min(2).max(12).nullable().optional(),
@@ -685,7 +684,7 @@ export const updateRoutineRequestSchema = z.object({
   routineId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
   title: z.string().trim().min(1).optional(),
-  owner: ownerSchema.optional(),
+  assigneeUserId: z.string().uuid().nullable().optional(),
   recurrenceRule: routineRecurrenceRuleSchema.optional(),
   intervalDays: z.number().int().positive().nullable().optional(),
   intervalWeeks: z.number().int().min(2).max(12).nullable().optional(),
@@ -859,7 +858,7 @@ export const generateGroceryListResponseSchema = z.object({
 export const weeklyRoutineOccurrenceSchema = z.object({
   routineId: z.string().uuid(),
   routineTitle: z.string(),
-  owner: ownerSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   recurrenceRule: routineRecurrenceRuleSchema,
   intervalDays: z.number().int().positive().nullable(),
   intervalWeeks: z.number().int().min(2).max(12).nullable().optional(),
@@ -872,7 +871,7 @@ export const weeklyRoutineOccurrenceSchema = z.object({
 export const weeklyReminderSchema = z.object({
   reminderId: z.string().uuid(),
   title: z.string(),
-  owner: ownerSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   scheduledAt: z.string().datetime(),
   dueState: reminderStateSchema
 });
@@ -889,7 +888,7 @@ export const weeklyMealEntrySchema = z.object({
 export const weeklyInboxItemSchema = z.object({
   itemId: z.string().uuid(),
   title: z.string(),
-  owner: ownerSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   dueAt: z.string().datetime(),
   status: itemStatusSchema
 });
@@ -1063,7 +1062,7 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
     commandId: z.string().uuid(),
     actorRole: actorRoleSchema.optional(),
     title: z.string().trim().min(1),
-    owner: ownerSchema,
+    assigneeUserId: z.string().uuid().nullable(),
     recurrenceRule: routineRecurrenceRuleSchema,
     intervalDays: z.number().int().positive().nullable().optional(),
     intervalWeeks: z.number().int().min(2).max(12).nullable().optional(),
@@ -1077,7 +1076,7 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
     routineId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     title: z.string().trim().min(1).optional(),
-    owner: ownerSchema.optional(),
+    assigneeUserId: z.string().uuid().nullable().optional(),
     recurrenceRule: routineRecurrenceRuleSchema.optional(),
     intervalDays: z.number().int().positive().nullable().optional(),
     intervalWeeks: z.number().int().min(2).max(12).nullable().optional(),
@@ -1158,7 +1157,7 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
 ]);
 
 export type ActorRole = z.infer<typeof actorRoleSchema>;
-export type Owner = z.infer<typeof ownerSchema>;
+export type AssigneeUserId = z.infer<typeof assigneeUserIdSchema>;
 export type ItemStatus = z.infer<typeof itemStatusSchema>;
 export type ParseConfidence = z.infer<typeof parseConfidenceSchema>;
 export type ParserSource = z.infer<typeof parserSourceSchema>;
@@ -1298,7 +1297,7 @@ export const activityHistoryRoutineItemSchema = z.object({
   type: z.literal('routine'),
   routineId: z.string().uuid(),
   routineTitle: z.string(),
-  owner: ownerSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   dueDate: z.string(),        // ISO date, YYYY-MM-DD
   completedAt: z.string().datetime(),
   reviewRecordId: z.string().uuid().nullable().optional()  // populated for planning ritual completions
@@ -1308,7 +1307,7 @@ export const activityHistoryReminderItemSchema = z.object({
   type: z.literal('reminder'),
   reminderId: z.string().uuid(),
   title: z.string(),
-  owner: ownerSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   resolvedAt: z.string().datetime(),
   resolution: z.enum(['completed', 'dismissed'])
 });
@@ -1327,7 +1326,7 @@ export const activityHistoryInboxItemSchema = z.object({
   type: z.literal('inbox'),
   itemId: z.string().uuid(),
   title: z.string(),
-  owner: ownerSchema,
+  assigneeUserId: z.string().uuid().nullable(),
   completedAt: z.string().datetime()
 });
 
@@ -1388,7 +1387,6 @@ export const reviewRecordSchema = z.object({
   currentWeekWindowEnd: z.string(),          // ISO date YYYY-MM-DD
   carryForwardNotes: z.string().nullable(),
   completedAt: z.string().datetime(),
-  completedBy: ownerSchema,
   completedByUserId: optionalUserId,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

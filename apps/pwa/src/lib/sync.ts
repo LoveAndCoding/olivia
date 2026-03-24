@@ -54,7 +54,7 @@ import type {
   MealPlanDetailResponse,
   MealPlanIndexResponse,
   OutboxCommand,
-  Owner,
+  AssigneeUserId,
   PreviewCreateReminderResponse,
   PreviewCreateResponse,
   PreviewUpdateReminderResponse,
@@ -625,11 +625,11 @@ async function flushOutboxOnce() {
       } else if (command.kind === 'items_uncheck_all') {
         await uncheckAllItemsApi(effectiveRole(command.actorRole), command.listId);
       } else if (command.kind === 'routine_create') {
-        const response = await createRoutineApi(effectiveRole(command.actorRole), command.title, command.owner, command.recurrenceRule, command.firstDueDate, command.intervalDays, command.weekdays, command.intervalWeeks);
+        const response = await createRoutineApi(effectiveRole(command.actorRole), command.title, command.assigneeUserId, command.recurrenceRule, command.firstDueDate, command.intervalDays, command.weekdays, command.intervalWeeks);
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
       } else if (command.kind === 'routine_update') {
-        const { title, owner, recurrenceRule, intervalDays, intervalWeeks, weekdays } = command;
-        const response = await updateRoutineApi(effectiveRole(command.actorRole), command.routineId, command.expectedVersion, { title, owner, recurrenceRule, intervalDays, intervalWeeks, weekdays });
+        const { title, assigneeUserId, recurrenceRule, intervalDays, intervalWeeks, weekdays } = command;
+        const response = await updateRoutineApi(effectiveRole(command.actorRole), command.routineId, command.expectedVersion, { title, assigneeUserId, recurrenceRule, intervalDays, intervalWeeks, weekdays });
         await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
       } else if (command.kind === 'routine_complete') {
         const response = await completeRoutineOccurrenceApi(effectiveRole(command.actorRole), command.routineId, command.expectedVersion);
@@ -1089,7 +1089,7 @@ export async function loadRoutineDetail(role: ActorRole, routineId: string): Pro
 export async function createRoutineCommand(
   role: ActorRole,
   title: string,
-  owner: Owner,
+  assigneeUserId: AssigneeUserId,
   recurrenceRule: RoutineRecurrenceRule,
   firstDueDate: string | null,
   intervalDays?: number | null,
@@ -1097,13 +1097,13 @@ export async function createRoutineCommand(
   intervalWeeks?: number | null
 ): Promise<Routine> {
   if (!isOffline()) {
-    const response = await createRoutineApi(role, title, owner, recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks);
+    const response = await createRoutineApi(role, title, assigneeUserId, recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks);
     await cacheRoutine({ ...response.savedRoutine, pendingSync: false });
     return response.savedRoutine;
   }
-  const routine = createRoutineDomain(title, owner, recurrenceRule, firstDueDate, intervalDays, undefined, weekdays, intervalWeeks);
+  const routine = createRoutineDomain(title, assigneeUserId, recurrenceRule, firstDueDate, intervalDays, undefined, weekdays, intervalWeeks);
   const pendingRoutine = { ...routine, pendingSync: true };
-  const command: OutboxCommand = { kind: 'routine_create', commandId: crypto.randomUUID(), actorRole: role, title, owner, recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks };
+  const command: OutboxCommand = { kind: 'routine_create', commandId: crypto.randomUUID(), actorRole: role, title, assigneeUserId, recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks };
   await cacheRoutine(pendingRoutine);
   await enqueueCommand(command);
   return pendingRoutine;
@@ -1113,7 +1113,7 @@ export async function updateRoutineCommand(
   role: ActorRole,
   routineId: string,
   expectedVersion: number,
-  changes: { title?: string; owner?: Owner; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null; intervalWeeks?: number | null; weekdays?: number[] | null }
+  changes: { title?: string; assigneeUserId?: AssigneeUserId; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null; intervalWeeks?: number | null; weekdays?: number[] | null }
 ): Promise<Routine> {
   if (!isOffline()) {
     const response = await updateRoutineApi(role, routineId, expectedVersion, changes);
@@ -1505,7 +1505,7 @@ export async function submitRitualCompletion(
       overviewNarrative,
       aiGenerationUsed: !!(recapNarrative || overviewNarrative),
       completedAt: now,
-      completedBy: role as 'stakeholder',
+      completedByUserId: null,
       createdAt: now,
       updatedAt: now,
       version: 1,
@@ -1542,7 +1542,7 @@ export async function submitRitualCompletion(
     overviewNarrative,
     aiGenerationUsed: !!(recapNarrative || overviewNarrative),
     completedAt: nowIso,
-    completedBy: role as 'stakeholder',
+    completedByUserId: null,
     createdAt: nowIso,
     updatedAt: nowIso,
     version: 1,

@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import type { User } from '@olivia/contracts';
 import type { EventItem, NudgeData, SummaryTask } from '../../types/display';
+import { useAuth } from '../../lib/auth';
+import { getHouseholdMembers } from '../../lib/auth-api';
 
 export type HomeViewProps = {
   greeting: string;
@@ -27,6 +30,13 @@ export function HomeView({
   onAllTasksClick,
 }: HomeViewProps) {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const { user: currentUser, getSessionToken } = useAuth();
+  const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    getHouseholdMembers(token).then(res => setMembers(res.members)).catch(() => {});
+  }, [getSessionToken]);
 
   return (
     <div className="screen-scroll">
@@ -35,8 +45,9 @@ export function HomeView({
         <div className="home-header-row">
           <div className="wordmark">olivia</div>
           <div className="avatar-stack" aria-label="Household members">
-            <div className="av av-l" title="Lexi">L</div>
-            <div className="av av-a" title="Christian">C</div>
+            {members.map((m, idx) => (
+              <div key={m.id} className={`av${idx === 0 ? ' av-l' : ' av-a'}`} title={m.name}>{m.name.charAt(0).toUpperCase()}</div>
+            ))}
           </div>
         </div>
         <div className="greeting">
