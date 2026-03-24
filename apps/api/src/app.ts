@@ -177,8 +177,8 @@ import type { AppConfig } from './config';
 import { createErrorReporter, errorReportSchema } from './error-reporter';
 import { createDatabase } from './db/client';
 import { DraftStore } from './drafts';
-import { startBackgroundJobs } from './jobs';
-import { createPushProvider, createApnsPushProvider, type PushSubscriptionPayload } from './push';
+import { startBackgroundJobs, shouldHoldNudge } from './jobs';
+import { createPushProvider, createApnsPushProvider, isApnsSubscriptionPayload, type PushSubscriptionPayload, type NotificationPayload } from './push';
 import { InboxRepository } from './repository';
 import { AuthRepository } from './auth-repository';
 import { authMiddleware } from './auth-middleware';
@@ -2143,6 +2143,147 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     repository.deletePushSubscription(endpoint);
     return reply.status(204).send();
+  });
+
+  // ─── Test Notification (OLI-306) ────────────────────────────────────────────
+
+  const testNotificationRateLimit = new Map<string, number>();
+
+  app.post('/api/push-subscriptions/test', async (request, reply) => {
+    const userId = resolveUserId(request);
+
+    // Find subscriptions for this user (or all if no userId)
+    const subscriptions = userId
+      ? repository.listPushSubscriptionsForUser(userId)
+      : repository.listPushSubscriptions();
+
+    if (subscriptions.length === 0) {
+      return reply.status(400).send({
+        success: false,
+        deviceCount: 0,
+        error: 'No push subscriptions found. Enable push notifications first.',
+      });
+    }
+
+    // Rate limit: 1 test per user per 60 seconds
+    const rateLimitKey = userId ?? 'anonymous';
+    const lastSent = testNotificationRateLimit.get(rateLimitKey);
+    const now = Date.now();
+    if (lastSent && now - lastSent < 60_000) {
+      return reply.status(429).send({
+        success: false,
+        deviceCount: 0,
+        error: 'Please wait a moment before sending another test.',
+      });
+    }
+
+    const userName = userId
+      ? (repository.getUserName(userId) ?? 'your device')
+      : 'your device';
+
+    const notification: NotificationPayload = {
+      title: 'Test Notification',
+      body: `Push notifications are working for ${userName}.`,
+      url: `${config.pwaOrigin}/`,
+      tag: 'test-notification',
+    };
+
+    let sentCount = 0;
+    for (const sub of subscriptions) {
+      try {
+        if (push.isConfigured()) {
+          await push.send(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
+            notification
+          );
+          sentCount++;
+        }
+      } catch (error) {
+        const statusCode = (error as { statusCode?: number }).statusCode;
+        if (statusCode === 410) {
+          repository.deletePushSubscription(sub.endpoint);
+          request.log.info({ subscriptionId: sub.id }, 'test push: 410 Gone — subscription removed');
+        } else {
+          request.log.warn({ subscriptionId: sub.id, error }, 'test push delivery failed');
+        }
+      }
+    }
+
+    // Also send via APNs if configured
+    if (apns.isConfigured()) {
+      const notifSubs = repository.listAllNotificationSubscriptions();
+      const apnsSubs = notifSubs.filter((s) => isApnsSubscriptionPayload(s.payload as Record<string, unknown>));
+      for (const sub of apnsSubs) {
+        try {
+          await apns.send((sub.payload as { token: string }).token, notification);
+          sentCount++;
+        } catch (error) {
+          request.log.warn({ subscriptionId: sub.id, error }, 'test APNs delivery failed');
+        }
+      }
+    }
+
+    testNotificationRateLimit.set(rateLimitKey, now);
+
+    return reply.send({
+      success: sentCount > 0,
+      deviceCount: sentCount,
+    });
+  });
+
+  // ─── Upcoming Notifications (OLI-306) ───────────────────────────────────────
+
+  app.get('/api/push-notifications/upcoming', async () => {
+    const now = new Date();
+    const DEDUP_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+    const nudges = sortNudgesByPriority(repository.getNudgePayloads(now));
+    const allSubscriptions = repository.listPushSubscriptions();
+
+    const items = nudges.map((nudge) => {
+      // Check if recently sent to any subscription
+      let lastSentAt: string | null = null;
+      let recentlySent = false;
+      for (const sub of allSubscriptions) {
+        const sent = repository.hasPushNotificationLog(
+          sub.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
+        );
+        if (sent) {
+          recentlySent = true;
+          // Get the actual last sent time
+          const sentTime = repository.getLastPushNotificationTime(
+            sub.id, nudge.entityType, nudge.entityId
+          );
+          if (sentTime && (!lastSentAt || sentTime > lastSentAt)) {
+            lastSentAt = sentTime;
+          }
+        }
+      }
+
+      // Check if held by completion window
+      const noopLogger = { info: () => {}, warn: () => {}, debug: () => {}, error: () => {} } as unknown as Parameters<typeof shouldHoldNudge>[3];
+      const held = shouldHoldNudge(nudge, repository, config, noopLogger, now);
+
+      let status: 'pending' | 'held' | 'recently_sent';
+      if (recentlySent) {
+        status = 'recently_sent';
+      } else if (held) {
+        status = 'held';
+      } else {
+        status = 'pending';
+      }
+
+      return {
+        entityType: nudge.entityType,
+        entityId: nudge.entityId,
+        entityName: nudge.entityName,
+        triggerReason: nudge.triggerReason,
+        status,
+        lastSentAt,
+      };
+    });
+
+    return { items };
   });
 
   // ─── Chat Routes (OLI-100) ──────────────────────────────────────────────────

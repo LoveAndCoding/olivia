@@ -343,7 +343,7 @@ function buildNudgeNotification(nudge: Nudge, pwaOrigin: string): NotificationPa
   };
 }
 
-function shouldHoldNudge(
+export function shouldHoldNudge(
   nudge: Nudge,
   repository: InboxRepository,
   config: AppConfig,

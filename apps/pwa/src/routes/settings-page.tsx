@@ -64,6 +64,166 @@ function ConnectivityProbe() {
   );
 }
 
+type UpcomingNotificationItem = {
+  entityType: string;
+  entityId: string;
+  entityName: string;
+  triggerReason: string;
+  status: 'pending' | 'held' | 'recently_sent';
+  lastSentAt: string | null;
+};
+
+function TestNotificationButton() {
+  const [sending, setSending] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const sendTest = useCallback(async () => {
+    setSending(true);
+    setFeedback(null);
+    try {
+      const res = await fetch(resolveApiUrl('/api/push-subscriptions/test'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res.status === 429) {
+        setFeedback({ type: 'error', message: 'Please wait a moment before sending another test.' });
+        return;
+      }
+      const data = await res.json() as { success: boolean; deviceCount: number; error?: string };
+      if (data.success) {
+        setFeedback({ type: 'success', message: 'Test notification sent!' });
+      } else {
+        setFeedback({ type: 'error', message: data.error ?? 'Failed to send — check your notification settings.' });
+      }
+    } catch {
+      setFeedback({ type: 'error', message: 'Failed to send — check your connection.' });
+    } finally {
+      setSending(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = setTimeout(() => setFeedback(null), 5000);
+    return () => clearTimeout(timer);
+  }, [feedback]);
+
+  return (
+    <div className="test-notification-section" style={{ marginTop: 12 }}>
+      <div className="rem-group-header">Test</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={sending}
+          onClick={() => void sendTest()}
+          style={{ flex: '0 0 auto' }}
+        >
+          {sending ? 'Sending…' : 'Send Test Notification'}
+        </button>
+        {feedback && (
+          <span
+            className="test-notification-feedback"
+            style={{
+              fontSize: 13,
+              color: feedback.type === 'success' ? 'var(--color-success, green)' : 'var(--color-error, red)',
+            }}
+          >
+            {feedback.message}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function formatRelativeTime(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const minutes = Math.round(diff / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  return `${hours}h ago`;
+}
+
+function ScheduledNotifications() {
+  const [items, setItems] = useState<UpcomingNotificationItem[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(resolveApiUrl('/api/push-notifications/upcoming'));
+      const data = await res.json() as { items: UpcomingNotificationItem[] };
+      setItems(data.items);
+    } catch {
+      setItems(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  return (
+    <div className="scheduled-notifications-section" style={{ marginTop: 12 }}>
+      <button
+        type="button"
+        className="rem-group-header"
+        onClick={() => setExpanded(!expanded)}
+        style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 0, width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+      >
+        <span>Scheduled Notifications</span>
+        <span style={{ fontSize: 12, opacity: 0.6 }}>{expanded ? '▲' : '▼'}</span>
+      </button>
+
+      {expanded && (
+        <div className="scheduled-notifications-list" style={{ marginTop: 8 }}>
+          {loading && <p className="muted" style={{ fontSize: 13 }}>Loading…</p>}
+          {!loading && (!items || items.length === 0) && (
+            <p className="muted" style={{ fontSize: 13 }}>
+              No upcoming notifications. Notifications fire when routines are overdue or reminders are due.
+            </p>
+          )}
+          {!loading && items && items.length > 0 && items.map((item) => (
+            <div key={item.entityId} className="scheduled-notification-item" style={{ padding: '6px 0', borderBottom: '1px solid var(--border-light, #eee)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{item.entityName}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{item.triggerReason}</div>
+                </div>
+                <div style={{ textAlign: 'right', fontSize: 12 }}>
+                  {item.status === 'recently_sent' && (
+                    <span style={{ color: 'var(--color-success, green)' }}>
+                      Sent {item.lastSentAt ? formatRelativeTime(item.lastSentAt) : ''}
+                    </span>
+                  )}
+                  {item.status === 'held' && (
+                    <span style={{ color: 'var(--color-warning, orange)' }}>Held</span>
+                  )}
+                  {item.status === 'pending' && (
+                    <span className="muted">Pending</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => void load()}
+            disabled={loading}
+            style={{ marginTop: 8, fontSize: 12 }}
+          >
+            Refresh
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SettingsPage() {
   const { role } = useRole();
   const queryClient = useQueryClient();
@@ -327,6 +487,14 @@ export function SettingsPage() {
             </div>
 
             <OliviaMessage text={oliviaNotifMessage} />
+
+            {masterEnabled && browserPermission === 'granted' && (
+              <TestNotificationButton />
+            )}
+
+            {masterEnabled && browserPermission === 'granted' && (
+              <ScheduledNotifications />
+            )}
           </div>
 
           <div className="card stack-md">

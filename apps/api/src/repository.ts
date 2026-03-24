@@ -1738,6 +1738,20 @@ export class InboxRepository {
     this.db.prepare('DELETE FROM push_notification_log WHERE sent_at < ?').run(cutoff);
   }
 
+  getLastPushNotificationTime(subscriptionId: string, entityType: string, entityId: string): string | null {
+    const row = this.db.prepare(`
+      SELECT sent_at FROM push_notification_log
+      WHERE subscription_id = ? AND entity_type = ? AND entity_id = ?
+      ORDER BY sent_at DESC LIMIT 1
+    `).get(subscriptionId, entityType, entityId) as { sent_at: string } | undefined;
+    return row?.sent_at ?? null;
+  }
+
+  getUserName(userId: string): string | null {
+    const row = this.db.prepare('SELECT name FROM users WHERE id = ?').get(userId) as { name: string } | undefined;
+    return row?.name ?? null;
+  }
+
   // ─── Chat Conversations ────────────────────────────────────────────────────
 
   getOrCreateConversation(now: Date): { id: string; createdAt: string; updatedAt: string } {
