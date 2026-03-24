@@ -17,6 +17,24 @@ Use this structure for future entries:
 
 ## Current Learnings
 
+### L-035: Reliability problems compound across milestones — fixing reliability once does not fix it durably
+- Date: 2026-03-24
+- Area: product quality / engineering process
+- Learning: M30 was explicitly a reliability milestone. All 7 priority areas shipped, E2E coverage expanded, push confirmed working on iOS, error frequency reduced. Yet M33 board feedback (OLI-294) identifies reliability as the #1 blocker again — the invitation flow is broken, push notifications aren't reaching the user, and multi-user features can't even be tested. The board's word: "The reliability problem strikes again."
+- Why it matters: reliability is not a one-sprint fix. Each new feature surface (M32 added auth, invitation flow, per-user push) introduces new reliability risk. The M30 reliability work hardened the *existing* surface, but M32's structural changes introduced new failure modes that weren't covered. Reliability must be treated as a continuous concern, not a single milestone's objective.
+- Implication: every build milestone should include a reliability acceptance gate — not just "tests pass" but "the household can use the new features without encountering errors." Consider adding a reliability regression check to the milestone exit criteria template.
+- Source: M33 board feedback (OLI-294)
+- Related docs: L-030, D-068
+
+### L-034: Push notification validation requires end-to-end household confirmation, not just test suite passing
+- Date: 2026-03-24
+- Area: product quality / push notifications
+- Learning: Push notifications were "confirmed working on native iOS" as an M30 exit criterion, and per-user push was built and tested in M32. Yet the board reports "still not getting notifications and don't know why." The gap is between "tests pass and we verified in dev" and "the household actually receives notifications on their real device." The board explicitly requests the ability to send test notifications or understand when notifications are supposed to fire.
+- Why it matters: push is the primary mechanism for Olivia to be proactive rather than passive (L-029). If push doesn't work in production for the actual user, the entire nudge/reminder infrastructure delivers zero value.
+- Implication: M34 must include (1) a test notification button in the app that the user can trigger to verify their push pipeline end-to-end, and (2) better visibility into when notifications are scheduled to fire. This is diagnostic tooling, not just another bug fix.
+- Source: M33 board feedback (OLI-294)
+- Related docs: L-029, D-046
+
 ### L-033: In-app friction reporting is more valuable than external bug tracking for household products
 - Date: 2026-03-22
 - Area: product operations / feedback loop
