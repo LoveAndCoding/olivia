@@ -548,6 +548,22 @@ export class InboxRepository {
     );
   }
 
+  listAllNotificationSubscriptions(): NotificationSubscription[] {
+    const rows = this.db
+      .prepare('SELECT * FROM notification_subscriptions ORDER BY created_at DESC')
+      .all() as Record<string, unknown>[];
+
+    return rows.map((row) =>
+      notificationSubscriptionSchema.parse({
+        id: row.id,
+        actorRole: row.actor_role,
+        endpoint: row.endpoint,
+        payload: parseJsonColumn(row.payload),
+        createdAt: row.created_at
+      })
+    );
+  }
+
   hasNotificationDelivery(
     notificationType: NotificationDeliveryRecord['notificationType'],
     actorRole: ActorRole,
