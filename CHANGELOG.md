@@ -14,6 +14,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - Settings back arrow returns to the screen you came from instead of always going to the More tab
 - Error reporting now works during invitation and sign-up flows, making issues easier to diagnose
 
+### Added
+- Service worker for web push notifications — the app can now receive and display push notifications in the browser
+- 39 new end-to-end tests covering invitation flow, auth sessions, push subscriptions, and multi-user data integrity
+
 ## [0.7.0] - 2026-03-23
 
 ### Added
