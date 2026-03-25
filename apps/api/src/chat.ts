@@ -43,7 +43,7 @@ export function assembleHouseholdContext(
     const lines = [`\n## Active Inbox Items (${activeItems.length})`];
     for (const item of activeItems.slice(0, 15)) {
       const due = item.dueAt ? ` (due: ${item.dueAt.slice(0, 10)})` : '';
-      lines.push(`- "${item.title}" — status: ${item.status}, owner: ${item.owner}${due}`);
+      lines.push(`- "${item.title}" — status: ${item.status}, assignee: ${item.assigneeUserId ?? 'unassigned'}${due}`);
     }
     if (activeItems.length > 15) lines.push(`  ...and ${activeItems.length - 15} more`);
     sections.push(lines.join('\n'));
@@ -57,7 +57,7 @@ export function assembleHouseholdContext(
   if (activeReminders.length > 0) {
     const lines = [`\n## Active Reminders (${activeReminders.length})`];
     for (const r of activeReminders.slice(0, 15)) {
-      lines.push(`- "${r.title}" — state: ${r.state}, scheduled: ${r.scheduledAt.slice(0, 16)}, owner: ${r.owner}`);
+      lines.push(`- "${r.title}" — state: ${r.state}, scheduled: ${r.scheduledAt.slice(0, 16)}, assignee: ${r.assigneeUserId ?? 'unassigned'}`);
     }
     if (activeReminders.length > 15) lines.push(`  ...and ${activeReminders.length - 15} more`);
     sections.push(lines.join('\n'));
@@ -70,7 +70,7 @@ export function assembleHouseholdContext(
   if (routines.length > 0) {
     const lines = [`\n## Active Routines (${routines.length})`];
     for (const r of routines.slice(0, 10)) {
-      lines.push(`- "${r.title}" — recurrence: ${r.recurrenceRule}, next due: ${r.currentDueDate}, owner: ${r.owner}`);
+      lines.push(`- "${r.title}" — recurrence: ${r.recurrenceRule}, next due: ${r.currentDueDate}, assignee: ${r.assigneeUserId ?? 'unassigned'}`);
     }
     if (routines.length > 10) lines.push(`  ...and ${routines.length - 10} more`);
     sections.push(lines.join('\n'));
@@ -177,7 +177,7 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
       type: 'object' as const,
       properties: {
         title: { type: 'string', description: 'Title of the task' },
-        owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this task' },
+        assigneeUserId: { type: 'string', description: 'User ID of the assignee, or null for unassigned' },
         dueText: { type: 'string', description: 'Natural language due date (e.g., "Friday", "next week")' },
         parseConfidence: { type: 'number', description: 'How confident you are in your interpretation of this item (0.0 to 1.0). Use 0.9+ when the user was specific, 0.5-0.89 when you inferred details, below 0.5 when guessing.' }
       },
@@ -192,7 +192,7 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
       properties: {
         title: { type: 'string', description: 'What to be reminded about' },
         scheduledAt: { type: 'string', description: 'ISO 8601 datetime or natural language time for the reminder' },
-        owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this reminder' },
+        assigneeUserId: { type: 'string', description: 'User ID of the assignee, or null for unassigned' },
         parseConfidence: { type: 'number', description: 'How confident you are in your interpretation of this item (0.0 to 1.0). Use 0.9+ when the user was specific, 0.5-0.89 when you inferred details, below 0.5 when guessing.' }
       },
       required: ['title', 'scheduledAt']
@@ -258,7 +258,7 @@ const ONBOARDING_EXTRA_TOOLS: Anthropic.Messages.Tool[] = [
       type: 'object' as const,
       properties: {
         title: { type: 'string', description: 'Title of the routine (e.g., "Take out trash")' },
-        owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this routine' },
+        assigneeUserId: { type: 'string', description: 'User ID of the assignee, or null for unassigned' },
         recurrenceRule: { type: 'string', enum: ['daily', 'weekly', 'monthly', 'every_n_days'], description: 'How often the routine recurs' },
         intervalDays: { type: 'number', description: 'Number of days between occurrences (only for every_n_days)' },
         firstDueDate: { type: 'string', description: 'ISO 8601 date for the first occurrence (e.g., "2026-03-18")' },
@@ -274,7 +274,7 @@ const ONBOARDING_EXTRA_TOOLS: Anthropic.Messages.Tool[] = [
       type: 'object' as const,
       properties: {
         title: { type: 'string', description: 'Name of the list (e.g., "Groceries", "Packing list")' },
-        owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this list' },
+        assigneeUserId: { type: 'string', description: 'User ID of the assignee, or null for unassigned' },
         parseConfidence: { type: 'number', description: 'How confident you are in your interpretation of this item (0.0 to 1.0). Use 0.9+ when the user was specific, 0.5-0.89 when you inferred details, below 0.5 when guessing.' }
       },
       required: ['title']

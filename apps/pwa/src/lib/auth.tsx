@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // When server-side auth is disabled, skip the auth gate entirely
         if (!authEnabled) {
-          setState({ status: 'authenticated', user: { id: 'local', name: 'Local User', email: '', role: 'admin' } as import('@olivia/contracts').User });
+          setState({ status: 'authenticated', user: { id: '00000000-0000-0000-0000-000000000000', name: 'Local User', email: '', role: 'admin' } as import('@olivia/contracts').User });
           return;
         }
 

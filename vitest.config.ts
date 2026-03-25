@@ -11,6 +11,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    exclude: ['apps/pwa/e2e/**', 'node_modules/**'],
     coverage: {
       reporter: ['text', 'html']
     }

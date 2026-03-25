@@ -23,7 +23,7 @@ const validRitualSummaryInput: RitualSummaryInput = {
       type: 'routine',
       routineId: 'r1',
       routineTitle: 'Morning Routine',
-      owner: 'stakeholder',
+      assigneeUserId: null,
       dueDate: '2026-03-08',
       completedAt: '2026-03-08T08:00:00Z',
       reviewRecordId: null
@@ -32,7 +32,7 @@ const validRitualSummaryInput: RitualSummaryInput = {
       type: 'reminder',
       reminderId: 'rem1',
       title: 'Grocery Run',
-      owner: 'stakeholder',
+      assigneeUserId: null,
       resolvedAt: '2026-03-07T12:00:00Z',
       resolution: 'completed'
     }
@@ -47,7 +47,7 @@ const validRitualSummaryInput: RitualSummaryInput = {
         {
           routineId: 'r1',
           routineTitle: 'Morning Routine',
-          owner: 'stakeholder',
+          assigneeUserId: null,
           recurrenceRule: 'daily',
           intervalDays: null,
           dueDate: '2026-03-09',
@@ -134,7 +134,7 @@ describe('ClaudeAiProvider', () => {
           type: 'routine',
           routineId: 'r1',
           routineTitle: 'Morning Routine',
-          owner: 'stakeholder',
+          assigneeUserId: null,
           dueDate: '2026-03-08',
           completedAt: '2026-03-08T08:00:00Z',
           reviewRecordId: null

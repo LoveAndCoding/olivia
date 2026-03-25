@@ -58,7 +58,7 @@ describe('OLI-234: routine completion URL must include the real routineId', () =
       payload: {
         actorRole: 'stakeholder',
         title: 'Water the plants',
-        owner: 'stakeholder',
+        assigneeUserId: null,
         recurrenceRule: 'daily',
         firstDueDate: subDays(new Date(), 1).toISOString()
       }

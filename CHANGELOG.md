@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-03-25
+
+### Fixed
+- Push notification registration on iOS — enabling notifications now properly registers the device even when iOS permission was already granted
+- Task and reminder assignment pickers now show actual household member names instead of hardcoded names
+
+### Changed
+- Replaced role-based assignment ("stakeholder"/"spouse") with user-based assignment across all workflows — tasks, reminders, routines, and lists now track who is assigned by their real user identity
+
 ## [0.7.1] - 2026-03-24
 
 ### Fixed

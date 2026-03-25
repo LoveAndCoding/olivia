@@ -26,7 +26,7 @@ function makeRoutine(overrides: Partial<Routine> = {}): Routine {
   return {
     id: ROUTINE_ID,
     title: 'Test routine',
-    owner: 'stakeholder',
+    assigneeUserId: null,
     recurrenceRule: 'weekly',
     intervalDays: null,
     intervalWeeks: null,
@@ -48,7 +48,7 @@ function makeOccurrence(overrides: Partial<RoutineOccurrence> = {}): RoutineOccu
     routineId: ROUTINE_ID,
     dueDate: '2026-03-15T12:00:00.000Z',
     completedAt: '2026-03-15T14:00:00.000Z',
-    completedBy: 'stakeholder',
+    completedByUserId: null,
     skipped: false,
     createdAt: '2026-03-15T14:00:00.000Z',
     ...overrides
@@ -100,9 +100,9 @@ describe('scheduleNextRoutineOccurrence', () => {
 
 describe('createRoutine', () => {
   it('creates a routine with correct fields', () => {
-    const routine = createRoutine('Take out trash', 'stakeholder', 'weekly', '2026-03-16T09:00:00.000Z', null, BASE_DATE);
+    const routine = createRoutine('Take out trash', null, 'weekly', '2026-03-16T09:00:00.000Z', null, BASE_DATE);
     expect(routine.title).toBe('Take out trash');
-    expect(routine.owner).toBe('stakeholder');
+    expect(routine.assigneeUserId).toBeNull();
     expect(routine.recurrenceRule).toBe('weekly');
     expect(routine.intervalDays).toBeNull();
     expect(routine.status).toBe('active');
@@ -112,23 +112,23 @@ describe('createRoutine', () => {
   });
 
   it('creates a daily routine', () => {
-    const routine = createRoutine('Morning walk', 'stakeholder', 'daily', '2026-03-16T07:00:00.000Z', null, BASE_DATE);
+    const routine = createRoutine('Morning walk', null, 'daily', '2026-03-16T07:00:00.000Z', null, BASE_DATE);
     expect(routine.recurrenceRule).toBe('daily');
   });
 
   it('creates a monthly routine', () => {
-    const routine = createRoutine('Pay power bill', 'stakeholder', 'monthly', '2026-04-01T09:00:00.000Z', null, BASE_DATE);
+    const routine = createRoutine('Pay power bill', null, 'monthly', '2026-04-01T09:00:00.000Z', null, BASE_DATE);
     expect(routine.recurrenceRule).toBe('monthly');
   });
 
   it('creates an every_n_days routine with intervalDays', () => {
-    const routine = createRoutine('Deep clean', 'stakeholder', 'every_n_days', '2026-03-29T09:00:00.000Z', 14, BASE_DATE);
+    const routine = createRoutine('Deep clean', null, 'every_n_days', '2026-03-29T09:00:00.000Z', 14, BASE_DATE);
     expect(routine.recurrenceRule).toBe('every_n_days');
     expect(routine.intervalDays).toBe(14);
   });
 
   it('throws if every_n_days without intervalDays', () => {
-    expect(() => createRoutine('Deep clean', 'stakeholder', 'every_n_days', '2026-03-29T09:00:00.000Z', null, BASE_DATE)).toThrow();
+    expect(() => createRoutine('Deep clean', null, 'every_n_days', '2026-03-29T09:00:00.000Z', null, BASE_DATE)).toThrow();
   });
 });
 
@@ -184,16 +184,16 @@ describe('computeRoutineDueState', () => {
 describe('completeRoutineOccurrence', () => {
   it('creates an occurrence record for the current cycle', () => {
     const routine = makeRoutine({ currentDueDate: '2026-03-15T12:00:00.000Z', recurrenceRule: 'weekly' });
-    const { occurrence } = completeRoutineOccurrence(routine, 'stakeholder', BASE_DATE);
+    const { occurrence } = completeRoutineOccurrence(routine, null, BASE_DATE);
     expect(occurrence.dueDate).toBe('2026-03-15T12:00:00.000Z');
     expect(occurrence.completedAt).toBe(BASE_DATE.toISOString());
-    expect(occurrence.completedBy).toBe('stakeholder');
+    expect(occurrence.completedByUserId).toBeNull();
     expect(occurrence.routineId).toBe(routine.id);
   });
 
   it('advances currentDueDate to next occurrence (schedule-anchored from original due date)', () => {
     const routine = makeRoutine({ currentDueDate: '2026-03-15T12:00:00.000Z', recurrenceRule: 'weekly' });
-    const { updatedRoutine } = completeRoutineOccurrence(routine, 'stakeholder', BASE_DATE);
+    const { updatedRoutine } = completeRoutineOccurrence(routine, null, BASE_DATE);
     expect(updatedRoutine.currentDueDate).toBe('2026-03-22T12:00:00.000Z');
   });
 
@@ -201,7 +201,7 @@ describe('completeRoutineOccurrence', () => {
     // Routine was due on the 1st, completing it on the 15th
     const routine = makeRoutine({ currentDueDate: '2026-03-01T12:00:00.000Z', recurrenceRule: 'monthly' });
     const completionDate = new Date('2026-03-15T12:00:00.000Z');
-    const { updatedRoutine } = completeRoutineOccurrence(routine, 'stakeholder', completionDate);
+    const { updatedRoutine } = completeRoutineOccurrence(routine, null, completionDate);
     // Schedule-anchored: should advance from 2026-03-01 by 1 month (April 1), not from March 15
     expect(updatedRoutine.currentDueDate).toMatch(/^2026-04-01T/);
     // Confirm it's NOT anchored from the completion date (would be April 15)
@@ -210,18 +210,18 @@ describe('completeRoutineOccurrence', () => {
 
   it('increments routine version after completion', () => {
     const routine = makeRoutine({ version: 3 });
-    const { updatedRoutine } = completeRoutineOccurrence(routine, 'stakeholder', BASE_DATE);
+    const { updatedRoutine } = completeRoutineOccurrence(routine, null, BASE_DATE);
     expect(updatedRoutine.version).toBe(4);
   });
 
   it('throws when completing a paused routine', () => {
     const routine = makeRoutine({ status: 'paused' });
-    expect(() => completeRoutineOccurrence(routine, 'stakeholder', BASE_DATE)).toThrow();
+    expect(() => completeRoutineOccurrence(routine, null, BASE_DATE)).toThrow();
   });
 
   it('throws when completing an archived routine', () => {
     const routine = makeRoutine({ status: 'archived', archivedAt: '2026-03-01T00:00:00.000Z' });
-    expect(() => completeRoutineOccurrence(routine, 'stakeholder', BASE_DATE)).toThrow();
+    expect(() => completeRoutineOccurrence(routine, null, BASE_DATE)).toThrow();
   });
 });
 
@@ -254,7 +254,7 @@ describe('updateRoutine - mid-cycle recurrence rule edit', () => {
     const updated = updateRoutine(routine, { recurrenceRule: 'every_n_days', intervalDays: 60 }, BASE_DATE);
     // Now complete it — should advance from 2026-04-01 by 60 days (= May 31), not by 1 month (May 1)
     const completionDate = new Date('2026-04-05T12:00:00.000Z');
-    const { updatedRoutine } = completeRoutineOccurrence(updated, 'stakeholder', completionDate);
+    const { updatedRoutine } = completeRoutineOccurrence(updated, null, completionDate);
     expect(updatedRoutine.currentDueDate).toMatch(/^2026-05-31T/);
     // Confirm it's NOT advancing by 1 month (which would be May 1)
     expect(updatedRoutine.currentDueDate).not.toMatch(/^2026-05-01T/);
@@ -404,31 +404,31 @@ describe('computeRoutineDueState — new rules', () => {
 
 describe('createRoutine — new rules', () => {
   it('creates a weekly_on_days routine', () => {
-    const routine = createRoutine('Trash pickup', 'stakeholder', 'weekly_on_days', '2026-03-16T12:00:00.000Z', null, BASE_DATE, [0, 3]);
+    const routine = createRoutine('Trash pickup', null, 'weekly_on_days', '2026-03-16T12:00:00.000Z', null, BASE_DATE, [0, 3]);
     expect(routine.recurrenceRule).toBe('weekly_on_days');
     expect(routine.weekdays).toEqual([0, 3]);
     expect(routine.currentDueDate).toBe('2026-03-16T12:00:00.000Z');
   });
 
   it('creates an every_n_weeks routine', () => {
-    const routine = createRoutine('Recycling', 'stakeholder', 'every_n_weeks', '2026-03-18T12:00:00.000Z', null, BASE_DATE, [2], 2);
+    const routine = createRoutine('Recycling', null, 'every_n_weeks', '2026-03-18T12:00:00.000Z', null, BASE_DATE, [2], 2);
     expect(routine.recurrenceRule).toBe('every_n_weeks');
     expect(routine.intervalWeeks).toBe(2);
     expect(routine.weekdays).toEqual([2]);
   });
 
   it('creates an ad_hoc routine with null currentDueDate', () => {
-    const routine = createRoutine('Dishes', 'stakeholder', 'ad_hoc', null, null, BASE_DATE);
+    const routine = createRoutine('Dishes', null, 'ad_hoc', null, null, BASE_DATE);
     expect(routine.recurrenceRule).toBe('ad_hoc');
     expect(routine.currentDueDate).toBeNull();
   });
 
   it('throws for weekly_on_days without weekdays', () => {
-    expect(() => createRoutine('Bad', 'stakeholder', 'weekly_on_days', '2026-03-16T12:00:00.000Z', null, BASE_DATE)).toThrow();
+    expect(() => createRoutine('Bad', null, 'weekly_on_days', '2026-03-16T12:00:00.000Z', null, BASE_DATE)).toThrow();
   });
 
   it('throws for every_n_weeks without intervalWeeks', () => {
-    expect(() => createRoutine('Bad', 'stakeholder', 'every_n_weeks', '2026-03-16T12:00:00.000Z', null, BASE_DATE, [2])).toThrow();
+    expect(() => createRoutine('Bad', null, 'every_n_weeks', '2026-03-16T12:00:00.000Z', null, BASE_DATE, [2])).toThrow();
   });
 });
 
@@ -440,7 +440,7 @@ describe('completeRoutineOccurrence — new rules', () => {
       weekdays: [0, 3],
       currentDueDate: '2026-03-16T12:00:00.000Z' // Monday
     });
-    const { updatedRoutine, occurrence } = completeRoutineOccurrence(routine, 'stakeholder', BASE_DATE);
+    const { updatedRoutine, occurrence } = completeRoutineOccurrence(routine, null, BASE_DATE);
     expect(occurrence.dueDate).toBe('2026-03-16T12:00:00.000Z');
     // Should advance to Thursday (3)
     expect(updatedRoutine.currentDueDate).toBe('2026-03-19T12:00:00.000Z');
@@ -453,7 +453,7 @@ describe('completeRoutineOccurrence — new rules', () => {
       intervalWeeks: 2,
       currentDueDate: '2026-03-18T12:00:00.000Z' // Wednesday
     });
-    const { updatedRoutine } = completeRoutineOccurrence(routine, 'stakeholder', BASE_DATE);
+    const { updatedRoutine } = completeRoutineOccurrence(routine, null, BASE_DATE);
     expect(updatedRoutine.currentDueDate).toBe('2026-04-01T12:00:00.000Z'); // 2 weeks later
   });
 
@@ -462,7 +462,7 @@ describe('completeRoutineOccurrence — new rules', () => {
       recurrenceRule: 'ad_hoc',
       currentDueDate: null
     });
-    const { updatedRoutine, occurrence } = completeRoutineOccurrence(routine, 'stakeholder', BASE_DATE);
+    const { updatedRoutine, occurrence } = completeRoutineOccurrence(routine, null, BASE_DATE);
     expect(updatedRoutine.currentDueDate).toBeNull();
     expect(occurrence.dueDate).toBe(BASE_DATE.toISOString());
     expect(occurrence.completedAt).toBe(BASE_DATE.toISOString());
@@ -472,7 +472,7 @@ describe('completeRoutineOccurrence — new rules', () => {
 describe('skipRoutineOccurrence — new rules', () => {
   it('throws for ad_hoc routines', () => {
     const routine = makeRoutine({ recurrenceRule: 'ad_hoc', currentDueDate: null });
-    expect(() => skipRoutineOccurrence(routine, 'stakeholder', BASE_DATE)).toThrow('ad_hoc');
+    expect(() => skipRoutineOccurrence(routine, null, BASE_DATE)).toThrow('ad_hoc');
   });
 
   it('skips a weekly_on_days routine and advances to next day', () => {
@@ -481,7 +481,7 @@ describe('skipRoutineOccurrence — new rules', () => {
       weekdays: [0, 3],
       currentDueDate: '2026-03-16T12:00:00.000Z'
     });
-    const { updatedRoutine, occurrence } = skipRoutineOccurrence(routine, 'stakeholder', BASE_DATE);
+    const { updatedRoutine, occurrence } = skipRoutineOccurrence(routine, null, BASE_DATE);
     expect(occurrence.skipped).toBe(true);
     expect(updatedRoutine.currentDueDate).toBe('2026-03-19T12:00:00.000Z');
   });

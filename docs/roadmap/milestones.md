@@ -255,7 +255,15 @@ Notes:
 ## M34: Reliability & Push — Make Multi-User Actually Work
 Objective: diagnose and fix the reliability issues preventing the household from using multi-user features, get push notifications working end-to-end for real users, and add diagnostic tooling so reliability gaps are visible before the next feedback round.
 
-Status: todo
+Status: in_progress (code complete, awaiting household validation)
+
+Progress (2026-03-25):
+- iOS push registration fix shipped (PR #29) — `PushNotifications.register()` now called when permission already granted
+- Dynamic user assignment migration shipped (PR #18, OLI-297) — 45 files, +797/-494
+- Test failures from migration fixed (OLI-307) — 484 tests passing, 0 failing
+- v0.7.2 release PR #90 open, awaiting board merge
+- Agent instruction consolidation completed (OLI-308) — reduced instruction surface ~50%
+- **Blocked on**: board merging PR #90, deploying to household, and confirming exit criteria
 
 Context:
 - M32 shipped a major structural change (auth, invitation flow, per-user push, navigation restructure) but M33 board feedback reveals the household cannot actually use these features due to reliability issues.

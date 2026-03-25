@@ -127,6 +127,17 @@ vi.mock('./client-db', async () => {
   };
 });
 
+vi.mock('./connectivity', () => ({
+  isEffectivelyOnline: () => globalThis.window?.navigator?.onLine ?? true,
+  startConnectivityMonitor: vi.fn(),
+  stopConnectivityMonitor: vi.fn(),
+  checkConnectivityNow: vi.fn(),
+  subscribeConnectivity: vi.fn(() => () => {}),
+  getConnectivitySnapshot: vi.fn(() => ({ browserOnline: true, apiReachable: true })),
+  getLastPingDiagnostic: vi.fn(() => ({ url: '', status: 'ok', timestamp: '' })),
+  runDiagnosticProbe: vi.fn()
+}));
+
 vi.mock('./api', () => {
   class ApiError extends Error {
     constructor(message: string, public readonly statusCode: number, public readonly payload: unknown) {
@@ -163,7 +174,7 @@ function createDraftReminder(overrides: Partial<DraftReminder> = {}): DraftRemin
     id: overrides.id ?? crypto.randomUUID(),
     title: overrides.title ?? 'Bring the vet records',
     note: overrides.note ?? null,
-    owner: overrides.owner ?? 'stakeholder',
+    assigneeUserId: overrides.assigneeUserId ?? null,
     scheduledAt: overrides.scheduledAt ?? new Date('2026-03-20T12:00:00.000Z').toISOString(),
     recurrenceCadence: overrides.recurrenceCadence ?? 'none',
     linkedInboxItemId: overrides.linkedInboxItemId ?? null
@@ -176,7 +187,7 @@ function createReminder(overrides: Partial<Reminder> = {}): Reminder {
     id: overrides.id ?? crypto.randomUUID(),
     title: overrides.title ?? 'Bring the vet records',
     note: overrides.note ?? null,
-    owner: overrides.owner ?? 'stakeholder',
+    assigneeUserId: overrides.assigneeUserId ?? null,
     scheduledAt,
     recurrenceCadence: overrides.recurrenceCadence ?? 'none',
     linkedInboxItemId: overrides.linkedInboxItemId ?? null,

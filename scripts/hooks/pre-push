@@ -1,0 +1,37 @@
+#!/bin/bash
+# Block pushes to upstream/main unless the branch name starts with "release/" or
+# this is a fast-forward of main after an upstream merge.
+# Installed by scripts/install-hooks.sh
+
+REMOTE="$1"
+REMOTE_URL="$2"
+
+# Only enforce on upstream remote
+if [ "$REMOTE" != "upstream" ]; then
+  exit 0
+fi
+
+# Read push info from stdin
+while read local_ref local_sha remote_ref remote_sha; do
+  # If pushing to main on upstream
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+    # Allow if current branch is main (release sync push)
+    if [ "$BRANCH" = "main" ]; then
+      exit 0
+    fi
+
+    # Allow if branch starts with release/
+    if echo "$BRANCH" | grep -q '^release/'; then
+      exit 0
+    fi
+
+    echo "ERROR: Direct push to upstream/main is blocked."
+    echo "Feature branches merge to origin/main. Only release PRs go to upstream."
+    echo "Current branch: $BRANCH"
+    exit 1
+  fi
+done
+
+exit 0

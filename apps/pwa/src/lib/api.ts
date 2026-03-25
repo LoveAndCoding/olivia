@@ -68,7 +68,7 @@ import {
   type ListMutationResponse,
   type MealPlanDetailResponse,
   type MealPlanIndexResponse,
-  type Owner,
+  type AssigneeUserId,
   type PreviewCreateResponse,
   type PreviewCreateReminderResponse,
   type PreviewUpdateResponse,
@@ -478,7 +478,7 @@ export async function fetchRoutineDetail(role: ActorRole, routineId: string): Pr
 export async function createRoutine(
   role: ActorRole,
   title: string,
-  owner: Owner,
+  assigneeUserId: AssigneeUserId,
   recurrenceRule: RoutineRecurrenceRule,
   firstDueDate: string | null,
   intervalDays?: number | null,
@@ -488,7 +488,7 @@ export async function createRoutine(
   return routineMutationResponseSchema.parse(
     await request<RoutineMutationResponse>('/api/routines', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, title, owner, recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks })
+      body: JSON.stringify({ actorRole: role, title, assigneeUserId, recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks })
     })
   );
 }
@@ -497,7 +497,7 @@ export async function updateRoutine(
   role: ActorRole,
   routineId: string,
   expectedVersion: number,
-  changes: { title?: string; owner?: Owner; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null; intervalWeeks?: number | null; weekdays?: number[] | null }
+  changes: { title?: string; assigneeUserId?: AssigneeUserId; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null; intervalWeeks?: number | null; weekdays?: number[] | null }
 ): Promise<RoutineMutationResponse> {
   return routineMutationResponseSchema.parse(
     await request<RoutineMutationResponse>(`/api/routines/${routineId}`, {

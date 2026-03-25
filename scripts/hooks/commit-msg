@@ -1,0 +1,20 @@
+#!/bin/bash
+# Enforce Co-Authored-By: Paperclip on all commits.
+# Installed by scripts/install-hooks.sh
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Skip merge commits
+if echo "$COMMIT_MSG" | head -1 | grep -qE '^Merge '; then
+  exit 0
+fi
+
+# Check for Co-Authored-By: Paperclip
+if ! echo "$COMMIT_MSG" | grep -q 'Co-Authored-By: Paperclip'; then
+  echo "ERROR: Commit message must include 'Co-Authored-By: Paperclip <noreply@paperclip.ing>'"
+  echo "Add it to the end of your commit message."
+  exit 1
+fi
+
+exit 0

@@ -243,7 +243,7 @@ export async function getCachedItemDetail(itemId: string): Promise<ItemDetailRes
   return {
     item,
     history,
-    flags: { overdue: false, stale: false, dueSoon: false, unassigned: item.owner === 'unassigned' }
+    flags: { overdue: false, stale: false, dueSoon: false, unassigned: item.assigneeUserId === null }
   };
 }
 
@@ -546,7 +546,7 @@ export async function assembleWeeklyViewFromCache(weekStartStr: string): Promise
       .map((r) => ({
         reminderId: r.id,
         title: r.title,
-        owner: r.owner,
+        assigneeUserId: r.assigneeUserId,
         scheduledAt: r.scheduledAt,
         dueState: r.state
       }));
@@ -560,7 +560,7 @@ export async function assembleWeeklyViewFromCache(weekStartStr: string): Promise
       return [{
         routineId: routine.id,
         routineTitle: routine.title,
-        owner: routine.owner,
+        assigneeUserId: routine.assigneeUserId,
         recurrenceRule: routine.recurrenceRule,
         intervalDays: routine.intervalDays,
         intervalWeeks: routine.intervalWeeks ?? null,
@@ -587,7 +587,7 @@ export async function assembleWeeklyViewFromCache(weekStartStr: string): Promise
       .map((item) => ({
         itemId: item.id,
         title: item.title,
-        owner: item.owner,
+        assigneeUserId: item.assigneeUserId,
         dueAt: item.dueAt!,
         status: item.status
       }));
@@ -639,7 +639,7 @@ export async function assembleActivityHistoryFromCache(): Promise<ActivityHistor
       type: 'routine',
       routineId: routine.id,
       routineTitle: routine.title,
-      owner: routine.owner,
+      assigneeUserId: routine.assigneeUserId,
       dueDate: occ.dueDate,
       completedAt: occ.completedAt
     });
@@ -654,7 +654,7 @@ export async function assembleActivityHistoryFromCache(): Promise<ActivityHistor
           type: 'reminder',
           reminderId: r.id,
           title: r.title,
-          owner: r.owner,
+          assigneeUserId: r.assigneeUserId,
           resolvedAt: r.completedAt,
           resolution: 'completed'
         });
@@ -666,7 +666,7 @@ export async function assembleActivityHistoryFromCache(): Promise<ActivityHistor
           type: 'reminder',
           reminderId: r.id,
           title: r.title,
-          owner: r.owner,
+          assigneeUserId: r.assigneeUserId,
           resolvedAt: r.cancelledAt,
           resolution: 'dismissed'
         });
@@ -705,7 +705,7 @@ export async function assembleActivityHistoryFromCache(): Promise<ActivityHistor
       type: 'inbox',
       itemId: item.id,
       title: item.title,
-      owner: item.owner,
+      assigneeUserId: item.assigneeUserId,
       completedAt: item.lastStatusChangedAt
     });
   }

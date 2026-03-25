@@ -1,6 +1,6 @@
 {
   "name": "olivia",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -12,9 +12,10 @@
     "build": "npm run build -w @olivia/contracts && npm run build -w @olivia/domain && npm run build -w @olivia/api && npm run build -w @olivia/pwa",
     "lint": "eslint .",
     "typecheck": "npm run typecheck -w @olivia/contracts && npm run typecheck -w @olivia/domain && npm run typecheck -w @olivia/api && npm run typecheck -w @olivia/pwa",
-    "test": "npm run test:domain && npm run test:api && npm run test:e2e",
+    "test": "npm run test:domain && npm run test:api && npm run test:pwa && npm run test:e2e",
     "test:domain": "vitest run packages/domain/test",
     "test:api": "vitest run apps/api/test",
+    "test:pwa": "vitest run apps/pwa/src",
     "test:e2e": "playwright test"
   },
   "devDependencies": {

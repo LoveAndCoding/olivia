@@ -58,7 +58,7 @@ function DailyReminderItem({ item, onClick }: { item: WeeklyReminder; onClick: (
       <span className={`daily-item-dot ${accentClass}`} aria-hidden="true" />
       <span className="daily-item-body">
         <span className="daily-item-title">{item.title}</span>
-        <span className="daily-item-meta">{format(new Date(item.scheduledAt), 'h:mm a')} · {item.owner}</span>
+        <span className="daily-item-meta">{format(new Date(item.scheduledAt), 'h:mm a')} · {item.assigneeUserId}</span>
       </span>
       {!isCompleted && (
         <span className={`rem-badge rem-badge-${isOverdue ? 'rose' : item.dueState === 'due' ? 'peach' : item.dueState === 'snoozed' ? 'sky' : 'neutral'}`}>
@@ -84,7 +84,7 @@ function DailyRoutineItem({ item, onClick }: { item: WeeklyRoutineOccurrence; on
       <span className={`daily-item-dot ${accentClass}`} aria-hidden="true" />
       <span className="daily-item-body">
         <span className="daily-item-title">{item.routineTitle}</span>
-        <span className="daily-item-meta">{recLabel} · {item.owner}</span>
+        <span className="daily-item-meta">{recLabel} · {item.assigneeUserId}</span>
       </span>
       {!isCompleted && (
         <span className={`rem-badge rem-badge-${isOverdue ? 'rose' : item.dueState === 'due' ? 'peach' : 'neutral'}`}>

@@ -1,11 +1,13 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, isToday, isTomorrow, formatDistanceToNow } from 'date-fns';
-import type { Owner, Routine, RoutineDueState, RoutineRecurrenceRule } from '@olivia/contracts';
+import type { Routine, RoutineDueState, RoutineRecurrenceRule, User } from '@olivia/contracts';
 import { computeRoutineDueState as computeDueState, formatRecurrenceLabel as formatRecurrenceLabelDomain, calculateFirstDueDate } from '@olivia/domain';
 import { ArrowsClockwise, Plus } from '@phosphor-icons/react';
 import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
+import { getHouseholdMembers } from '../lib/auth-api';
 import {
   loadActiveRoutineIndex,
   loadArchivedRoutineIndex,
@@ -193,15 +195,10 @@ const RECURRENCE_OPTIONS: RecurrenceOption[] = [
   { value: 'ad_hoc', label: 'No schedule — track when done', description: 'For recurring tasks without a fixed schedule' },
 ];
 
-const OWNER_OPTIONS: { value: Owner; label: string }[] = [
-  { value: 'stakeholder', label: 'Me (Lexi)' },
-  { value: 'spouse', label: 'Spouse (Christian)' },
-  { value: 'unassigned', label: 'Unassigned' },
-];
 
 type CreateRoutineFormState = {
   title: string;
-  owner: Owner;
+  assigneeUserId: string | null;
   recurrenceRule: RoutineRecurrenceRule | '';
   intervalDays: string;
   intervalWeeks: number;
@@ -218,6 +215,13 @@ export function RoutinesPage() {
   const navigate = useNavigate();
   const { role } = useRole();
   const queryClient = useQueryClient();
+  const { user: currentUser, getSessionToken } = useAuth();
+  const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    getHouseholdMembers(token).then(res => setMembers(res.members)).catch(() => {});
+  }, [getSessionToken]);
 
   const [activeTab, setActiveTab] = useState<FilterTab>('active');
   const [showCreateSheet, setShowCreateSheet] = useState(false);
@@ -225,7 +229,7 @@ export function RoutinesPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [form, setForm] = useState<CreateRoutineFormState>({
     title: '',
-    owner: 'stakeholder',
+    assigneeUserId: currentUser?.id ?? null,
     recurrenceRule: '',
     intervalDays: '7',
     intervalWeeks: 2,
@@ -334,17 +338,17 @@ export function RoutinesPage() {
     }
 
     try {
-      await createRoutineCommand(role, form.title.trim(), form.owner, form.recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks);
+      await createRoutineCommand(role, form.title.trim(), form.assigneeUserId, form.recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-      setForm({ title: '', owner: 'stakeholder', recurrenceRule: '', intervalDays: '7', intervalWeeks: 2, weekdays: [], firstDueDate: todayIso() });
+      setForm({ title: '', assigneeUserId: currentUser?.id ?? null, recurrenceRule: '', intervalDays: '7', intervalWeeks: 2, weekdays: [], firstDueDate: todayIso() });
       showBanner('Routine created', 'mint');
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not create routine');
     }
   }, [form, role, queryClient, showBanner]);
 
-  const isSpouse = role === 'spouse';
+  const isReadOnly = currentUser?.role === 'member' || role === 'spouse';
   const isLoading = currentQuery.isLoading;
   const isError = currentQuery.isError;
 
@@ -386,9 +390,9 @@ export function RoutinesPage() {
             }
           </div>
 
-          {isSpouse && (
+          {isReadOnly && (
             <div className="list-spouse-banner" role="status" style={{ marginBottom: 16 }}>
-              Viewing as household member — Lexi manages these routines.
+              Viewing as household member — read-only access.
             </div>
           )}
 
@@ -409,7 +413,7 @@ export function RoutinesPage() {
             </button>
           </div>
 
-          {!isSpouse && activeTab === 'active' && (
+          {!isReadOnly && activeTab === 'active' && (
             <div style={{ marginBottom: 20 }}>
               <button
                 type="button"
@@ -442,7 +446,7 @@ export function RoutinesPage() {
               <div className="rem-empty-icon"><ArrowsClockwise size={48} weight="bold" /></div>
               <div className="rem-empty-title">No routines yet</div>
               <div className="rem-empty-sub">Add a recurring routine to track household tasks on a regular schedule.</div>
-              {!isSpouse && (
+              {!isReadOnly && (
                 <div style={{ marginTop: 16, width: '100%' }}>
                   <button
                     type="button"
@@ -483,7 +487,7 @@ export function RoutinesPage() {
                             to: '/routines/$routineId/review/$occurrenceId',
                             params: { routineId: routine.id, occurrenceId: crypto.randomUUID() },
                           })}
-                          isSpouse={isSpouse}
+                          isSpouse={isReadOnly}
                         />
                       ) : (
                       <RoutineCard
@@ -492,7 +496,7 @@ export function RoutinesPage() {
                         dueState={state}
                         onComplete={() => void handleComplete(routine)}
                         onNavigate={() => void navigate({ to: '/routines/$routineId', params: { routineId: routine.id } })}
-                        isSpouse={isSpouse}
+                        isSpouse={isReadOnly}
                         busy={busyId === routine.id}
                       />
                       )
@@ -513,7 +517,7 @@ export function RoutinesPage() {
                       dueState={null}
                       onComplete={() => void handleComplete(routine)}
                       onNavigate={() => void navigate({ to: '/routines/$routineId', params: { routineId: routine.id } })}
-                      isSpouse={isSpouse}
+                      isSpouse={isReadOnly}
                       busy={busyId === routine.id}
                     />
                   ))}
@@ -568,15 +572,16 @@ export function RoutinesPage() {
 
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 4 }}>
-              Owner
+              Assignee
             </label>
             <select
               className="rem-form-input"
-              value={form.owner}
-              onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value as Owner }))}
+              value={form.assigneeUserId ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, assigneeUserId: e.target.value || null }))}
             >
-              {OWNER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+              <option value="">Unassigned</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}{m.id === currentUser?.id ? ' (me)' : ''}</option>
               ))}
             </select>
           </div>

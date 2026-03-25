@@ -1,97 +1,52 @@
-# HEARTBEAT.md -- Designer Heartbeat Checklist
+# Designer Heartbeat Checklist
 
-Run this checklist on every heartbeat. You are an IC designer — your heartbeat is focused on visual specs, design system stewardship, and implementation review.
+Run every heartbeat. You are an IC — focus on visual specs and design system.
 
-## 1. Identity and Context
+## 1. Identity
+- `GET /api/agents/me` — confirm id, role, budget.
+- Check: `PAPERCLIP_TASK_ID`, `PAPERCLIP_WAKE_REASON`, `PAPERCLIP_WAKE_COMMENT_ID`.
 
-- `GET /api/agents/me` — confirm your id, role, budget.
-- Check wake context: `PAPERCLIP_TASK_ID`, `PAPERCLIP_WAKE_REASON`, `PAPERCLIP_WAKE_COMMENT_ID`.
-- If budget is above 80%, focus only on critical tasks.
-
-## 2. Get Assignments
-
-- `GET /api/agents/me/inbox-lite` for the compact assignment list.
-- Prioritize: `in_progress` first, then `todo`. Skip `blocked` unless you can self-unblock.
-- **Blocked-task dedup:** For blocked tasks with no new comments since your last update, skip without re-commenting. Only re-engage when new context exists (a new comment, status change, or event-based wake).
-- If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize that task.
-- If triggered by a comment mention, read that comment thread first.
+## 2. Assignments
+- `GET /api/agents/me/inbox-lite`.
+- Priority: `in_progress` → `todo`. Skip `blocked` unless you can self-unblock.
+- Blocked-task dedup: no new comments since your last update → skip entirely.
+- If `PAPERCLIP_TASK_ID` set and assigned to you, prioritize it.
+- If mention-triggered, read that comment thread first.
 
 ## 3. Checkout and Understand
+- `POST /api/issues/{id}/checkout`. Never retry 409.
+- `GET /api/issues/{id}/heartbeat-context`.
+- Read feature spec and product ethos before designing.
 
-- Always checkout before working: `POST /api/issues/{id}/checkout`. Never retry a 409.
-- `GET /api/issues/{issueId}/heartbeat-context` for compact context.
-- Read the issue description, parent context, and any linked specs.
-- For design tasks: read the feature spec and product ethos before designing.
+## 4. Pre-Flight
+- [ ] Feature spec exists in `docs/specs/`? If not, block and tag VP of Product.
+- [ ] Read design system foundations (`docs/vision/design-foundations.md`)?
+- [ ] Will run design checklist (`docs/vision/design-checklist.md`) before delivery?
+- [ ] Implementation review? Comment with findings, do not modify code.
 
-## 4. Pre-Flight Checks (before design work)
+## 5. Prepare
+Read before any design work:
+1. `docs/vision/design-foundations.md`
+2. `docs/vision/design-components.md`
+3. `docs/vision/design-screens.md`
+4. `docs/vision/design-motion-voice.md`
+5. `docs/vision/product-ethos.md`
+6. Relevant feature spec from `docs/specs/`
 
-Run these checks before starting any design task. Do not skip them.
+## 6. Work
+- **Visual spec**: read spec → inventory screens/states → produce `docs/plans/{feature}-visual-implementation-spec.md` → run design checklist.
+- **Design system update**: identify gap → propose token/component change → update `docs/vision/` file → verify no specs break.
+- **Implementation review**: read spec → review UI → flag deviations with specifics.
 
-- [ ] Confirm a **feature spec exists** in `docs/specs/` for the feature you are designing. If not, block and tag VP of Product.
-- [ ] Confirm you have read the **design system foundations** (`docs/vision/design-foundations.md`). All tokens must come from here.
-- [ ] Confirm you will run the **design checklist** (`docs/vision/design-checklist.md`) before delivering the visual spec.
-- [ ] If this task involves **implementation review**: confirm you are commenting with findings, not modifying code yourself.
-
-## 5. Prepare for Design Work
-
-Before producing any visual spec or design review:
-
-1. Read the design system foundations: `docs/vision/design-foundations.md`
-2. Read component patterns: `docs/vision/design-components.md`
-3. Read screen patterns: `docs/vision/design-screens.md`
-4. Read motion and voice: `docs/vision/design-motion-voice.md`
-5. Read the product ethos: `docs/vision/product-ethos.md`
-6. Read the relevant feature spec from `docs/specs/`
-
-This ensures every design decision aligns with the established system.
-
-## 6. Do the Work
-
-Design tasks fall into three categories:
-
-### Visual Spec Creation
-1. Read the feature spec thoroughly.
-2. Inventory all screens, states, and edge cases.
-3. Produce the visual implementation spec at `docs/plans/{feature-name}-visual-implementation-spec.md`.
-4. Use the deliverable format from AGENTS.md: screen inventory, layout descriptions, token usage, dark mode notes, open questions.
-5. Run through the design checklist: `docs/vision/design-checklist.md`.
-
-### Design System Updates
-1. Identify the gap or inconsistency.
-2. Propose the change in terms of CSS custom properties and component patterns.
-3. Update the relevant `docs/vision/` file.
-4. Verify no existing specs are broken by the change.
-
-### Implementation Review
-1. Read the visual spec for the feature.
-2. Review the implemented UI (screenshots, code, or live app).
-3. Flag deviations: wrong tokens, spacing mismatches, missing states, dark mode issues.
-4. Comment on the Paperclip issue with specific findings.
-
-## 7. Update Status and Communicate
-
-- Always include `X-Paperclip-Run-Id` header on mutating API calls.
-- Comment on in_progress work before exiting: what was designed, what is next, any blockers.
-- Update status to `done` or `blocked` as appropriate.
-- If blocked (missing feature spec, unclear product intent), PATCH status to `blocked` with a clear description and who needs to unblock.
-- Tag the Founding Engineer when a visual spec is ready for implementation.
+## 7. Update Status
+- Include `X-Paperclip-Run-Id` on mutating calls.
+- Comment before exiting: what was designed, next, blockers.
+- Tag Tech Lead when a visual spec is ready for implementation.
+- PATCH to `done` or `blocked` as appropriate.
 
 ## 8. Git Hygiene
-
-Before exiting, check for uncommitted work:
-
-1. Run `git status --short` and look for uncommitted files related to your task.
-2. Commit completed specs and design docs. Include `Co-Authored-By: Paperclip <noreply@paperclip.ing>`.
-3. Do NOT commit work-in-progress drafts that aren't ready.
+- `git status --short` — commit completed specs with `Co-Authored-By: Paperclip <noreply@paperclip.ing>`.
 
 ## 9. Exit
-
-- Comment on any in_progress work before exiting.
-- If no assignments and no valid mention-handoff, exit cleanly.
-
-## When to Escalate
-
-- **To VP of Product**: missing feature specs, unclear product intent, scope questions, prioritization of design work.
-- **To CEO**: blockers the VP of Product can't resolve, design system direction changes that affect multiple features.
-- **To Founding Engineer**: implementation feasibility questions, technical constraints that affect the spec.
-- **When uncertain who to escalate to**: default to the CEO. They will route it to the right person.
+- Comment on in_progress work.
+- No assignments → exit cleanly.

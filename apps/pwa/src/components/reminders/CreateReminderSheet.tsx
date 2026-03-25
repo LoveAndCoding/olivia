@@ -1,10 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { DraftReminder, Owner, RecurrenceCadence } from '@olivia/contracts';
+import type { DraftReminder, RecurrenceCadence } from '@olivia/contracts';
 import { BottomSheet } from './BottomSheet';
 import { OliviaMessage } from './OliviaMessage';
 import { DateTimePicker } from './DateTimePicker';
-import { getDateChipOptions, ownerLabel } from '../../lib/reminder-helpers';
+import { getDateChipOptions } from '../../lib/reminder-helpers';
 import { format } from 'date-fns';
+import { useAuth } from '../../lib/auth';
+import { getHouseholdMembers } from '../../lib/auth-api';
 
 type CreateReminderSheetProps = {
   open: boolean;
@@ -15,7 +17,7 @@ type CreateReminderSheetProps = {
   parsedMessage?: string | null;
 };
 
-const OWNERS: Owner[] = ['stakeholder', 'spouse', 'unassigned'];
+type MemberOption = { id: string; name: string };
 
 export function CreateReminderSheet({
   open,
@@ -25,20 +27,32 @@ export function CreateReminderSheet({
   parsedDraft = null,
   parsedMessage = null,
 }: CreateReminderSheetProps) {
+  const { user, getSessionToken } = useAuth();
   const [title, setTitle] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [selectedChip, setSelectedChip] = useState<string | null>(null);
-  const [owner, setOwner] = useState<Owner>('stakeholder');
+  const [assigneeUserId, setAssigneeUserId] = useState<string | null>(user?.id ?? null);
   const [recurring, setRecurring] = useState(false);
   const [cadence, setCadence] = useState<RecurrenceCadence>('weekly');
   const [note, setNote] = useState('');
   const [mode, setMode] = useState<'structured' | 'parsed'>(parsedDraft ? 'parsed' : 'structured');
+  const [members, setMembers] = useState<MemberOption[]>([]);
+
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    let cancelled = false;
+    void getHouseholdMembers(token).then((res) => {
+      if (!cancelled) setMembers(res.members.map((m) => ({ id: m.id, name: m.name })));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [getSessionToken]);
 
   useEffect(() => {
     if (parsedDraft && open) {
       setTitle(parsedDraft.title);
       setScheduledAt(parsedDraft.scheduledAt);
-      setOwner(parsedDraft.owner);
+      setAssigneeUserId(parsedDraft.assigneeUserId);
       setRecurring(parsedDraft.recurrenceCadence !== 'none');
       setCadence(parsedDraft.recurrenceCadence === 'none' ? 'weekly' : parsedDraft.recurrenceCadence);
       setNote(parsedDraft.note ?? '');
@@ -51,14 +65,14 @@ export function CreateReminderSheet({
       setTitle('');
       setScheduledAt('');
       setSelectedChip(null);
-      setOwner('stakeholder');
+      setAssigneeUserId(user?.id ?? null);
       setRecurring(false);
       setCadence('weekly');
       setNote('');
       setPickerOpen(false);
       setMode(parsedDraft ? 'parsed' : 'structured');
     }
-  }, [open, parsedDraft]);
+  }, [open, parsedDraft, user]);
 
   const dateChips = getDateChipOptions(new Date());
 
@@ -88,13 +102,13 @@ export function CreateReminderSheet({
       id: crypto.randomUUID(),
       title: title.trim(),
       note: note.trim() || null,
-      owner,
+      assigneeUserId,
       scheduledAt,
       recurrenceCadence: recurring ? cadence : 'none',
       linkedInboxItemId: linkedItemId,
     };
     onSave(draft);
-  }, [title, scheduledAt, note, owner, recurring, cadence, linkedItemId, onSave]);
+  }, [title, scheduledAt, note, assigneeUserId, recurring, cadence, linkedItemId, onSave]);
 
   const isValid = title.trim().length > 0 && scheduledAt.length > 0;
 
@@ -124,18 +138,25 @@ export function CreateReminderSheet({
         </div>
 
         <div className="rem-form-group">
-          <span className="rem-form-label">Owner</span>
+          <span className="rem-form-label">Assignee</span>
           <div className="rem-form-chips">
-            {OWNERS.map((o) => (
+            {members.map((m) => (
               <button
-                key={o}
+                key={m.id}
                 type="button"
-                className={`rem-chip${owner === o ? ' active' : ''}`}
-                onClick={() => setOwner(o)}
+                className={`rem-chip${assigneeUserId === m.id ? ' active' : ''}`}
+                onClick={() => setAssigneeUserId(m.id)}
               >
-                {ownerLabel(o)}
+                {m.name}
               </button>
             ))}
+            <button
+              type="button"
+              className={`rem-chip${assigneeUserId === null ? ' active' : ''}`}
+              onClick={() => setAssigneeUserId(null)}
+            >
+              Unassigned
+            </button>
           </div>
         </div>
 
@@ -215,18 +236,25 @@ export function CreateReminderSheet({
       </div>
 
       <div className="rem-form-group">
-        <span className="rem-form-label">Owner</span>
+        <span className="rem-form-label">Assignee</span>
         <div className="rem-form-chips">
-          {OWNERS.map((o) => (
+          {members.map((m) => (
             <button
-              key={o}
+              key={m.id}
               type="button"
-              className={`rem-chip${owner === o ? ' active' : ''}`}
-              onClick={() => setOwner(o)}
+              className={`rem-chip${assigneeUserId === m.id ? ' active' : ''}`}
+              onClick={() => setAssigneeUserId(m.id)}
             >
-              {ownerLabel(o)}
+              {m.name}
             </button>
           ))}
+          <button
+            type="button"
+            className={`rem-chip${assigneeUserId === null ? ' active' : ''}`}
+            onClick={() => setAssigneeUserId(null)}
+          >
+            Unassigned
+          </button>
         </div>
       </div>
 

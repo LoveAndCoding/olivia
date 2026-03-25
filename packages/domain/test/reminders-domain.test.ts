@@ -20,7 +20,7 @@ function buildDraft(overrides: Record<string, unknown> = {}) {
     id: crypto.randomUUID(),
     title: 'Bring the vet records',
     note: null,
-    owner: 'stakeholder',
+    assigneeUserId: null,
     scheduledAt: '2026-03-12T09:00:00.000Z',
     recurrenceCadence: 'none',
     linkedInboxItemId: null,
@@ -31,14 +31,14 @@ function buildDraft(overrides: Record<string, unknown> = {}) {
 describe('reminder domain', () => {
   it('parses reminder drafts with chrono fallback and structured linkage', () => {
     const parsed = createReminderDraft({
-      inputText: 'Remind me to bring the vet records next Thursday owner spouse every week',
+      inputText: 'Remind me to bring the vet records next Thursday every week',
       now: new Date('2026-03-10T09:00:00.000Z')
     });
     const structured = createReminderDraft({
       structuredInput: {
         title: 'Review camp forms',
         note: 'Check the signature line.',
-        owner: 'stakeholder',
+        assigneeUserId: null,
         scheduledAt: '2026-03-15T18:00:00.000Z',
         recurrenceCadence: 'monthly',
         linkedInboxItemId: '5ce568cf-6112-45fb-a745-09cc6257c57d'
@@ -47,7 +47,7 @@ describe('reminder domain', () => {
     });
 
     expect(parsed.draft.title).toBe('bring the vet records');
-    expect(parsed.draft.owner).toBe('spouse');
+    expect(parsed.draft.assigneeUserId).toBeNull();
     expect(parsed.draft.recurrenceCadence).toBe('weekly');
     expect(parsed.parseConfidence).toBe('high');
     expect(structured.draft.note).toBe('Check the signature line.');
@@ -178,7 +178,7 @@ describe('reminder domain', () => {
       id: crypto.randomUUID(),
       title: 'Prep for the vet visit',
       description: null,
-      owner: 'stakeholder',
+      assigneeUserId: null,
       status: 'open',
       dueText: 'Friday',
       dueAt: '2026-03-13T17:00:00.000Z'
@@ -198,7 +198,7 @@ describe('reminder domain', () => {
         id: inbox.id,
         title: inbox.title,
         status: inbox.status,
-        owner: inbox.owner,
+        assigneeUserId: inbox.assigneeUserId,
         dueAt: inbox.dueAt
       }
     }), baseNow).reminder;
