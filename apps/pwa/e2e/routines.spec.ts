@@ -43,14 +43,16 @@ test.describe('Routine lifecycle', () => {
     const hasCompletable = await existingCheckbox.isVisible().catch(() => false);
 
     if (!hasCompletable) {
-      // Create one that's due today
+      // Create one due yesterday so it's always overdue (the form sets T12:00:00,
+      // which is "upcoming" if CI runs before noon UTC — use yesterday to guarantee
+      // the routine is overdue and the checkbox renders).
       const routineName = `Completion test ${Date.now()}`;
       await page.locator('.add-rem-btn', { hasText: 'New routine…' }).first().click();
       await page.getByPlaceholder('e.g. Take out the trash').fill(routineName);
       await page.locator('.recurrence-option-row', { hasText: 'Every day' }).click();
-      const today = new Date();
-      const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      await page.locator('input[type="date"]').fill(todayIso);
+      const yesterday = new Date(Date.now() - 86_400_000);
+      const yesterdayIso = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+      await page.locator('input[type="date"]').fill(yesterdayIso);
       await page.getByRole('button', { name: 'Create Routine' }).click();
       await expect(page.locator('.list-card-title', { hasText: routineName })).toBeVisible({ timeout: 10_000 });
 
