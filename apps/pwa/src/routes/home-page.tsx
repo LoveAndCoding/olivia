@@ -417,7 +417,7 @@ export function HomePage() {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [onboardingStartError, setOnboardingStartError] = useState(false);
 
-  const { nudges, dismiss: dismissNudge, removeNudge } = useNudges(role);
+  const { nudges, dismiss: dismissNudge, removeNudge } = useNudges();
 
   // Onboarding state query
   const onboardingQuery = useQuery({
@@ -460,7 +460,7 @@ export function HomePage() {
 
   const reminderQuery = useQuery({
     queryKey: ['reminder-view', role],
-    queryFn: () => loadReminderView(role)
+    queryFn: () => loadReminderView()
   });
 
   // Nudge card logic (inherited from MVP home screen)
@@ -532,7 +532,7 @@ export function HomePage() {
   const handleCreateSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateSheet(false);
     try {
-      await confirmCreateReminderCommand(role, draft);
+      await confirmCreateReminderCommand(draft);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setBanner({ message: 'Reminder created', variant: 'mint' });
@@ -546,7 +546,7 @@ export function HomePage() {
     if (!snoozeTarget) return;
     setSnoozeTarget(null);
     try {
-      await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
+      await snoozeReminderCommand(snoozeTarget.id, snoozeTarget.version, isoString);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setBanner({ message: `😴 Snoozed until ${formatSnoozeUntil(isoString)}`, variant: 'sky' });
@@ -593,7 +593,6 @@ export function HomePage() {
       <div className="screen-scroll" ref={scrollAreaRef}>
         {/* Proactive nudge tray */}
         <NudgeTray
-          role={role}
           nudges={nudges}
           onDismiss={dismissNudge}
           onRemove={removeNudge}

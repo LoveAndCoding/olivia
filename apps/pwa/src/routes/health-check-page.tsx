@@ -81,7 +81,7 @@ export function HealthCheckPage() {
 
   const handleStillActive = useCallback(async (item: StaleItem) => {
     try {
-      await confirmFreshness(item.entityType, item.entityId, role, 1);
+      await confirmFreshness(item.entityType, item.entityId, 1);
     } catch {
       // version conflict — proceed anyway, item was updated
     }
@@ -96,7 +96,7 @@ export function HealthCheckPage() {
   const handleArchiveConfirm = useCallback(async () => {
     if (!archiveTarget) return;
     try {
-      await archiveFreshnessEntity(archiveTarget.entityType, archiveTarget.entityId, role, 1);
+      await archiveFreshnessEntity(archiveTarget.entityType, archiveTarget.entityId, 1);
     } catch {
       // version conflict — proceed anyway
     }

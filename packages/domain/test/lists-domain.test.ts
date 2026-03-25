@@ -178,7 +178,7 @@ describe('list domain', () => {
   describe('history entry helpers', () => {
     it('createSharedList produces list_created history', () => {
       const list = createSharedList('Grocery Run', null, NOW);
-      const entry = createListCreatedHistoryEntry(list, 'stakeholder');
+      const entry = createListCreatedHistoryEntry(list);
       expect(entry.eventType).toBe('list_created');
       expect(entry.listId).toBe(list.id);
       expect(entry.itemId).toBeNull();
@@ -188,7 +188,7 @@ describe('list domain', () => {
     it('createItemAddedHistoryEntry produces item_added history', () => {
       const list = createSharedList('Grocery Run', null, NOW);
       const item = addListItem(list.id, 'Oat milk', 0, NOW);
-      const entry = createItemAddedHistoryEntry(item, 'stakeholder');
+      const entry = createItemAddedHistoryEntry(item);
       expect(entry.eventType).toBe('item_added');
       expect(entry.listId).toBe(list.id);
       expect(entry.itemId).toBe(item.id);
@@ -196,24 +196,22 @@ describe('list domain', () => {
 
     it('createItemsClearedHistoryEntry produces items_cleared history with count', () => {
       const list = createSharedList('Grocery Run', null, NOW);
-      const entry = createItemsClearedHistoryEntry(list.id, 5, 'stakeholder', NOW);
+      const entry = createItemsClearedHistoryEntry(list.id, 5, NOW);
       expect(entry.eventType).toBe('items_cleared');
       expect(entry.listId).toBe(list.id);
       expect(entry.itemId).toBeNull();
       expect((entry.fromValue as Record<string, unknown>).count).toBe(5);
       expect(entry.toValue).toBeNull();
-      expect(entry.actorRole).toBe('stakeholder');
     });
 
     it('createItemsUncheckedAllHistoryEntry produces items_unchecked_all history with count', () => {
       const list = createSharedList('Grocery Run', null, NOW);
-      const entry = createItemsUncheckedAllHistoryEntry(list.id, 3, 'stakeholder', NOW);
+      const entry = createItemsUncheckedAllHistoryEntry(list.id, 3, NOW);
       expect(entry.eventType).toBe('items_unchecked_all');
       expect(entry.listId).toBe(list.id);
       expect(entry.itemId).toBeNull();
       expect((entry.fromValue as Record<string, unknown>).count).toBe(3);
       expect(entry.toValue).toBeNull();
-      expect(entry.actorRole).toBe('stakeholder');
     });
   });
 

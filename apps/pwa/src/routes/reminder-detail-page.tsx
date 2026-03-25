@@ -50,7 +50,7 @@ export function ReminderDetailPage() {
 
   const detailQuery = useQuery({
     queryKey: ['reminder-detail', role, params.reminderId],
-    queryFn: () => loadReminderDetail(role, params.reminderId),
+    queryFn: () => loadReminderDetail(params.reminderId),
   });
 
   const reminder = detailQuery.data?.reminder;
@@ -81,7 +81,7 @@ export function ReminderDetailPage() {
     if (!reminder || busy) return;
     setBusy(true);
     try {
-      await completeReminderCommand(role, reminder.id, reminder.version);
+      await completeReminderCommand(reminder.id, reminder.version);
       await invalidateAndRefresh();
       showBanner('Done', 'mint');
     } catch (err) {
@@ -96,7 +96,7 @@ export function ReminderDetailPage() {
     setShowSnoozeSheet(false);
     setBusy(true);
     try {
-      await snoozeReminderCommand(role, reminder.id, reminder.version, isoString);
+      await snoozeReminderCommand(reminder.id, reminder.version, isoString);
       await invalidateAndRefresh();
       showBanner(`Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
     } catch (err) {
@@ -111,7 +111,7 @@ export function ReminderDetailPage() {
     setShowCancelSheet(false);
     setBusy(true);
     try {
-      await cancelReminderCommand(role, reminder.id, reminder.version);
+      await cancelReminderCommand(reminder.id, reminder.version);
       await invalidateAndRefresh();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not cancel reminder');
@@ -125,7 +125,7 @@ export function ReminderDetailPage() {
     setShowEditSheet(false);
     setBusy(true);
     try {
-      await confirmUpdateReminderCommand(role, reminder.id, reminder.version, change);
+      await confirmUpdateReminderCommand(reminder.id, reminder.version, change);
       await invalidateAndRefresh();
       showBanner('Updated', 'mint');
     } catch (err) {

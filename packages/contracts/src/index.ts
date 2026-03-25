@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-export const actorRoleSchema = z.enum(['stakeholder', 'spouse']);
 export const assigneeUserIdSchema = z.string().uuid().nullable();
 export const itemStatusSchema = z.enum(['open', 'in_progress', 'done', 'deferred']);
 export const parseConfidenceSchema = z.enum(['high', 'medium', 'low']);
@@ -36,7 +35,7 @@ export const draftItemSchema = z.object({
   dueAt: z.string().datetime().nullable()
 });
 
-// Optional userId field for schemas transitioning from actorRole to user-based identity
+// Optional userId field — null for system-initiated actions, present for user-initiated
 const optionalUserId = z.string().uuid().nullish();
 
 export const inboxItemSchema = draftItemSchema.extend({
@@ -54,7 +53,6 @@ export const inboxItemSchema = draftItemSchema.extend({
 export const historyEntrySchema = z.object({
   id: z.string().uuid(),
   itemId: z.string().uuid(),
-  actorRole: z.enum(['stakeholder', 'system_rule']),
   eventType: eventTypeSchema,
   fromValue: z.unknown().nullable(),
   toValue: z.unknown().nullable(),
@@ -93,7 +91,7 @@ export const inboxViewResponseSchema = z.object({
 });
 
 export const previewCreateRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   inputText: z.string().trim().min(1).optional(),
   structuredInput: structuredInputSchema.partial().optional()
 }).refine((value) => value.inputText || value.structuredInput, {
@@ -110,7 +108,7 @@ export const previewCreateResponseSchema = z.object({
 });
 
 export const confirmCreateRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   draftId: z.string().uuid().optional(),
   approved: z.literal(true),
   finalItem: draftItemSchema
@@ -132,7 +130,7 @@ export const updateChangeSchema = z.object({
 });
 
 export const previewUpdateRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   itemId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
   proposedChange: updateChangeSchema
@@ -146,7 +144,7 @@ export const previewUpdateResponseSchema = z.object({
 });
 
 export const confirmUpdateRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   draftId: z.string().uuid().optional(),
   itemId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
@@ -232,7 +230,6 @@ export const reminderSchema = draftReminderSchema.extend({
 export const reminderTimelineEntrySchema = z.object({
   id: z.string().uuid(),
   reminderId: z.string().uuid(),
-  actorRole: z.enum(['stakeholder', 'system_rule']),
   eventType: reminderEventTypeSchema,
   fromValue: z.unknown().nullable(),
   toValue: z.unknown().nullable(),
@@ -248,8 +245,7 @@ export const reminderNotificationPreferencesInputSchema = z.object({
 });
 
 export const reminderNotificationPreferencesSchema = reminderNotificationPreferencesInputSchema.extend({
-  actorRole: actorRoleSchema,
-  userId: optionalUserId,
+  userId: z.string().uuid(),
   updatedAt: z.string().datetime()
 });
 
@@ -278,7 +274,7 @@ export const reminderSettingsResponseSchema = z.object({
 });
 
 export const previewCreateReminderRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   inputText: z.string().trim().min(1).optional(),
   structuredInput: structuredReminderInputSchema.partial().optional()
 }).refine((value) => value.inputText || value.structuredInput, {
@@ -295,7 +291,7 @@ export const previewCreateReminderResponseSchema = z.object({
 });
 
 export const confirmCreateReminderRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   draftId: z.string().uuid().optional(),
   approved: z.literal(true),
   finalReminder: draftReminderSchema
@@ -310,7 +306,7 @@ export const reminderUpdateChangeSchema = z.object({
 });
 
 export const previewUpdateReminderRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   reminderId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
   proposedChange: reminderUpdateChangeSchema
@@ -324,7 +320,7 @@ export const previewUpdateReminderResponseSchema = z.object({
 });
 
 export const confirmUpdateReminderRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   draftId: z.string().uuid().optional(),
   reminderId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
@@ -345,14 +341,14 @@ export const snoozeReminderResponseSchema = reminderMutationResponseSchema;
 export const cancelReminderResponseSchema = reminderMutationResponseSchema;
 
 export const completeReminderRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   reminderId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
   approved: z.literal(true)
 });
 
 export const snoozeReminderRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   reminderId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
   approved: z.literal(true),
@@ -360,14 +356,14 @@ export const snoozeReminderRequestSchema = z.object({
 });
 
 export const cancelReminderRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   reminderId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
   approved: z.literal(true)
 });
 
 export const saveReminderNotificationPreferencesRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   preferences: reminderNotificationPreferencesInputSchema
 });
 
@@ -375,22 +371,19 @@ export const saveReminderNotificationPreferencesResponseSchema = reminderSetting
 
 export const notificationSubscriptionSchema = z.object({
   id: z.string().uuid(),
-  actorRole: actorRoleSchema,
   endpoint: z.string(),
   payload: z.record(z.string(), z.unknown()),
-  userId: optionalUserId,
+  userId: z.string().uuid(),
   createdAt: z.string().datetime()
 });
 
 export const saveNotificationSubscriptionRequestSchema = z.union([
   z.object({
-    actorRole: actorRoleSchema.optional(),
     type: z.literal('apns'),
     token: z.string().min(1),
     payload: z.record(z.string(), z.unknown())
   }),
   z.object({
-    actorRole: actorRoleSchema.optional(),
     endpoint: z.string().url(),
     payload: z.record(z.string(), z.unknown())
   })
@@ -453,7 +446,6 @@ export const listItemHistoryEntrySchema = z.object({
   id: z.string().uuid(),
   listId: z.string().uuid(),
   itemId: z.string().uuid().nullable(),
-  actorRole: actorRoleSchema,
   eventType: listEventTypeSchema,
   fromValue: z.unknown().nullable(),
   toValue: z.unknown().nullable(),
@@ -480,44 +472,44 @@ export const listDetailResponseSchema = z.object({
 
 // Command/request schemas
 export const createListRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   title: z.string().trim().min(1)
 });
 
 export const updateListTitleRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   listId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
   title: z.string().trim().min(1)
 });
 
 export const archiveListRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   listId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
   confirmed: z.literal(true)
 });
 
 export const restoreListRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   listId: z.string().uuid(),
   expectedVersion: z.number().int().positive()
 });
 
 export const deleteListRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   listId: z.string().uuid(),
   confirmed: z.literal(true)
 });
 
 export const addListItemRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   listId: z.string().uuid(),
   body: z.string().trim().min(1)
 });
 
 export const updateListItemBodyRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   listId: z.string().uuid(),
   itemId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
@@ -525,34 +517,34 @@ export const updateListItemBodyRequestSchema = z.object({
 });
 
 export const checkListItemRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   listId: z.string().uuid(),
   itemId: z.string().uuid(),
   expectedVersion: z.number().int().positive()
 });
 
 export const uncheckListItemRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   listId: z.string().uuid(),
   itemId: z.string().uuid(),
   expectedVersion: z.number().int().positive()
 });
 
 export const removeListItemRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   listId: z.string().uuid(),
   itemId: z.string().uuid(),
   confirmed: z.literal(true)
 });
 
 export const clearCompletedItemsRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   listId: z.string().uuid(),
   confirmed: z.literal(true)
 });
 
 export const uncheckAllItemsRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   listId: z.string().uuid(),
   confirmed: z.literal(true)
 });
@@ -657,7 +649,7 @@ export const routineDetailResponseSchema = z.object({
 
 // Command/request schemas
 export const createRoutineRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   title: z.string().trim().min(1),
   assigneeUserId: z.string().uuid().nullable(),
   recurrenceRule: routineRecurrenceRuleSchema,
@@ -680,7 +672,7 @@ export const createRoutineRequestSchema = z.object({
 );
 
 export const updateRoutineRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   routineId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
   title: z.string().trim().min(1).optional(),
@@ -692,39 +684,39 @@ export const updateRoutineRequestSchema = z.object({
 });
 
 export const completeRoutineOccurrenceRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   routineId: z.string().uuid(),
   expectedVersion: z.number().int().positive()
 });
 
 export const pauseRoutineRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   routineId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
   confirmed: z.literal(true)
 });
 
 export const resumeRoutineRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   routineId: z.string().uuid(),
   expectedVersion: z.number().int().positive()
 });
 
 export const archiveRoutineRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   routineId: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
   confirmed: z.literal(true)
 });
 
 export const restoreRoutineRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   routineId: z.string().uuid(),
   expectedVersion: z.number().int().positive()
 });
 
 export const deleteRoutineRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   routineId: z.string().uuid(),
   confirmed: z.literal(true)
 });
@@ -804,48 +796,48 @@ export const mealPlanDetailResponseSchema = z.object({
 });
 
 export const createMealPlanRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   title: z.string().trim().min(1),
   weekStartDate: z.string()
 });
 
 export const updateMealPlanTitleRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   title: z.string().trim().min(1),
   expectedVersion: z.number().int().positive()
 });
 
 export const archiveMealPlanRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   confirmed: z.literal(true),
   expectedVersion: z.number().int().positive()
 });
 
 export const restoreMealPlanRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   expectedVersion: z.number().int().positive()
 });
 
 export const deleteMealPlanRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   confirmed: z.literal(true)
 });
 
 export const addMealEntryRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   dayOfWeek: dayOfWeekSchema,
   name: z.string().trim().min(1)
 });
 
 export const updateMealEntryRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   name: z.string().trim().min(1).optional(),
   shoppingItems: z.array(z.string()).optional(),
   expectedVersion: z.number().int().positive()
 });
 
 export const deleteMealEntryRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   confirmed: z.literal(true)
 });
 
@@ -912,14 +904,12 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('create'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     finalItem: draftItemSchema,
     approved: z.literal(true)
   }),
   z.object({
     kind: z.literal('update'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     itemId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     approved: z.literal(true),
@@ -928,14 +918,12 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('reminder_create'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     approved: z.literal(true),
     finalReminder: draftReminderSchema
   }),
   z.object({
     kind: z.literal('reminder_update'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     reminderId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     approved: z.literal(true),
@@ -944,7 +932,6 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('reminder_complete'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     reminderId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     approved: z.literal(true)
@@ -952,7 +939,6 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('reminder_snooze'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     reminderId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     approved: z.literal(true),
@@ -961,7 +947,6 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('reminder_cancel'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     reminderId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     approved: z.literal(true)
@@ -969,13 +954,11 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('list_create'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     title: z.string().trim().min(1)
   }),
   z.object({
     kind: z.literal('list_title_update'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     listId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     title: z.string().trim().min(1)
@@ -983,7 +966,6 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('list_archive'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     listId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     confirmed: z.literal(true)
@@ -991,21 +973,18 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('list_restore'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     listId: z.string().uuid(),
     expectedVersion: z.number().int().positive()
   }),
   z.object({
     kind: z.literal('list_delete'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     listId: z.string().uuid(),
     confirmed: z.literal(true)
   }),
   z.object({
     kind: z.literal('item_add'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     listId: z.string().uuid(),
     itemId: z.string().uuid(),
     body: z.string().trim().min(1)
@@ -1013,7 +992,6 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('item_body_update'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     listId: z.string().uuid(),
     itemId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
@@ -1022,7 +1000,6 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('item_check'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     listId: z.string().uuid(),
     itemId: z.string().uuid(),
     expectedVersion: z.number().int().positive()
@@ -1030,7 +1007,6 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('item_uncheck'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     listId: z.string().uuid(),
     itemId: z.string().uuid(),
     expectedVersion: z.number().int().positive()
@@ -1038,7 +1014,6 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('item_remove'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     listId: z.string().uuid(),
     itemId: z.string().uuid(),
     confirmed: z.literal(true)
@@ -1046,21 +1021,18 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('items_clear_completed'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     listId: z.string().uuid(),
     confirmed: z.literal(true)
   }),
   z.object({
     kind: z.literal('items_uncheck_all'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     listId: z.string().uuid(),
     confirmed: z.literal(true)
   }),
   z.object({
     kind: z.literal('routine_create'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     title: z.string().trim().min(1),
     assigneeUserId: z.string().uuid().nullable(),
     recurrenceRule: routineRecurrenceRuleSchema,
@@ -1072,7 +1044,6 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('routine_update'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     routineId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     title: z.string().trim().min(1).optional(),
@@ -1085,14 +1056,12 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('routine_complete'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     routineId: z.string().uuid(),
     expectedVersion: z.number().int().positive()
   }),
   z.object({
     kind: z.literal('routine_pause'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     routineId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     confirmed: z.literal(true)
@@ -1100,14 +1069,12 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('routine_resume'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     routineId: z.string().uuid(),
     expectedVersion: z.number().int().positive()
   }),
   z.object({
     kind: z.literal('routine_archive'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     routineId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     confirmed: z.literal(true)
@@ -1115,30 +1082,27 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('routine_restore'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     routineId: z.string().uuid(),
     expectedVersion: z.number().int().positive()
   }),
   z.object({
     kind: z.literal('routine_delete'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     routineId: z.string().uuid(),
     confirmed: z.literal(true)
   }),
-  z.object({ kind: z.literal('meal_plan_create'), commandId: z.string().uuid(), actorRole: actorRoleSchema.optional(), planId: z.string().uuid(), title: z.string().trim().min(1), weekStartDate: z.string() }),
-  z.object({ kind: z.literal('meal_plan_title_update'), commandId: z.string().uuid(), actorRole: actorRoleSchema.optional(), planId: z.string().uuid(), expectedVersion: z.number().int().positive(), title: z.string().trim().min(1) }),
-  z.object({ kind: z.literal('meal_plan_archive'), commandId: z.string().uuid(), actorRole: actorRoleSchema.optional(), planId: z.string().uuid(), expectedVersion: z.number().int().positive(), confirmed: z.literal(true) }),
-  z.object({ kind: z.literal('meal_plan_restore'), commandId: z.string().uuid(), actorRole: actorRoleSchema.optional(), planId: z.string().uuid(), expectedVersion: z.number().int().positive() }),
-  z.object({ kind: z.literal('meal_plan_delete'), commandId: z.string().uuid(), actorRole: actorRoleSchema.optional(), planId: z.string().uuid(), confirmed: z.literal(true) }),
-  z.object({ kind: z.literal('meal_entry_add'), commandId: z.string().uuid(), actorRole: actorRoleSchema.optional(), planId: z.string().uuid(), entryId: z.string().uuid(), dayOfWeek: dayOfWeekSchema, name: z.string().trim().min(1) }),
-  z.object({ kind: z.literal('meal_entry_name_update'), commandId: z.string().uuid(), actorRole: actorRoleSchema.optional(), planId: z.string().uuid(), entryId: z.string().uuid(), expectedVersion: z.number().int().positive(), name: z.string().trim().min(1) }),
-  z.object({ kind: z.literal('meal_entry_items_update'), commandId: z.string().uuid(), actorRole: actorRoleSchema.optional(), planId: z.string().uuid(), entryId: z.string().uuid(), expectedVersion: z.number().int().positive(), shoppingItems: z.array(z.string()) }),
-  z.object({ kind: z.literal('meal_entry_delete'), commandId: z.string().uuid(), actorRole: actorRoleSchema.optional(), planId: z.string().uuid(), entryId: z.string().uuid(), confirmed: z.literal(true) }),
+  z.object({ kind: z.literal('meal_plan_create'), commandId: z.string().uuid(), planId: z.string().uuid(), title: z.string().trim().min(1), weekStartDate: z.string() }),
+  z.object({ kind: z.literal('meal_plan_title_update'), commandId: z.string().uuid(), planId: z.string().uuid(), expectedVersion: z.number().int().positive(), title: z.string().trim().min(1) }),
+  z.object({ kind: z.literal('meal_plan_archive'), commandId: z.string().uuid(), planId: z.string().uuid(), expectedVersion: z.number().int().positive(), confirmed: z.literal(true) }),
+  z.object({ kind: z.literal('meal_plan_restore'), commandId: z.string().uuid(), planId: z.string().uuid(), expectedVersion: z.number().int().positive() }),
+  z.object({ kind: z.literal('meal_plan_delete'), commandId: z.string().uuid(), planId: z.string().uuid(), confirmed: z.literal(true) }),
+  z.object({ kind: z.literal('meal_entry_add'), commandId: z.string().uuid(), planId: z.string().uuid(), entryId: z.string().uuid(), dayOfWeek: dayOfWeekSchema, name: z.string().trim().min(1) }),
+  z.object({ kind: z.literal('meal_entry_name_update'), commandId: z.string().uuid(), planId: z.string().uuid(), entryId: z.string().uuid(), expectedVersion: z.number().int().positive(), name: z.string().trim().min(1) }),
+  z.object({ kind: z.literal('meal_entry_items_update'), commandId: z.string().uuid(), planId: z.string().uuid(), entryId: z.string().uuid(), expectedVersion: z.number().int().positive(), shoppingItems: z.array(z.string()) }),
+  z.object({ kind: z.literal('meal_entry_delete'), commandId: z.string().uuid(), planId: z.string().uuid(), entryId: z.string().uuid(), confirmed: z.literal(true) }),
   z.object({
     kind: z.literal('ritual_complete'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     routineId: z.string().uuid(),
     occurrenceId: z.string().uuid(),
     provisionalReviewRecordId: z.string().uuid(),
@@ -1150,13 +1114,13 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('routine_skip'),
     commandId: z.string().uuid(),
-    actorRole: actorRoleSchema.optional(),
     routineId: z.string().uuid(),
     expectedVersion: z.number().int().positive()
   })
 ]);
 
-export type ActorRole = z.infer<typeof actorRoleSchema>;
+/** @deprecated ActorRole is removed — user identity comes from session. Will be deleted in next milestone. */
+export type ActorRole = 'stakeholder' | 'spouse';
 export type AssigneeUserId = z.infer<typeof assigneeUserIdSchema>;
 export type ItemStatus = z.infer<typeof itemStatusSchema>;
 export type ParseConfidence = z.infer<typeof parseConfidenceSchema>;
@@ -1398,7 +1362,7 @@ export const reviewRecordSchema = z.object({
 });
 
 export const completeRitualRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   occurrenceId: z.string().uuid(),
   carryForwardNotes: z.string().max(2000).nullable(),
   recapNarrative: z.string().max(1000).nullable().optional(),
@@ -1449,7 +1413,7 @@ export type Nudge = z.infer<typeof nudgeSchema>;
 export type NudgesResponse = z.infer<typeof nudgesResponseSchema>;
 
 export const skipRoutineOccurrenceRequestSchema = z.object({
-  actorRole: actorRoleSchema.optional(),
+
   routineId: z.string().uuid(),
   expectedVersion: z.number().int().positive()
 });
@@ -1632,14 +1596,14 @@ export const staleItemsResponseSchema = z.object({
 export const freshnessConfirmRequestSchema = z.object({
   entityType: staleItemEntityTypeSchema,
   entityId: z.string().uuid(),
-  actorRole: actorRoleSchema.optional(),
+
   expectedVersion: z.number().int().positive()
 });
 
 export const freshnessArchiveRequestSchema = z.object({
   entityType: archivableEntityTypeSchema,
   entityId: z.string().uuid(),
-  actorRole: actorRoleSchema.optional(),
+
   expectedVersion: z.number().int().positive()
 });
 

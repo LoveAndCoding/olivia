@@ -23,7 +23,7 @@ export function ReviewPage() {
 
   const inboxQuery = useQuery({
     queryKey: ['inbox-view', role, view],
-    queryFn: () => loadInboxView(role, view)
+    queryFn: () => loadInboxView(view)
   });
 
   const groups = useMemo(() => {

@@ -53,7 +53,7 @@ export function ListDetailPage() {
 
   const detailQuery = useQuery({
     queryKey: ['list-detail', role, params.listId],
-    queryFn: () => loadListDetail(role, params.listId),
+    queryFn: () => loadListDetail(params.listId),
   });
 
   const list = detailQuery.data?.list;
@@ -86,7 +86,7 @@ export function ListDetailPage() {
     setShowEditTitleSheet(false);
     setBusy(true);
     try {
-      await updateListTitleCommand(role, list.id, list.version, newTitle);
+      await updateListTitleCommand(list.id, list.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
     } catch (err) {
@@ -101,7 +101,7 @@ export function ListDetailPage() {
     setShowArchiveSheet(false);
     setBusy(true);
     try {
-      await archiveListCommand(role, list.id, list.version);
+      await archiveListCommand(list.id, list.version);
       await invalidate();
       void navigate({ to: '/lists' });
     } catch (err) {
@@ -116,7 +116,7 @@ export function ListDetailPage() {
     setShowDeleteListSheet(false);
     setBusy(true);
     try {
-      await deleteListCommand(role, list.id);
+      await deleteListCommand(list.id);
       await invalidate();
       void navigate({ to: '/lists' });
     } catch (err) {
@@ -129,7 +129,7 @@ export function ListDetailPage() {
   const handleAddItem = useCallback(async (body: string) => {
     if (!list) return;
     try {
-      await addListItemCommand(role, list.id, body);
+      await addListItemCommand(list.id, body);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not add item');
@@ -139,7 +139,7 @@ export function ListDetailPage() {
   const handleCheckItem = useCallback(async (item: ListItem) => {
     if (!list) return;
     try {
-      await checkListItemCommand(role, list.id, item.id, item.version);
+      await checkListItemCommand(list.id, item.id, item.version);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not check item');
@@ -149,7 +149,7 @@ export function ListDetailPage() {
   const handleUncheckItem = useCallback(async (item: ListItem) => {
     if (!list) return;
     try {
-      await uncheckListItemCommand(role, list.id, item.id, item.version);
+      await uncheckListItemCommand(list.id, item.id, item.version);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not uncheck item');
@@ -161,7 +161,7 @@ export function ListDetailPage() {
     setEditItemTarget(null);
     setBusy(true);
     try {
-      await updateListItemBodyCommand(role, list.id, editItemTarget.id, editItemTarget.version, newBody);
+      await updateListItemBodyCommand(list.id, editItemTarget.id, editItemTarget.version, newBody);
       await invalidate();
       showBanner('Updated', 'mint');
     } catch (err) {
@@ -176,7 +176,7 @@ export function ListDetailPage() {
     setDeleteItemTarget(null);
     setBusy(true);
     try {
-      await removeListItemCommand(role, list.id, deleteItemTarget.id);
+      await removeListItemCommand(list.id, deleteItemTarget.id);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not remove item');
@@ -190,7 +190,7 @@ export function ListDetailPage() {
     setShowClearConfirm(false);
     setBusy(true);
     try {
-      await clearCompletedItemsCommand(role, list.id);
+      await clearCompletedItemsCommand(list.id);
       await invalidate();
       showBanner('Cleared', 'mint');
     } catch (err) {
@@ -205,7 +205,7 @@ export function ListDetailPage() {
     setShowUncheckAllConfirm(false);
     setBusy(true);
     try {
-      await uncheckAllItemsCommand(role, list.id);
+      await uncheckAllItemsCommand(list.id);
       await invalidate();
       showBanner('Items unchecked', 'mint');
       setCompletedExpanded(false);

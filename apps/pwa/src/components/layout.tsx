@@ -76,7 +76,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const registrationListener = PushNotifications.addListener('registration', (token) => {
-      void saveNativeNotificationSubscription(role, token.value);
+      void saveNativeNotificationSubscription(token.value);
     });
     const errorListener = PushNotifications.addListener('registrationError', (error) => {
       console.error('Push registration error:', error);

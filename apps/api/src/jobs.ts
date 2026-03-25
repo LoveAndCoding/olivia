@@ -17,6 +17,8 @@ type NotificationRecord = {
 };
 
 const DAILY_SUMMARY_SEND_WINDOW_UTC_HOUR = 8;
+/** Placeholder userId for household-level notification delivery deduplication. */
+const HOUSEHOLD_DELIVERY_USER_ID = 'household';
 
 function isPushSubscriptionPayload(payload: Record<string, unknown>): payload is PushSubscriptionPayload {
   return (
@@ -77,9 +79,8 @@ function hasEnabledReminderNotificationPreference(
   repository: InboxRepository,
   notificationType: NotificationDeliveryRecord['notificationType']
 ): boolean {
-  // Check preferences for all roles — if any household member has enabled, deliver
-  for (const role of ['stakeholder', 'spouse'] as const) {
-    const preferences = repository.getReminderNotificationPreferences(role);
+  // Check preferences for all users — if any household member has enabled, deliver
+  for (const preferences of repository.listAllReminderNotificationPreferences()) {
     if (!preferences.enabled) continue;
     const enabled = notificationType === 'due_reminder' ? preferences.dueRemindersEnabled : preferences.dailySummaryEnabled;
     if (enabled) return true;
@@ -132,7 +133,7 @@ export async function evaluateDueReminderRule(
 
   for (const reminder of reminders) {
     const deliveryBucket = reminderDeliveryBucket(reminder);
-    if (repository.hasNotificationDelivery('due_reminder', 'stakeholder', deliveryBucket)) {
+    if (repository.hasNotificationDelivery('due_reminder', HOUSEHOLD_DELIVERY_USER_ID, deliveryBucket)) {
       logger.debug({ reminderId: reminder.id, deliveryBucket }, 'due-reminder rule: already delivered for this occurrence');
       continue;
     }
@@ -156,7 +157,7 @@ export async function evaluateDueReminderRule(
     );
 
     if (results.some((result) => result.delivered)) {
-      repository.recordNotificationDelivery('due_reminder', 'stakeholder', reminder.id, deliveryBucket, now.toISOString());
+      repository.recordNotificationDelivery('due_reminder', HOUSEHOLD_DELIVERY_USER_ID, reminder.id, deliveryBucket, now.toISOString());
       logger.info({ reminderId: reminder.id, deliveryBucket }, 'due-reminder rule: delivered');
     }
   }
@@ -188,7 +189,7 @@ export async function evaluateDailySummaryRule(
   }
 
   const deliveryBucket = now.toISOString().slice(0, 10);
-  if (repository.hasNotificationDelivery('daily_summary', 'stakeholder', deliveryBucket)) {
+  if (repository.hasNotificationDelivery('daily_summary', HOUSEHOLD_DELIVERY_USER_ID, deliveryBucket)) {
     logger.debug({ deliveryBucket }, 'daily-summary rule: already delivered today');
     return;
   }
@@ -207,7 +208,7 @@ export async function evaluateDailySummaryRule(
   );
 
   if (results.some((result) => result.delivered)) {
-    repository.recordNotificationDelivery('daily_summary', 'stakeholder', null, deliveryBucket, now.toISOString());
+    repository.recordNotificationDelivery('daily_summary', HOUSEHOLD_DELIVERY_USER_ID, null, deliveryBucket, now.toISOString());
     logger.info({ deliveryBucket }, 'daily-summary rule: delivered');
   }
 }

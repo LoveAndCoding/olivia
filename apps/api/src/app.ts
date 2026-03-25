@@ -94,7 +94,6 @@ import {
   skipRoutineOccurrenceRequestSchema,
   skipRoutineOccurrenceResponseSchema,
   ONBOARDING_ENTITY_THRESHOLD,
-  type ActorRole,
   type DraftItem,
   type DraftReminder,
   type ReminderUpdateChange,
@@ -190,29 +189,20 @@ type BuildAppOptions = {
 
 const VIEW_VALUES = new Set(['active', 'all']);
 
-function isReadableActorRole(role: unknown): role is ActorRole {
-  return role === 'stakeholder' || role === 'spouse';
-}
-
 /**
- * Resolve the effective actorRole for a request.
- * Priority: explicit body.actorRole > session identity (always 'stakeholder' for now) > default 'stakeholder'.
- * During the transition period, the frontend still sends actorRole. Once fully migrated,
- * identity comes entirely from the session.
+ * Default userId used when auth is disabled (e.g., local dev / tests).
+ * Provides a stable UUID so that notification-preference and subscription
+ * storage works even without a real session.
  */
-function resolveActorRole(bodyRole: ActorRole | undefined, request: { user?: { userId: string } }): ActorRole {
-  if (bodyRole) return bodyRole;
-  // When authenticated, default to 'stakeholder' — the role distinction is deprecated
-  if (request.user) return 'stakeholder';
-  return 'stakeholder';
-}
+export const ANONYMOUS_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 /**
  * Extract the authenticated userId from the request, if available.
- * Used when passing userId to repository for user attribution columns.
+ * Falls back to ANONYMOUS_USER_ID when auth is disabled so that routes
+ * requiring a userId (notification preferences, subscriptions) still work.
  */
 export function resolveUserId(request: { user?: { userId: string } }): string | undefined {
-  return request.user?.userId;
+  return request.user?.userId ?? ANONYMOUS_USER_ID;
 }
 
 function isPushSubscriptionPayload(payload: Record<string, unknown>): payload is PushSubscriptionPayload {
@@ -688,11 +678,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   });
 
   app.get('/api/inbox/items', async (request, reply) => {
-    const query = request.query as { actorRole?: ActorRole; view?: string };
-    const actorRole = query.actorRole;
-    if (!isReadableActorRole(actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
+    const query = request.query as { view?: string };
     const view = query.view && VIEW_VALUES.has(query.view) ? query.view : 'active';
 
     const items = repository.listItems();
@@ -719,10 +705,6 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   app.get('/api/inbox/items/:itemId', async (request, reply) => {
     const params = request.params as { itemId: string };
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
 
     const item = repository.getItem(params.itemId);
     if (!item) {
@@ -741,12 +723,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     return reply.send(response);
   });
 
-  app.get('/api/reminders', async (request, reply) => {
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
-
+  app.get('/api/reminders', async (_request, reply) => {
     const now = new Date();
     const response = reminderViewResponseSchema.parse({
       remindersByState: groupReminders(repository.listReminders(now), now),
@@ -759,10 +736,6 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   app.get('/api/reminders/:reminderId', async (request, reply) => {
     const params = request.params as { reminderId: string };
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
 
     const reminder = repository.getReminder(params.reminderId);
     if (!reminder) {
@@ -778,13 +751,10 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   });
 
   app.get('/api/reminders/settings', async (request, reply) => {
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
+    const userId = resolveUserId(request);
 
     const response = reminderSettingsResponseSchema.parse({
-      preferences: repository.getReminderNotificationPreferences(query.actorRole)
+      preferences: repository.getReminderNotificationPreferences(userId!)
     });
 
     return reply.send(response);
@@ -795,7 +765,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
 
     const response = saveReminderNotificationPreferencesResponseSchema.parse({
-      preferences: repository.saveReminderNotificationPreferences(resolveActorRole(body.actorRole, request), body.preferences)
+      preferences: repository.saveReminderNotificationPreferences(resolveUserId(request)!, body.preferences)
     });
 
     return reply.send(response);
@@ -811,7 +781,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       // APNs native push token from Capacitor
       endpoint = `apns://${body.token}`;
       payload = { ...body.payload, type: 'apns', token: body.token };
-      request.log.info({ actorRole: body.actorRole, type: 'apns' }, 'saved APNs notification subscription');
+      request.log.info({ type: 'apns' }, 'saved APNs notification subscription');
     } else {
       // Web Push subscription
       if (!isPushSubscriptionPayload(body.payload) || body.payload.endpoint !== body.endpoint) {
@@ -822,29 +792,22 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       }
       endpoint = body.endpoint;
       payload = body.payload;
-      request.log.info({ actorRole: body.actorRole, type: 'web-push' }, 'saved Web Push notification subscription');
+      request.log.info({ type: 'web-push' }, 'saved Web Push notification subscription');
     }
 
-    const subscription = repository.saveNotificationSubscription(resolveActorRole(body.actorRole, request), endpoint, payload);
+    const subscription = repository.saveNotificationSubscription(resolveUserId(request)!, endpoint, payload);
     return reply.send(saveNotificationSubscriptionResponseSchema.parse({ subscription }));
   });
 
   app.get('/api/notifications/subscriptions', async (request, reply) => {
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
+    const userId = resolveUserId(request);
 
-    return reply.send({ subscriptions: repository.listNotificationSubscriptions(query.actorRole) });
+    return reply.send({ subscriptions: repository.listNotificationSubscriptions(userId!) });
   });
 
   // ─── Shared Lists routes ────────────────────────────────────────────────────
 
-  app.get('/api/lists', async (request, reply) => {
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
+  app.get('/api/lists', async (_request, reply) => {
     const lists = repository.listSharedLists('active');
     const listsWithSummary = lists.map((list) => {
       const items = repository.getListItems(list.id);
@@ -854,11 +817,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     return reply.send(activeListIndexResponseSchema.parse({ lists: listsWithSummary, source: 'server' }));
   });
 
-  app.get('/api/lists/archived', async (request, reply) => {
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
+  app.get('/api/lists/archived', async (_request, reply) => {
     const lists = repository.listSharedLists('archived');
     const listsWithSummary = lists.map((list) => {
       const items = repository.getListItems(list.id);
@@ -870,10 +829,6 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   app.get('/api/lists/:listId', async (request, reply) => {
     const params = request.params as { listId: string };
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
     const list = repository.getSharedList(params.listId);
     if (!list) {
       return reply.status(404).send({ code: 'NOT_FOUND', message: 'List not found.' });
@@ -889,10 +844,6 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   app.get('/api/lists/:listId/history', async (request, reply) => {
     const params = request.params as { listId: string };
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
     const list = repository.getSharedList(params.listId);
     if (!list) {
       return reply.status(404).send({ code: 'NOT_FOUND', message: 'List not found.' });
@@ -904,10 +855,9 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     const body = createListRequestSchema.parse(request.body);
     const userId = resolveUserId(request);
 
-    const role = resolveActorRole(body.actorRole, request);
     const list = createSharedList(body.title, userId ?? null);
     const attributedList = { ...list, createdByUserId: userId };
-    const historyEntry = { ...createListCreatedHistoryEntry(list, role), userId };
+    const historyEntry = { ...createListCreatedHistoryEntry(list), userId };
     repository.createSharedList(attributedList, historyEntry);
     request.log.info({ listId: list.id }, 'accepted list create command');
     return reply.status(201).send(listMutationResponseSchema.parse({ savedList: attributedList, historyEntry, newVersion: list.version }));
@@ -928,7 +878,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     const oldTitle = currentList.title;
     const updatedList = updateListTitle(currentList, body.title);
-    const historyEntry = { ...createListTitleUpdatedHistoryEntry(updatedList, oldTitle, resolveActorRole(body.actorRole, request)), userId };
+    const historyEntry = { ...createListTitleUpdatedHistoryEntry(updatedList, oldTitle), userId };
     const saved = repository.updateSharedList(updatedList, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -952,7 +902,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentList.version, retryGuidance: 'Refresh and retry.' });
     }
     const archivedList = archiveList(currentList);
-    const historyEntry = { ...createListArchivedHistoryEntry(archivedList, resolveActorRole(body.actorRole, request)), userId };
+    const historyEntry = { ...createListArchivedHistoryEntry(archivedList), userId };
     const saved = repository.updateSharedList(archivedList, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -976,7 +926,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentList.version, retryGuidance: 'Refresh and retry.' });
     }
     const restoredList = restoreList(currentList);
-    const historyEntry = { ...createListRestoredHistoryEntry(restoredList, resolveActorRole(body.actorRole, request)), userId };
+    const historyEntry = { ...createListRestoredHistoryEntry(restoredList), userId };
     const saved = repository.updateSharedList(restoredList, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -1012,7 +962,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     const nextPosition = repository.getNextListItemPosition(params.listId);
     const item = addListItem(params.listId, body.body, nextPosition);
-    const historyEntry = { ...createItemAddedHistoryEntry(item, resolveActorRole(body.actorRole, request)), userId };
+    const historyEntry = { ...createItemAddedHistoryEntry(item), userId };
     repository.addListItem(item, historyEntry);
     request.log.info({ listId: params.listId, itemId: item.id }, 'accepted item add command');
     return reply.status(201).send(listItemMutationResponseSchema.parse({ savedItem: item, historyEntry, newVersion: item.version }));
@@ -1034,7 +984,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     const oldBody = currentItem.body;
     const updatedItem = updateItemBody(currentItem, body.body);
-    const historyEntry = { ...createItemBodyUpdatedHistoryEntry(updatedItem, oldBody, resolveActorRole(body.actorRole, request)), userId };
+    const historyEntry = { ...createItemBodyUpdatedHistoryEntry(updatedItem, oldBody), userId };
     const saved = repository.updateListItem(updatedItem, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -1057,7 +1007,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentItem.version, retryGuidance: 'Refresh and retry.' });
     }
     const checkedItem = checkItem(currentItem);
-    const historyEntry = { ...createItemCheckedHistoryEntry(checkedItem, resolveActorRole(body.actorRole, request)), userId };
+    const historyEntry = { ...createItemCheckedHistoryEntry(checkedItem), userId };
     const saved = repository.updateListItem(checkedItem, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -1080,7 +1030,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentItem.version, retryGuidance: 'Refresh and retry.' });
     }
     const uncheckedItem = uncheckItem(currentItem);
-    const historyEntry = { ...createItemUncheckedHistoryEntry(uncheckedItem, resolveActorRole(body.actorRole, request)), userId };
+    const historyEntry = { ...createItemUncheckedHistoryEntry(uncheckedItem), userId };
     const saved = repository.updateListItem(uncheckedItem, historyEntry, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -1091,7 +1041,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   app.post('/api/lists/:listId/clear-completed', async (request, reply) => {
     const params = request.params as { listId: string };
     const rawBody = request.body as Record<string, unknown>;
-    const body = clearCompletedItemsRequestSchema.parse({ ...rawBody, listId: params.listId });
+    clearCompletedItemsRequestSchema.parse({ ...rawBody, listId: params.listId });
     const userId = resolveUserId(request);
 
     const items = repository.getListItems(params.listId);
@@ -1099,7 +1049,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (checkedItems.length === 0) {
       return reply.status(400).send({ code: 'NO_CHECKED_ITEMS', message: 'No completed items to clear.' });
     }
-    const historyEntry = { ...createItemsClearedHistoryEntry(params.listId, checkedItems.length, resolveActorRole(body.actorRole, request)), userId };
+    const historyEntry = { ...createItemsClearedHistoryEntry(params.listId, checkedItems.length), userId };
     const affectedCount = repository.clearCompletedItems(params.listId, historyEntry);
     request.log.info({ listId: params.listId, affectedCount }, 'cleared completed items');
     return reply.send(bulkListActionResponseSchema.parse({ affectedCount }));
@@ -1108,7 +1058,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   app.post('/api/lists/:listId/uncheck-all', async (request, reply) => {
     const params = request.params as { listId: string };
     const rawBody = request.body as Record<string, unknown>;
-    const body = uncheckAllItemsRequestSchema.parse({ ...rawBody, listId: params.listId });
+    uncheckAllItemsRequestSchema.parse({ ...rawBody, listId: params.listId });
     const userId = resolveUserId(request);
 
     const items = repository.getListItems(params.listId);
@@ -1116,7 +1066,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (checkedItems.length === 0) {
       return reply.status(400).send({ code: 'NO_CHECKED_ITEMS', message: 'No completed items to uncheck.' });
     }
-    const historyEntry = { ...createItemsUncheckedAllHistoryEntry(params.listId, checkedItems.length, resolveActorRole(body.actorRole, request)), userId };
+    const historyEntry = { ...createItemsUncheckedAllHistoryEntry(params.listId, checkedItems.length), userId };
     const affectedCount = repository.uncheckAllItems(params.listId, historyEntry);
     request.log.info({ listId: params.listId, affectedCount }, 'unchecked all items');
     return reply.send(bulkListActionResponseSchema.parse({ affectedCount }));
@@ -1125,7 +1075,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   app.delete('/api/lists/:listId/items/:itemId', async (request, reply) => {
     const params = request.params as { listId: string; itemId: string };
     const rawBody = request.body as Record<string, unknown>;
-    const body = removeListItemRequestSchema.parse({ ...rawBody, listId: params.listId, itemId: params.itemId });
+    removeListItemRequestSchema.parse({ ...rawBody, listId: params.listId, itemId: params.itemId });
     const userId = resolveUserId(request);
 
     const items = repository.getListItems(params.listId);
@@ -1133,7 +1083,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (!currentItem) {
       return reply.status(404).send({ code: 'NOT_FOUND', message: 'Item not found.' });
     }
-    const historyEntry = { ...createItemRemovedHistoryEntry(params.listId, currentItem, resolveActorRole(body.actorRole, request)), userId };
+    const historyEntry = { ...createItemRemovedHistoryEntry(params.listId, currentItem), userId };
     repository.removeListItem(params.itemId, params.listId, historyEntry);
     request.log.info({ listId: params.listId, itemId: params.itemId }, 'accepted item remove command');
     return reply.status(204).send();
@@ -1141,11 +1091,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   // ─── Routine routes ─────────────────────────────────────────────────────────
 
-  app.get('/api/routines', async (request, reply) => {
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
+  app.get('/api/routines', async (_request, reply) => {
     const now = new Date();
     const routines = repository.listActiveAndPausedRoutines();
     const routineIds = routines.map((r) => r.id);
@@ -1161,11 +1107,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     return reply.send(activeRoutineIndexResponseSchema.parse({ routines: routinesWithState, source: 'server' }));
   });
 
-  app.get('/api/routines/archived', async (request, reply) => {
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
+  app.get('/api/routines/archived', async (_request, reply) => {
     const now = new Date();
     const routines = repository.listRoutines('archived');
     const routineIds = routines.map((r) => r.id);
@@ -1183,10 +1125,6 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   app.get('/api/routines/:routineId', async (request, reply) => {
     const params = request.params as { routineId: string };
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
     const now = new Date();
     const routine = repository.getRoutine(params.routineId);
     if (!routine) {
@@ -1376,30 +1314,18 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   // ─── Meal Planning routes ──────────────────────────────────────────────────
 
-  app.get('/api/meal-plans', async (request, reply) => {
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
+  app.get('/api/meal-plans', async (_request, reply) => {
     const plans = repository.listMealPlans('active');
     return reply.send(mealPlanIndexResponseSchema.parse({ plans, totalCount: plans.length }));
   });
 
-  app.get('/api/meal-plans/archived', async (request, reply) => {
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
+  app.get('/api/meal-plans/archived', async (_request, reply) => {
     const plans = repository.listMealPlans('archived');
     return reply.send(mealPlanIndexResponseSchema.parse({ plans, totalCount: plans.length }));
   });
 
   app.get('/api/meal-plans/:planId', async (request, reply) => {
     const params = request.params as { planId: string };
-    const query = request.query as { actorRole?: ActorRole };
-    if (!isReadableActorRole(query.actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole query parameter is required.' });
-    }
     const plan = repository.getMealPlan(params.planId);
     if (!plan) {
       return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal plan not found.' });
@@ -1551,17 +1477,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   app.post('/api/meal-plans/:planId/generate-grocery-list', async (request, reply) => {
     const params = request.params as { planId: string };
-    const rawBody = request.body as Record<string, unknown>;
-    const actorRole = rawBody.actorRole as ActorRole;
-    if (!isReadableActorRole(actorRole)) {
-      return reply.status(400).send({ code: 'BAD_ROLE', message: 'actorRole is required.' });
-    }
-    if (actorRole !== 'stakeholder') {
-      const error = new Error('Spouse may view meal plans but may not create, edit, or remove them in this phase');
-      (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
-      (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
-      throw error;
-    }
+    const userId = resolveUserId(request);
     const currentPlan = repository.getMealPlan(params.planId);
     if (!currentPlan) {
       return reply.status(404).send({ code: 'NOT_FOUND', message: 'Meal plan not found.' });
@@ -1572,12 +1488,12 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(400).send({ code: 'NO_ITEMS', message: 'No shopping items found in this plan.' });
     }
     const listTitle = `Grocery \u2014 ${currentPlan.title}`;
-    const list = createSharedList(listTitle, resolveUserId(request) ?? null);
-    const listHistoryEntry = createListCreatedHistoryEntry(list, actorRole);
+    const list = createSharedList(listTitle, userId ?? null);
+    const listHistoryEntry = { ...createListCreatedHistoryEntry(list), userId };
     repository.createSharedList(list, listHistoryEntry);
     for (let i = 0; i < groceryItems.length; i++) {
       const item = addListItem(list.id, groceryItems[i], i);
-      const itemHistoryEntry = createItemAddedHistoryEntry(item, actorRole);
+      const itemHistoryEntry = { ...createItemAddedHistoryEntry(item), userId };
       repository.addListItem(item, itemHistoryEntry);
     }
     const ref = { listId: list.id, generatedAt: new Date().toISOString() };
@@ -1710,13 +1626,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   });
 
   // ─── Activity History ────────────────────────────────────────────────────────
-  app.get('/api/activity-history', async (request, reply) => {
-    const query = request.query as Record<string, unknown>;
-    const role = query.role;
-    if (role !== undefined && !isReadableActorRole(role)) {
-      return reply.status(403).send({ code: 'ROLE_INVALID', message: 'Invalid role.' });
-    }
-
+  app.get('/api/activity-history', async (_request, reply) => {
     const now = new Date();
     const { windowStart, windowEnd } = getActivityHistoryWindow(now);
     const windowStartDate = windowStart.toISOString().split('T')[0];
@@ -1796,10 +1706,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   app.post('/api/routines/:routineId/generate-ritual-summary', async (request, reply) => {
     const params = request.params as { routineId: string };
     const rawBody = request.body as Record<string, unknown>;
-    const actorRole = rawBody.actorRole as string;
-    if (actorRole === 'spouse') {
-      return reply.status(403).send({ code: 'FORBIDDEN', message: 'Spouse cannot initiate AI generation.' });
-    }
+    // AI generation is available to all authenticated users
 
     const routine = repository.getRoutine(params.routineId);
     if (!routine) {
@@ -2052,11 +1959,6 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   app.get('/api/review-records/:reviewRecordId', async (request, reply) => {
     const params = request.params as { reviewRecordId: string };
-    const query = request.query as Record<string, unknown>;
-    const role = query.role;
-    if (role !== undefined && !isReadableActorRole(role)) {
-      return reply.status(403).send({ code: 'ROLE_INVALID', message: 'Invalid role.' });
-    }
     const record = repository.getReviewRecord(params.reviewRecordId);
     if (!record) {
       return reply.status(404).send({ code: 'NOT_FOUND', message: 'Review record not found.' });
@@ -2066,13 +1968,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
   // ─── Proactive Household Nudges ─────────────────────────────────────────────
 
-  app.get('/api/nudges', async (request, reply) => {
-    const query = request.query as Record<string, unknown>;
-    const role = query.actorRole;
-    if (role !== undefined && !isReadableActorRole(role)) {
-      return reply.status(403).send({ code: 'ROLE_INVALID', message: 'Invalid role.' });
-    }
-
+  app.get('/api/nudges', async (_request, reply) => {
     const now = new Date();
     const nudges = repository.getNudgePayloads(now);
     const sorted = sortNudgesByPriority(nudges);
@@ -2367,7 +2263,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
 
     const now = new Date();
-    const actorRole = 'stakeholder' as const;
+    const userId = resolveUserId(request);
     let result: Record<string, unknown> = {};
 
     try {
@@ -2410,7 +2306,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
           }
           const nextPos = repository.getNextListItemPosition(targetList.id);
           const newItem = addListItem(targetList.id, String(toolCall.data.body ?? ''), nextPos, now);
-          const itemHistoryEntry = createItemAddedHistoryEntry(newItem, actorRole);
+          const itemHistoryEntry = { ...createItemAddedHistoryEntry(newItem), userId };
           repository.addListItem(newItem, itemHistoryEntry);
           result = { item: newItem, listTitle: targetList.title };
           break;
@@ -2460,7 +2356,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         case 'create_shared_list': {
           const listAssigneeUserId = (toolCall.data.assigneeUserId as string | null) ?? null;
           const list = createSharedList(String(toolCall.data.title ?? ''), listAssigneeUserId, now);
-          const historyEntry = createListCreatedHistoryEntry(list, actorRole);
+          const historyEntry = { ...createListCreatedHistoryEntry(list), userId };
           repository.createSharedList(list, historyEntry);
           result = { list };
 

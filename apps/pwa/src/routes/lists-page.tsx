@@ -41,13 +41,13 @@ export function ListsPage() {
 
   const activeQuery = useQuery({
     queryKey: ['lists-active', role],
-    queryFn: () => loadActiveListIndex(role),
+    queryFn: () => loadActiveListIndex(),
     enabled: filter === 'active',
   });
 
   const archivedQuery = useQuery({
     queryKey: ['lists-archived', role],
-    queryFn: () => loadArchivedListIndex(role),
+    queryFn: () => loadArchivedListIndex(),
     enabled: filter === 'archived',
   });
 
@@ -70,7 +70,7 @@ export function ListsPage() {
   const handleCreate = useCallback(async (title: string) => {
     setShowCreateSheet(false);
     try {
-      const newList = await createListCommand(role, title);
+      const newList = await createListCommand(title);
       await invalidate();
       showBanner('List created', 'mint');
       void navigate({ to: '/lists/$listId', params: { listId: newList.id } });
@@ -84,7 +84,7 @@ export function ListsPage() {
     setEditTitleTarget(null);
     setBusy(true);
     try {
-      await updateListTitleCommand(role, editTitleTarget.id, editTitleTarget.version, newTitle);
+      await updateListTitleCommand(editTitleTarget.id, editTitleTarget.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
     } catch (err) {
@@ -99,7 +99,7 @@ export function ListsPage() {
     setArchiveTarget(null);
     setBusy(true);
     try {
-      await archiveListCommand(role, archiveTarget.id, archiveTarget.version);
+      await archiveListCommand(archiveTarget.id, archiveTarget.version);
       await invalidate();
       showBanner('Archived', 'sky');
     } catch (err) {
@@ -112,7 +112,7 @@ export function ListsPage() {
   const handleRestoreList = useCallback(async (list: SharedList) => {
     setBusy(true);
     try {
-      await restoreListCommand(role, list.id, list.version);
+      await restoreListCommand(list.id, list.version);
       await invalidate();
       showBanner('Restored to active lists', 'mint');
     } catch (err) {
@@ -127,7 +127,7 @@ export function ListsPage() {
     setDeleteTarget(null);
     setBusy(true);
     try {
-      await deleteListCommand(role, deleteTarget.id);
+      await deleteListCommand(deleteTarget.id);
       await invalidate();
       showBanner('List deleted', 'sky');
     } catch (err) {

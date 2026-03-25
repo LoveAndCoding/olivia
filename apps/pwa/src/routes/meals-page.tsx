@@ -42,13 +42,13 @@ export function MealsPage() {
 
   const activeQuery = useQuery({
     queryKey: ['meal-plans-active', role],
-    queryFn: () => loadActiveMealPlanIndex(role),
+    queryFn: () => loadActiveMealPlanIndex(),
     enabled: filter === 'active',
   });
 
   const archivedQuery = useQuery({
     queryKey: ['meal-plans-archived', role],
-    queryFn: () => loadArchivedMealPlanIndex(role),
+    queryFn: () => loadArchivedMealPlanIndex(),
     enabled: filter === 'archived',
   });
 
@@ -72,7 +72,7 @@ export function MealsPage() {
     setShowCreateSheet(false);
     setBusy(true);
     try {
-      const plan = await createMealPlanCommand(role, title, weekStartDate);
+      const plan = await createMealPlanCommand(title, weekStartDate);
       await invalidate();
       showBanner('Plan created', 'mint');
       void navigate({ to: '/meals/$planId', params: { planId: plan.id } });
@@ -88,7 +88,7 @@ export function MealsPage() {
     setEditTitleTarget(null);
     setBusy(true);
     try {
-      await updateMealPlanTitleCommand(role, editTitleTarget.id, editTitleTarget.version, newTitle);
+      await updateMealPlanTitleCommand(editTitleTarget.id, editTitleTarget.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
     } catch (err) {
@@ -103,7 +103,7 @@ export function MealsPage() {
     setArchiveTarget(null);
     setBusy(true);
     try {
-      await archiveMealPlanCommand(role, archiveTarget.id, archiveTarget.version);
+      await archiveMealPlanCommand(archiveTarget.id, archiveTarget.version);
       await invalidate();
       showBanner('Archived', 'sky');
     } catch (err) {
@@ -116,7 +116,7 @@ export function MealsPage() {
   const handleRestoreConfirm = useCallback(async (plan: MealPlan) => {
     setBusy(true);
     try {
-      await restoreMealPlanCommand(role, plan.id, plan.version);
+      await restoreMealPlanCommand(plan.id, plan.version);
       await invalidate();
       showBanner('Restored', 'mint');
     } catch (err) {
@@ -131,7 +131,7 @@ export function MealsPage() {
     setDeleteTarget(null);
     setBusy(true);
     try {
-      await deleteMealPlanCommand(role, deleteTarget.id);
+      await deleteMealPlanCommand(deleteTarget.id);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not delete meal plan');

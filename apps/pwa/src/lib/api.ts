@@ -47,7 +47,7 @@ import {
   type BulkListActionResponse,
   type ActiveListIndexResponse,
   type ActiveRoutineIndexResponse,
-  type ActorRole,
+
   type ArchivedListIndexResponse,
   type ArchivedRoutineIndexResponse,
   type CancelReminderResponse,
@@ -168,62 +168,60 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-export async function fetchInboxView(role: ActorRole): Promise<InboxViewResponse> {
-  return inboxViewResponseSchema.parse(await request<InboxViewResponse>(`/api/inbox/items?actorRole=${role}&view=all`));
+export async function fetchInboxView():Promise<InboxViewResponse> {
+  return inboxViewResponseSchema.parse(await request<InboxViewResponse>(`/api/inbox/items?view=all`));
 }
 
-export async function fetchItemDetail(role: ActorRole, itemId: string): Promise<ItemDetailResponse> {
-  return itemDetailResponseSchema.parse(await request<ItemDetailResponse>(`/api/inbox/items/${itemId}?actorRole=${role}`));
+export async function fetchItemDetail(itemId: string): Promise<ItemDetailResponse> {
+  return itemDetailResponseSchema.parse(await request<ItemDetailResponse>(`/api/inbox/items/${itemId}`));
 }
 
-export async function previewCreate(role: ActorRole, inputText?: string, structuredInput?: Partial<StructuredInput>): Promise<PreviewCreateResponse> {
+export async function previewCreate(inputText?: string, structuredInput?: Partial<StructuredInput>): Promise<PreviewCreateResponse> {
   return previewCreateResponseSchema.parse(
     await request<PreviewCreateResponse>('/api/inbox/items/preview-create', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, inputText, structuredInput })
+      body: JSON.stringify({ inputText, structuredInput })
     })
   );
 }
 
-export async function confirmCreate(role: ActorRole, finalItem: DraftItem, draftId?: string): Promise<ConfirmCreateResponse> {
+export async function confirmCreate(finalItem: DraftItem, draftId?: string): Promise<ConfirmCreateResponse> {
   return request<ConfirmCreateResponse>('/api/inbox/items/confirm-create', {
     method: 'POST',
-    body: JSON.stringify({ actorRole: role, draftId, approved: true, finalItem })
+    body: JSON.stringify({ draftId, approved: true, finalItem })
   });
 }
 
-export async function previewUpdate(role: ActorRole, itemId: string, expectedVersion: number, proposedChange: UpdateChange): Promise<PreviewUpdateResponse> {
+export async function previewUpdate(itemId: string, expectedVersion: number, proposedChange: UpdateChange): Promise<PreviewUpdateResponse> {
   return previewUpdateResponseSchema.parse(
     await request<PreviewUpdateResponse>('/api/inbox/items/preview-update', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, itemId, expectedVersion, proposedChange })
+      body: JSON.stringify({ itemId, expectedVersion, proposedChange })
     })
   );
 }
 
-export async function confirmUpdate(role: ActorRole, itemId: string, expectedVersion: number, proposedChange?: UpdateChange, draftId?: string): Promise<ConfirmUpdateResponse> {
+export async function confirmUpdate(itemId: string, expectedVersion: number, proposedChange?: UpdateChange, draftId?: string): Promise<ConfirmUpdateResponse> {
   return request<ConfirmUpdateResponse>('/api/inbox/items/confirm-update', {
     method: 'POST',
-    body: JSON.stringify({ actorRole: role, itemId, expectedVersion, draftId, approved: true, proposedChange })
+    body: JSON.stringify({ itemId, expectedVersion, draftId, approved: true, proposedChange })
   });
 }
 
-export async function saveNotificationSubscription(role: ActorRole) {
+export async function saveNotificationSubscription() {
   return request<{ subscription: unknown }>('/api/notifications/subscriptions', {
     method: 'POST',
     body: JSON.stringify({
-      actorRole: role,
-      endpoint: `${window.location.origin}/notifications/${role}`,
+      endpoint: `${window.location.origin}/notifications`,
       payload: { permission: Notification.permission, userAgent: navigator.userAgent, storedAt: new Date().toISOString() }
     })
   });
 }
 
-export async function saveNativeNotificationSubscriptionApi(role: ActorRole, apnsToken: string) {
+export async function saveNativeNotificationSubscriptionApi(apnsToken: string) {
   return request<{ subscription: unknown }>('/api/notifications/subscriptions', {
     method: 'POST',
     body: JSON.stringify({
-      actorRole: role,
       type: 'apns',
       token: apnsToken,
       payload: { platform: 'ios', userAgent: navigator.userAgent, storedAt: new Date().toISOString() }
@@ -231,46 +229,46 @@ export async function saveNativeNotificationSubscriptionApi(role: ActorRole, apn
   });
 }
 
-export async function listNotificationSubscriptions(role: ActorRole) {
-  return request<{ subscriptions: unknown[] }>(`/api/notifications/subscriptions?actorRole=${role}`);
+export async function listNotificationSubscriptions() {
+  return request<{ subscriptions: unknown[] }>(`/api/notifications/subscriptions`);
 }
 
-export async function fetchReminderView(role: ActorRole): Promise<ReminderViewResponse> {
-  return reminderViewResponseSchema.parse(await request<ReminderViewResponse>(`/api/reminders?actorRole=${role}`));
+export async function fetchReminderView():Promise<ReminderViewResponse> {
+  return reminderViewResponseSchema.parse(await request<ReminderViewResponse>(`/api/reminders`));
 }
 
-export async function fetchReminderDetail(role: ActorRole, reminderId: string): Promise<ReminderDetailResponse> {
-  return reminderDetailResponseSchema.parse(await request<ReminderDetailResponse>(`/api/reminders/${reminderId}?actorRole=${role}`));
+export async function fetchReminderDetail(reminderId: string): Promise<ReminderDetailResponse> {
+  return reminderDetailResponseSchema.parse(await request<ReminderDetailResponse>(`/api/reminders/${reminderId}`));
 }
 
 export async function previewCreateReminder(
-  role: ActorRole,
+
   inputText?: string,
   structuredInput?: Partial<StructuredReminderInput>
 ): Promise<PreviewCreateReminderResponse> {
   return previewCreateReminderResponseSchema.parse(
     await request<PreviewCreateReminderResponse>('/api/reminders/preview-create', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, inputText, structuredInput })
+      body: JSON.stringify({ inputText, structuredInput })
     })
   );
 }
 
 export async function confirmCreateReminder(
-  role: ActorRole,
+
   finalReminder: DraftReminder,
   draftId?: string
 ): Promise<ConfirmCreateReminderResponse> {
   return confirmCreateReminderResponseSchema.parse(
     await request<ConfirmCreateReminderResponse>('/api/reminders/confirm-create', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, draftId, approved: true, finalReminder })
+      body: JSON.stringify({ draftId, approved: true, finalReminder })
     })
   );
 }
 
 export async function previewUpdateReminder(
-  role: ActorRole,
+
   reminderId: string,
   expectedVersion: number,
   proposedChange: ReminderUpdateChange
@@ -278,34 +276,34 @@ export async function previewUpdateReminder(
   return previewUpdateReminderResponseSchema.parse(
     await request<PreviewUpdateReminderResponse>('/api/reminders/preview-update', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, reminderId, expectedVersion, proposedChange })
+      body: JSON.stringify({ reminderId, expectedVersion, proposedChange })
     })
   );
 }
 
 export async function confirmUpdateReminder(
-  role: ActorRole,
+
   reminderId: string,
   expectedVersion: number,
   proposedChange: ReminderUpdateChange
 ): Promise<ConfirmUpdateReminderResponse> {
   return request<ConfirmUpdateReminderResponse>('/api/reminders/confirm-update', {
     method: 'POST',
-    body: JSON.stringify({ actorRole: role, reminderId, expectedVersion, approved: true, proposedChange })
+    body: JSON.stringify({ reminderId, expectedVersion, approved: true, proposedChange })
   });
 }
 
-export async function completeReminder(role: ActorRole, reminderId: string, expectedVersion: number): Promise<CompleteReminderResponse> {
+export async function completeReminder(reminderId: string, expectedVersion: number): Promise<CompleteReminderResponse> {
   return completeReminderResponseSchema.parse(
     await request<CompleteReminderResponse>('/api/reminders/complete', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, reminderId, expectedVersion, approved: true })
+      body: JSON.stringify({ reminderId, expectedVersion, approved: true })
     })
   );
 }
 
 export async function snoozeReminder(
-  role: ActorRole,
+
   reminderId: string,
   expectedVersion: number,
   snoozedUntil: string
@@ -313,170 +311,170 @@ export async function snoozeReminder(
   return snoozeReminderResponseSchema.parse(
     await request<SnoozeReminderResponse>('/api/reminders/snooze', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, reminderId, expectedVersion, approved: true, snoozedUntil })
+      body: JSON.stringify({ reminderId, expectedVersion, approved: true, snoozedUntil })
     })
   );
 }
 
-export async function cancelReminder(role: ActorRole, reminderId: string, expectedVersion: number): Promise<CancelReminderResponse> {
+export async function cancelReminder(reminderId: string, expectedVersion: number): Promise<CancelReminderResponse> {
   return cancelReminderResponseSchema.parse(
     await request<CancelReminderResponse>('/api/reminders/cancel', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, reminderId, expectedVersion, approved: true })
+      body: JSON.stringify({ reminderId, expectedVersion, approved: true })
     })
   );
 }
 
-export async function fetchReminderSettings(role: ActorRole): Promise<ReminderSettingsResponse> {
-  return reminderSettingsResponseSchema.parse(await request<ReminderSettingsResponse>(`/api/reminders/settings?actorRole=${role}`));
+export async function fetchReminderSettings():Promise<ReminderSettingsResponse> {
+  return reminderSettingsResponseSchema.parse(await request<ReminderSettingsResponse>(`/api/reminders/settings`));
 }
 
 export async function saveReminderSettings(
-  role: ActorRole,
+
   preferences: ReminderNotificationPreferencesInput
 ): Promise<ReminderSettingsResponse> {
   return saveReminderNotificationPreferencesResponseSchema.parse(
     await request<ReminderSettingsResponse>('/api/reminders/settings', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, preferences })
+      body: JSON.stringify({ preferences })
     })
   );
 }
 
 // ─── Shared List API clients ──────────────────────────────────────────────────
 
-export async function fetchActiveListIndex(role: ActorRole): Promise<ActiveListIndexResponse> {
-  return activeListIndexResponseSchema.parse(await request<ActiveListIndexResponse>(`/api/lists?actorRole=${role}`));
+export async function fetchActiveListIndex():Promise<ActiveListIndexResponse> {
+  return activeListIndexResponseSchema.parse(await request<ActiveListIndexResponse>(`/api/lists`));
 }
 
-export async function fetchArchivedListIndex(role: ActorRole): Promise<ArchivedListIndexResponse> {
-  return archivedListIndexResponseSchema.parse(await request<ArchivedListIndexResponse>(`/api/lists/archived?actorRole=${role}`));
+export async function fetchArchivedListIndex():Promise<ArchivedListIndexResponse> {
+  return archivedListIndexResponseSchema.parse(await request<ArchivedListIndexResponse>(`/api/lists/archived`));
 }
 
-export async function fetchListDetail(role: ActorRole, listId: string): Promise<ListDetailResponse> {
-  return listDetailResponseSchema.parse(await request<ListDetailResponse>(`/api/lists/${listId}?actorRole=${role}`));
+export async function fetchListDetail(listId: string): Promise<ListDetailResponse> {
+  return listDetailResponseSchema.parse(await request<ListDetailResponse>(`/api/lists/${listId}`));
 }
 
-export async function createList(role: ActorRole, title: string): Promise<ListMutationResponse> {
+export async function createList(title: string): Promise<ListMutationResponse> {
   return listMutationResponseSchema.parse(
     await request<ListMutationResponse>('/api/lists', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, title })
+      body: JSON.stringify({ title })
     })
   );
 }
 
-export async function updateListTitle(role: ActorRole, listId: string, expectedVersion: number, title: string): Promise<ListMutationResponse> {
+export async function updateListTitle(listId: string, expectedVersion: number, title: string): Promise<ListMutationResponse> {
   return listMutationResponseSchema.parse(
     await request<ListMutationResponse>(`/api/lists/${listId}/title`, {
       method: 'PATCH',
-      body: JSON.stringify({ actorRole: role, expectedVersion, title })
+      body: JSON.stringify({ expectedVersion, title })
     })
   );
 }
 
-export async function archiveList(role: ActorRole, listId: string, expectedVersion: number): Promise<ListMutationResponse> {
+export async function archiveList(listId: string, expectedVersion: number): Promise<ListMutationResponse> {
   return listMutationResponseSchema.parse(
     await request<ListMutationResponse>(`/api/lists/${listId}/archive`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, expectedVersion, confirmed: true })
+      body: JSON.stringify({ expectedVersion, confirmed: true })
     })
   );
 }
 
-export async function restoreList(role: ActorRole, listId: string, expectedVersion: number): Promise<ListMutationResponse> {
+export async function restoreList(listId: string, expectedVersion: number): Promise<ListMutationResponse> {
   return listMutationResponseSchema.parse(
     await request<ListMutationResponse>(`/api/lists/${listId}/restore`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, expectedVersion })
+      body: JSON.stringify({ expectedVersion })
     })
   );
 }
 
-export async function deleteList(role: ActorRole, listId: string): Promise<void> {
+export async function deleteList(listId: string): Promise<void> {
   await request<void>(`/api/lists/${listId}`, {
     method: 'DELETE',
-    body: JSON.stringify({ actorRole: role, confirmed: true })
+    body: JSON.stringify({ confirmed: true })
   });
 }
 
-export async function addListItem(role: ActorRole, listId: string, body: string): Promise<ListItemMutationResponse> {
+export async function addListItem(listId: string, body: string): Promise<ListItemMutationResponse> {
   return listItemMutationResponseSchema.parse(
     await request<ListItemMutationResponse>(`/api/lists/${listId}/items`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, body })
+      body: JSON.stringify({ body })
     })
   );
 }
 
-export async function updateListItemBody(role: ActorRole, listId: string, itemId: string, expectedVersion: number, body: string): Promise<ListItemMutationResponse> {
+export async function updateListItemBody(listId: string, itemId: string, expectedVersion: number, body: string): Promise<ListItemMutationResponse> {
   return listItemMutationResponseSchema.parse(
     await request<ListItemMutationResponse>(`/api/lists/${listId}/items/${itemId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ actorRole: role, expectedVersion, body })
+      body: JSON.stringify({ expectedVersion, body })
     })
   );
 }
 
-export async function checkListItem(role: ActorRole, listId: string, itemId: string, expectedVersion: number): Promise<ListItemMutationResponse> {
+export async function checkListItem(listId: string, itemId: string, expectedVersion: number): Promise<ListItemMutationResponse> {
   return listItemMutationResponseSchema.parse(
     await request<ListItemMutationResponse>(`/api/lists/${listId}/items/${itemId}/check`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, expectedVersion })
+      body: JSON.stringify({ expectedVersion })
     })
   );
 }
 
-export async function uncheckListItem(role: ActorRole, listId: string, itemId: string, expectedVersion: number): Promise<ListItemMutationResponse> {
+export async function uncheckListItem(listId: string, itemId: string, expectedVersion: number): Promise<ListItemMutationResponse> {
   return listItemMutationResponseSchema.parse(
     await request<ListItemMutationResponse>(`/api/lists/${listId}/items/${itemId}/uncheck`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, expectedVersion })
+      body: JSON.stringify({ expectedVersion })
     })
   );
 }
 
-export async function removeListItem(role: ActorRole, listId: string, itemId: string): Promise<void> {
+export async function removeListItem(listId: string, itemId: string): Promise<void> {
   await request<void>(`/api/lists/${listId}/items/${itemId}`, {
     method: 'DELETE',
-    body: JSON.stringify({ actorRole: role, confirmed: true })
+    body: JSON.stringify({ confirmed: true })
   });
 }
 
-export async function clearCompletedItems(role: ActorRole, listId: string): Promise<BulkListActionResponse> {
+export async function clearCompletedItems(listId: string): Promise<BulkListActionResponse> {
   return bulkListActionResponseSchema.parse(
     await request<BulkListActionResponse>(`/api/lists/${listId}/clear-completed`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, confirmed: true })
+      body: JSON.stringify({ confirmed: true })
     })
   );
 }
 
-export async function uncheckAllItems(role: ActorRole, listId: string): Promise<BulkListActionResponse> {
+export async function uncheckAllItems(listId: string): Promise<BulkListActionResponse> {
   return bulkListActionResponseSchema.parse(
     await request<BulkListActionResponse>(`/api/lists/${listId}/uncheck-all`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, confirmed: true })
+      body: JSON.stringify({ confirmed: true })
     })
   );
 }
 
 // ─── Routine API clients ───────────────────────────────────────────────────────
 
-export async function fetchActiveRoutineIndex(role: ActorRole): Promise<ActiveRoutineIndexResponse> {
-  return activeRoutineIndexResponseSchema.parse(await request<ActiveRoutineIndexResponse>(`/api/routines?actorRole=${role}`));
+export async function fetchActiveRoutineIndex():Promise<ActiveRoutineIndexResponse> {
+  return activeRoutineIndexResponseSchema.parse(await request<ActiveRoutineIndexResponse>(`/api/routines`));
 }
 
-export async function fetchArchivedRoutineIndex(role: ActorRole): Promise<ArchivedRoutineIndexResponse> {
-  return archivedRoutineIndexResponseSchema.parse(await request<ArchivedRoutineIndexResponse>(`/api/routines/archived?actorRole=${role}`));
+export async function fetchArchivedRoutineIndex():Promise<ArchivedRoutineIndexResponse> {
+  return archivedRoutineIndexResponseSchema.parse(await request<ArchivedRoutineIndexResponse>(`/api/routines/archived`));
 }
 
-export async function fetchRoutineDetail(role: ActorRole, routineId: string): Promise<RoutineDetailResponse> {
-  return routineDetailResponseSchema.parse(await request<RoutineDetailResponse>(`/api/routines/${routineId}?actorRole=${role}`));
+export async function fetchRoutineDetail(routineId: string): Promise<RoutineDetailResponse> {
+  return routineDetailResponseSchema.parse(await request<RoutineDetailResponse>(`/api/routines/${routineId}`));
 }
 
 export async function createRoutine(
-  role: ActorRole,
+
   title: string,
   assigneeUserId: AssigneeUserId,
   recurrenceRule: RoutineRecurrenceRule,
@@ -488,13 +486,13 @@ export async function createRoutine(
   return routineMutationResponseSchema.parse(
     await request<RoutineMutationResponse>('/api/routines', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, title, assigneeUserId, recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks })
+      body: JSON.stringify({ title, assigneeUserId, recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks })
     })
   );
 }
 
 export async function updateRoutine(
-  role: ActorRole,
+
   routineId: string,
   expectedVersion: number,
   changes: { title?: string; assigneeUserId?: AssigneeUserId; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null; intervalWeeks?: number | null; weekdays?: number[] | null }
@@ -502,152 +500,152 @@ export async function updateRoutine(
   return routineMutationResponseSchema.parse(
     await request<RoutineMutationResponse>(`/api/routines/${routineId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ actorRole: role, routineId, expectedVersion, ...changes })
+      body: JSON.stringify({ routineId, expectedVersion, ...changes })
     })
   );
 }
 
-export async function completeRoutineOccurrence(role: ActorRole, routineId: string, expectedVersion: number): Promise<CompleteRoutineOccurrenceResponse> {
+export async function completeRoutineOccurrence(routineId: string, expectedVersion: number): Promise<CompleteRoutineOccurrenceResponse> {
   return completeRoutineOccurrenceResponseSchema.parse(
     await request<CompleteRoutineOccurrenceResponse>(`/api/routines/${routineId}/complete`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, routineId, expectedVersion })
+      body: JSON.stringify({ routineId, expectedVersion })
     })
   );
 }
 
-export async function pauseRoutine(role: ActorRole, routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
+export async function pauseRoutine(routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
   return routineMutationResponseSchema.parse(
     await request<RoutineMutationResponse>(`/api/routines/${routineId}/pause`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, routineId, expectedVersion, confirmed: true })
+      body: JSON.stringify({ routineId, expectedVersion, confirmed: true })
     })
   );
 }
 
-export async function resumeRoutine(role: ActorRole, routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
+export async function resumeRoutine(routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
   return routineMutationResponseSchema.parse(
     await request<RoutineMutationResponse>(`/api/routines/${routineId}/resume`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, routineId, expectedVersion })
+      body: JSON.stringify({ routineId, expectedVersion })
     })
   );
 }
 
-export async function archiveRoutine(role: ActorRole, routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
+export async function archiveRoutine(routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
   return routineMutationResponseSchema.parse(
     await request<RoutineMutationResponse>(`/api/routines/${routineId}/archive`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, routineId, expectedVersion, confirmed: true })
+      body: JSON.stringify({ routineId, expectedVersion, confirmed: true })
     })
   );
 }
 
-export async function restoreRoutine(role: ActorRole, routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
+export async function restoreRoutine(routineId: string, expectedVersion: number): Promise<RoutineMutationResponse> {
   return routineMutationResponseSchema.parse(
     await request<RoutineMutationResponse>(`/api/routines/${routineId}/restore`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, routineId, expectedVersion })
+      body: JSON.stringify({ routineId, expectedVersion })
     })
   );
 }
 
-export async function deleteRoutine(role: ActorRole, routineId: string): Promise<DeleteRoutineResponse> {
+export async function deleteRoutine(routineId: string): Promise<DeleteRoutineResponse> {
   return deleteRoutineResponseSchema.parse(
     await request<DeleteRoutineResponse>(`/api/routines/${routineId}`, {
       method: 'DELETE',
-      body: JSON.stringify({ actorRole: role, routineId, confirmed: true })
+      body: JSON.stringify({ routineId, confirmed: true })
     })
   );
 }
 
 // ─── Meal Plan API clients ────────────────────────────────────────────────────
 
-export async function fetchActiveMealPlanIndex(role: ActorRole): Promise<MealPlanIndexResponse> {
-  return mealPlanIndexResponseSchema.parse(await request<MealPlanIndexResponse>(`/api/meal-plans?actorRole=${role}`));
+export async function fetchActiveMealPlanIndex():Promise<MealPlanIndexResponse> {
+  return mealPlanIndexResponseSchema.parse(await request<MealPlanIndexResponse>(`/api/meal-plans`));
 }
 
-export async function fetchArchivedMealPlanIndex(role: ActorRole): Promise<MealPlanIndexResponse> {
-  return mealPlanIndexResponseSchema.parse(await request<MealPlanIndexResponse>(`/api/meal-plans/archived?actorRole=${role}`));
+export async function fetchArchivedMealPlanIndex():Promise<MealPlanIndexResponse> {
+  return mealPlanIndexResponseSchema.parse(await request<MealPlanIndexResponse>(`/api/meal-plans/archived`));
 }
 
-export async function fetchMealPlanDetail(role: ActorRole, planId: string): Promise<MealPlanDetailResponse> {
-  return mealPlanDetailResponseSchema.parse(await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}?actorRole=${role}`));
+export async function fetchMealPlanDetail(planId: string): Promise<MealPlanDetailResponse> {
+  return mealPlanDetailResponseSchema.parse(await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}`));
 }
 
-export async function createMealPlan(role: ActorRole, title: string, weekStartDate: string): Promise<MealPlanDetailResponse> {
+export async function createMealPlan(title: string, weekStartDate: string): Promise<MealPlanDetailResponse> {
   return mealPlanDetailResponseSchema.parse(
     await request<MealPlanDetailResponse>('/api/meal-plans', {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, title, weekStartDate })
+      body: JSON.stringify({ title, weekStartDate })
     })
   );
 }
 
-export async function updateMealPlanTitle(role: ActorRole, planId: string, expectedVersion: number, title: string): Promise<MealPlanDetailResponse> {
+export async function updateMealPlanTitle(planId: string, expectedVersion: number, title: string): Promise<MealPlanDetailResponse> {
   return mealPlanDetailResponseSchema.parse(
     await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ actorRole: role, title, expectedVersion })
+      body: JSON.stringify({ title, expectedVersion })
     })
   );
 }
 
-export async function archiveMealPlan(role: ActorRole, planId: string, expectedVersion: number): Promise<MealPlanDetailResponse> {
+export async function archiveMealPlan(planId: string, expectedVersion: number): Promise<MealPlanDetailResponse> {
   return mealPlanDetailResponseSchema.parse(
     await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}/archive`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, expectedVersion, confirmed: true })
+      body: JSON.stringify({ expectedVersion, confirmed: true })
     })
   );
 }
 
-export async function restoreMealPlan(role: ActorRole, planId: string, expectedVersion: number): Promise<MealPlanDetailResponse> {
+export async function restoreMealPlan(planId: string, expectedVersion: number): Promise<MealPlanDetailResponse> {
   return mealPlanDetailResponseSchema.parse(
     await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}/restore`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, expectedVersion })
+      body: JSON.stringify({ expectedVersion })
     })
   );
 }
 
-export async function deleteMealPlan(role: ActorRole, planId: string): Promise<void> {
+export async function deleteMealPlan(planId: string): Promise<void> {
   await request<void>(`/api/meal-plans/${planId}`, {
     method: 'DELETE',
-    body: JSON.stringify({ actorRole: role, confirmed: true })
+    body: JSON.stringify({ confirmed: true })
   });
 }
 
-export async function addMealEntry(role: ActorRole, planId: string, dayOfWeek: number, name: string): Promise<MealPlanDetailResponse> {
+export async function addMealEntry(planId: string, dayOfWeek: number, name: string): Promise<MealPlanDetailResponse> {
   return mealPlanDetailResponseSchema.parse(
     await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}/entries`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role, dayOfWeek, name })
+      body: JSON.stringify({ dayOfWeek, name })
     })
   );
 }
 
-export async function updateMealEntry(role: ActorRole, planId: string, entryId: string, expectedVersion: number, changes: { name?: string; shoppingItems?: string[] }): Promise<MealPlanDetailResponse> {
+export async function updateMealEntry(planId: string, entryId: string, expectedVersion: number, changes: { name?: string; shoppingItems?: string[] }): Promise<MealPlanDetailResponse> {
   return mealPlanDetailResponseSchema.parse(
     await request<MealPlanDetailResponse>(`/api/meal-plans/${planId}/entries/${entryId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ actorRole: role, expectedVersion, ...changes })
+      body: JSON.stringify({ expectedVersion, ...changes })
     })
   );
 }
 
-export async function deleteMealEntry(role: ActorRole, planId: string, entryId: string): Promise<void> {
+export async function deleteMealEntry(planId: string, entryId: string): Promise<void> {
   await request<void>(`/api/meal-plans/${planId}/entries/${entryId}`, {
     method: 'DELETE',
-    body: JSON.stringify({ actorRole: role, confirmed: true })
+    body: JSON.stringify({ confirmed: true })
   });
 }
 
-export async function generateGroceryList(role: ActorRole, planId: string): Promise<GenerateGroceryListResponse> {
+export async function generateGroceryList(planId: string): Promise<GenerateGroceryListResponse> {
   return generateGroceryListResponseSchema.parse(
     await request<GenerateGroceryListResponse>(`/api/meal-plans/${planId}/generate-grocery-list`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole: role })
+      body: JSON.stringify({})
     })
   );
 }
@@ -673,7 +671,6 @@ export async function fetchActivityHistory(): Promise<ActivityHistoryResponse> {
 export async function completeRitual(
   routineId: string,
   occurrenceId: string,
-  actorRole: ActorRole,
   carryForwardNotes: string | null,
   recapNarrative?: string | null,
   overviewNarrative?: string | null
@@ -681,7 +678,7 @@ export async function completeRitual(
   return completeRitualResponseSchema.parse(
     await request<CompleteRitualResponse>(`/api/routines/${routineId}/complete-ritual`, {
       method: 'POST',
-      body: JSON.stringify({ actorRole, occurrenceId, carryForwardNotes, recapNarrative, overviewNarrative })
+      body: JSON.stringify({ occurrenceId, carryForwardNotes, recapNarrative, overviewNarrative })
     })
   );
 }
@@ -699,27 +696,26 @@ export async function generateRitualSummary(
   return ritualSummaryResponseSchema.parse(res);
 }
 
-export async function fetchNudgesApi(role: ActorRole): Promise<NudgesResponse> {
-  const res = await request<NudgesResponse>(`/api/nudges?actorRole=${role}`);
+export async function fetchNudgesApi():Promise<NudgesResponse> {
+  const res = await request<NudgesResponse>(`/api/nudges`);
   return nudgesResponseSchema.parse(res);
 }
 
 export async function skipRoutineOccurrenceApi(
   routineId: string,
-  role: ActorRole,
+
   expectedVersion: number
 ): Promise<SkipRoutineOccurrenceResponse> {
   const res = await request<SkipRoutineOccurrenceResponse>(`/api/routines/${routineId}/skip`, {
     method: 'POST',
-    body: JSON.stringify({ actorRole: role, routineId, expectedVersion })
+    body: JSON.stringify({ routineId, expectedVersion })
   });
   return skipRoutineOccurrenceResponseSchema.parse(res);
 }
 
-export async function fetchReviewRecord(reviewRecordId: string, role?: ActorRole): Promise<ReviewRecord> {
-  const params = role ? `?role=${role}` : '';
+export async function fetchReviewRecord(reviewRecordId: string): Promise<ReviewRecord> {
   return reviewRecordSchema.parse(
-    await request<ReviewRecord>(`/api/review-records/${reviewRecordId}${params}`)
+    await request<ReviewRecord>(`/api/review-records/${reviewRecordId}`)
   );
 }
 
@@ -932,24 +928,22 @@ export async function fetchStaleItems(): Promise<StaleItemsResponse> {
 export async function confirmFreshness(
   entityType: string,
   entityId: string,
-  actorRole: ActorRole,
   expectedVersion: number
 ): Promise<{ newVersion: number }> {
   return request<{ newVersion: number }>('/api/freshness/confirm', {
     method: 'POST',
-    body: JSON.stringify({ entityType, entityId, actorRole, expectedVersion })
+    body: JSON.stringify({ entityType, entityId, expectedVersion })
   });
 }
 
 export async function archiveFreshnessEntity(
   entityType: string,
   entityId: string,
-  actorRole: ActorRole,
   expectedVersion: number
 ): Promise<{ newVersion: number }> {
   return request<{ newVersion: number }>('/api/freshness/archive', {
     method: 'POST',
-    body: JSON.stringify({ entityType, entityId, actorRole, expectedVersion })
+    body: JSON.stringify({ entityType, entityId, expectedVersion })
   });
 }
 

@@ -41,6 +41,7 @@ const validPushPayload = {
   }
 };
 
+const TEST_USER_ID = 'a0000000-0000-4000-a000-000000000001';
 const noApns = new DisabledApnsPushProvider();
 const makeLogger = () =>
   ({ info: () => {}, warn: () => {}, debug: () => {}, error: () => {} }) as unknown as Parameters<typeof evaluateDueReminderRule>[4];
@@ -50,7 +51,6 @@ async function createInboxItemViaApi(app: Awaited<ReturnType<typeof buildApp>>, 
     method: 'POST',
     url: '/api/inbox/items/preview-create',
     payload: {
-      actorRole: 'stakeholder',
       structuredInput: {
         title,
         assigneeUserId: null
@@ -63,7 +63,6 @@ async function createInboxItemViaApi(app: Awaited<ReturnType<typeof buildApp>>, 
     method: 'POST',
     url: '/api/inbox/items/confirm-create',
     payload: {
-      actorRole: 'stakeholder',
       draftId: previewBody.draftId,
       approved: true,
       finalItem: previewBody.parsedItem
@@ -82,7 +81,6 @@ async function createReminderViaApi(
     method: 'POST',
     url: '/api/reminders/preview-create',
     payload: {
-      actorRole: 'stakeholder',
       structuredInput: {
         title: 'Bring the vet records',
         assigneeUserId: null,
@@ -101,7 +99,6 @@ async function createReminderViaApi(
     method: 'POST',
     url: '/api/reminders/confirm-create',
     payload: {
-      actorRole: 'stakeholder',
       draftId: previewBody.draftId,
       approved: true,
       finalReminder: previewBody.parsedReminder
@@ -120,7 +117,6 @@ describe('household inbox api', () => {
       method: 'POST',
       url: '/api/inbox/items/preview-create',
       payload: {
-        actorRole: 'stakeholder',
         inputText: 'Add: schedule HVAC service, due next Friday'
       }
     });
@@ -130,7 +126,7 @@ describe('household inbox api', () => {
 
     const beforeConfirm = await app.inject({
       method: 'GET',
-      url: '/api/inbox/items?actorRole=stakeholder&view=all'
+      url: '/api/inbox/items?view=all'
     });
     expect(beforeConfirm.json().itemsByStatus.open).toHaveLength(0);
 
@@ -138,7 +134,6 @@ describe('household inbox api', () => {
       method: 'POST',
       url: '/api/inbox/items/confirm-create',
       payload: {
-        actorRole: 'stakeholder',
         draftId: previewBody.draftId,
         approved: true,
         finalItem: previewBody.parsedItem
@@ -149,7 +144,7 @@ describe('household inbox api', () => {
 
     const afterConfirm = await app.inject({
       method: 'GET',
-      url: '/api/inbox/items?actorRole=stakeholder&view=all'
+      url: '/api/inbox/items?view=all'
     });
     expect(afterConfirm.json().itemsByStatus.open).toHaveLength(1);
 
@@ -166,7 +161,6 @@ describe('household inbox api', () => {
       method: 'POST',
       url: '/api/inbox/items/preview-create',
       payload: {
-        actorRole: 'spouse',
         inputText: 'Add: order filters'
       }
     });
@@ -176,7 +170,7 @@ describe('household inbox api', () => {
 
     const spouseRead = await app.inject({
       method: 'GET',
-      url: '/api/inbox/items?actorRole=spouse&view=active'
+      url: '/api/inbox/items?view=active'
     });
 
     expect(spouseRead.statusCode).toBe(200);
@@ -193,7 +187,6 @@ describe('household inbox api', () => {
       method: 'POST',
       url: '/api/inbox/items/preview-create',
       payload: {
-        actorRole: 'stakeholder',
         inputText: 'Add: call the plumber'
       }
     });
@@ -203,7 +196,6 @@ describe('household inbox api', () => {
       method: 'POST',
       url: '/api/inbox/items/confirm-create',
       payload: {
-        actorRole: 'stakeholder',
         draftId: previewBody.draftId,
         approved: true,
         finalItem: previewBody.parsedItem
@@ -216,7 +208,6 @@ describe('household inbox api', () => {
       method: 'POST',
       url: '/api/inbox/items/confirm-update',
       payload: {
-        actorRole: 'stakeholder',
         itemId: created.id,
         expectedVersion: created.version,
         approved: true,
@@ -229,7 +220,6 @@ describe('household inbox api', () => {
       method: 'POST',
       url: '/api/inbox/items/confirm-update',
       payload: {
-        actorRole: 'stakeholder',
         itemId: created.id,
         expectedVersion: created.version,
         approved: true,
@@ -298,7 +288,7 @@ describe('reminder migrations and api', () => {
       .all() as Array<{ name: string }>;
 
     expect(repository.listItems()).toHaveLength(1);
-    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql', '0010_data_freshness.sql', '0011_routines_flexible_scheduling.sql', '0012_auth_identity.sql', '0013_user_attribution.sql', '0014_backfill_user_attribution.sql', '0015_dynamic_user_assignment.sql']);
+    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql', '0010_data_freshness.sql', '0011_routines_flexible_scheduling.sql', '0012_auth_identity.sql', '0013_user_attribution.sql', '0014_backfill_user_attribution.sql', '0015_dynamic_user_assignment.sql', '0016_remove_actor_role.sql']);
     expect(reminderTables.map((row) => row.name).sort()).toEqual([
       'notification_delivery_log',
       'reminder_notification_preferences',
@@ -326,7 +316,7 @@ describe('reminder migrations and api', () => {
 
     const listResponse = await app.inject({
       method: 'GET',
-      url: '/api/reminders?actorRole=stakeholder'
+      url: '/api/reminders'
     });
     expect(listResponse.statusCode).toBe(200);
     expect(listResponse.json().remindersByState.upcoming).toHaveLength(1);
@@ -335,7 +325,6 @@ describe('reminder migrations and api', () => {
       method: 'POST',
       url: '/api/reminders/confirm-update',
       payload: {
-        actorRole: 'stakeholder',
         reminderId: created.savedReminder.id,
         expectedVersion: created.savedReminder.version,
         approved: true,
@@ -352,7 +341,6 @@ describe('reminder migrations and api', () => {
       method: 'POST',
       url: '/api/reminders/snooze',
       payload: {
-        actorRole: 'stakeholder',
         reminderId: created.savedReminder.id,
         expectedVersion: updated.json().savedReminder.version,
         approved: true,
@@ -366,7 +354,6 @@ describe('reminder migrations and api', () => {
       method: 'POST',
       url: '/api/reminders/complete',
       payload: {
-        actorRole: 'stakeholder',
         reminderId: created.savedReminder.id,
         expectedVersion: snoozed.json().savedReminder.version,
         approved: true
@@ -378,7 +365,7 @@ describe('reminder migrations and api', () => {
 
     const detail = await app.inject({
       method: 'GET',
-      url: `/api/reminders/${created.savedReminder.id}?actorRole=stakeholder`
+      url: `/api/reminders/${created.savedReminder.id}`
     });
     expect(detail.statusCode).toBe(200);
     expect(detail.json().reminder.linkedInboxItem.title).toBe('Prep for the vet visit');
@@ -388,7 +375,7 @@ describe('reminder migrations and api', () => {
 
     const itemDetail = await app.inject({
       method: 'GET',
-      url: `/api/inbox/items/${inboxItem.id}?actorRole=stakeholder`
+      url: `/api/inbox/items/${inboxItem.id}`
     });
     expect(itemDetail.statusCode).toBe(200);
     expect(itemDetail.json().item.status).toBe('open');
@@ -401,7 +388,6 @@ describe('reminder migrations and api', () => {
       method: 'POST',
       url: '/api/reminders/cancel',
       payload: {
-        actorRole: 'stakeholder',
         reminderId: oneTimeReminder.savedReminder.id,
         expectedVersion: oneTimeReminder.savedReminder.version,
         approved: true
@@ -425,7 +411,7 @@ describe('reminder migrations and api', () => {
 
     const spouseList = await app.inject({
       method: 'GET',
-      url: '/api/reminders?actorRole=spouse'
+      url: '/api/reminders'
     });
     expect(spouseList.statusCode).toBe(200);
 
@@ -434,7 +420,6 @@ describe('reminder migrations and api', () => {
       method: 'POST',
       url: '/api/reminders/preview-create',
       payload: {
-        actorRole: 'spouse',
         structuredInput: {
           title: 'Order detergent',
           assigneeUserId: null,
@@ -449,7 +434,6 @@ describe('reminder migrations and api', () => {
       method: 'POST',
       url: '/api/reminders/confirm-update',
       payload: {
-        actorRole: 'stakeholder',
         reminderId: created.savedReminder.id,
         expectedVersion: created.savedReminder.version,
         approved: true,
@@ -462,7 +446,6 @@ describe('reminder migrations and api', () => {
       method: 'POST',
       url: '/api/reminders/snooze',
       payload: {
-        actorRole: 'stakeholder',
         reminderId: created.savedReminder.id,
         expectedVersion: created.savedReminder.version,
         approved: true,
@@ -484,7 +467,6 @@ describe('reminder migrations and api', () => {
       method: 'POST',
       url: '/api/reminders/preview-create',
       payload: {
-        actorRole: 'stakeholder',
         structuredInput: {
           title: 'Review camp forms',
           assigneeUserId: null,
@@ -500,7 +482,7 @@ describe('reminder migrations and api', () => {
 
     const settingsBefore = await app.inject({
       method: 'GET',
-      url: '/api/reminders/settings?actorRole=stakeholder'
+      url: '/api/reminders/settings'
     });
     expect(settingsBefore.statusCode).toBe(200);
     expect(settingsBefore.json().preferences.enabled).toBe(false);
@@ -509,7 +491,6 @@ describe('reminder migrations and api', () => {
       method: 'POST',
       url: '/api/reminders/settings',
       payload: {
-        actorRole: 'stakeholder',
         preferences: {
           enabled: true,
           dueRemindersEnabled: true,
@@ -521,10 +502,9 @@ describe('reminder migrations and api', () => {
 
     const settingsAfter = await app.inject({
       method: 'GET',
-      url: '/api/reminders/settings?actorRole=stakeholder'
+      url: '/api/reminders/settings'
     });
     expect(settingsAfter.json().preferences).toMatchObject({
-      actorRole: 'stakeholder',
       enabled: true,
       dueRemindersEnabled: true,
       dailySummaryEnabled: false
@@ -534,7 +514,6 @@ describe('reminder migrations and api', () => {
       method: 'POST',
       url: '/api/notifications/subscriptions',
       payload: {
-        actorRole: 'stakeholder',
         endpoint: 'https://push.example.com/demo',
         payload: { endpoint: 'https://push.example.com/demo' }
       }
@@ -546,7 +525,6 @@ describe('reminder migrations and api', () => {
       method: 'POST',
       url: '/api/notifications/subscriptions',
       payload: {
-        actorRole: 'stakeholder',
         endpoint: validPushPayload.endpoint,
         payload: validPushPayload
       }
@@ -577,7 +555,7 @@ describe('reminder notification jobs', () => {
     }, subDays(now, 2));
 
     repository.createReminder(dueReminder.reminder, dueReminder.timelineEntries);
-    repository.saveNotificationSubscription('stakeholder', 'https://push.example.com/demo-invalid', {
+    repository.saveNotificationSubscription(TEST_USER_ID, 'https://push.example.com/demo-invalid', {
       endpoint: 'https://push.example.com/demo-invalid'
     });
 
@@ -592,21 +570,21 @@ describe('reminder notification jobs', () => {
     const config = { ...createConfig(dbPath), notificationsEnabled: true };
     await evaluateDueReminderRule(repository, trackingPush, noApns, config, makeLogger(), now);
     expect(attempted).toHaveLength(0);
-    expect(repository.listNotificationDeliveries('stakeholder', 'due_reminder')).toHaveLength(0);
+    expect(repository.listNotificationDeliveries('household', 'due_reminder')).toHaveLength(0);
 
-    repository.saveReminderNotificationPreferences('stakeholder', {
+    repository.saveReminderNotificationPreferences(TEST_USER_ID, {
       enabled: true,
       dueRemindersEnabled: true,
       dailySummaryEnabled: false
     });
-    repository.saveNotificationSubscription('stakeholder', validPushPayload.endpoint, validPushPayload);
+    repository.saveNotificationSubscription(TEST_USER_ID, validPushPayload.endpoint, validPushPayload);
 
     await evaluateDueReminderRule(repository, trackingPush, noApns, config, makeLogger(), now);
     await evaluateDueReminderRule(repository, trackingPush, noApns, config, makeLogger(), now);
 
     expect(attempted).toHaveLength(1);
     expect(attempted[0]).toContain('due-reminder-');
-    expect(repository.listNotificationDeliveries('stakeholder', 'due_reminder')).toHaveLength(1);
+    expect(repository.listNotificationDeliveries('household', 'due_reminder')).toHaveLength(1);
 
     db.close();
     rmSync(directory, { recursive: true, force: true });
@@ -630,12 +608,12 @@ describe('reminder notification jobs', () => {
       linkedInboxItemId: null
     }, summaryWindowNow);
     repository.createReminder(activeReminder.reminder, activeReminder.timelineEntries);
-    repository.saveReminderNotificationPreferences('stakeholder', {
+    repository.saveReminderNotificationPreferences(TEST_USER_ID, {
       enabled: true,
       dueRemindersEnabled: false,
       dailySummaryEnabled: true
     });
-    repository.saveNotificationSubscription('stakeholder', validPushPayload.endpoint, validPushPayload);
+    repository.saveNotificationSubscription(TEST_USER_ID, validPushPayload.endpoint, validPushPayload);
 
     const attempted: string[] = [];
     const trackingPush: Parameters<typeof evaluateDailySummaryRule>[1] = {
@@ -651,7 +629,7 @@ describe('reminder notification jobs', () => {
     await evaluateDailySummaryRule(repository, trackingPush, noApns, config, makeLogger(), summaryWindowNow);
 
     expect(attempted).toEqual(['daily-summary-2026-03-14']);
-    expect(repository.listNotificationDeliveries('stakeholder', 'daily_summary')).toHaveLength(1);
+    expect(repository.listNotificationDeliveries('household', 'daily_summary')).toHaveLength(1);
 
     db.close();
     rmSync(directory, { recursive: true, force: true });
@@ -667,7 +645,7 @@ describe('shared list api', () => {
     const createRes = await app.inject({
       method: 'POST',
       url: '/api/lists',
-      payload: { actorRole: 'stakeholder', title: 'Grocery Run' }
+      payload: { title: 'Grocery Run' }
     });
     expect(createRes.statusCode).toBe(201);
     const { savedList } = createRes.json();
@@ -679,7 +657,7 @@ describe('shared list api', () => {
     const addRes = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items`,
-      payload: { actorRole: 'stakeholder', body: 'Oat milk' }
+      payload: { body: 'Oat milk' }
     });
     expect(addRes.statusCode).toBe(201);
     const { savedItem } = addRes.json();
@@ -690,7 +668,7 @@ describe('shared list api', () => {
     const checkRes = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items/${savedItem.id}/check`,
-      payload: { actorRole: 'stakeholder', expectedVersion: savedItem.version }
+      payload: { expectedVersion: savedItem.version }
     });
     expect(checkRes.statusCode).toBe(200);
     const checkedItem = checkRes.json().savedItem;
@@ -701,7 +679,7 @@ describe('shared list api', () => {
     const uncheckRes = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items/${savedItem.id}/uncheck`,
-      payload: { actorRole: 'stakeholder', expectedVersion: checkedItem.version }
+      payload: { expectedVersion: checkedItem.version }
     });
     expect(uncheckRes.statusCode).toBe(200);
     const uncheckedItem = uncheckRes.json().savedItem;
@@ -719,7 +697,7 @@ describe('shared list api', () => {
     const createRes = await app.inject({
       method: 'POST',
       url: '/api/lists',
-      payload: { actorRole: 'stakeholder', title: 'Packing List' }
+      payload: { title: 'Packing List' }
     });
     const { savedList } = createRes.json();
 
@@ -727,7 +705,7 @@ describe('shared list api', () => {
     const archiveRes = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/archive`,
-      payload: { actorRole: 'stakeholder', expectedVersion: savedList.version, confirmed: true }
+      payload: { expectedVersion: savedList.version, confirmed: true }
     });
     expect(archiveRes.statusCode).toBe(200);
     expect(archiveRes.json().savedList.status).toBe('archived');
@@ -735,14 +713,14 @@ describe('shared list api', () => {
     // Active index should not include the archived list
     const activeRes = await app.inject({
       method: 'GET',
-      url: '/api/lists?actorRole=stakeholder'
+      url: '/api/lists'
     });
     expect(activeRes.json().lists.find((l: { id: string }) => l.id === savedList.id)).toBeUndefined();
 
     // Archived index should include it
     const archivedRes = await app.inject({
       method: 'GET',
-      url: '/api/lists/archived?actorRole=stakeholder'
+      url: '/api/lists/archived'
     });
     expect(archivedRes.json().lists.find((l: { id: string }) => l.id === savedList.id)).toBeDefined();
 
@@ -750,7 +728,7 @@ describe('shared list api', () => {
     const restoreRes = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/restore`,
-      payload: { actorRole: 'stakeholder', expectedVersion: archiveRes.json().savedList.version }
+      payload: { expectedVersion: archiveRes.json().savedList.version }
     });
     expect(restoreRes.statusCode).toBe(200);
     expect(restoreRes.json().savedList.status).toBe('active');
@@ -766,7 +744,7 @@ describe('shared list api', () => {
     const createRes = await app.inject({
       method: 'POST',
       url: '/api/lists',
-      payload: { actorRole: 'stakeholder', title: 'To Delete' }
+      payload: { title: 'To Delete' }
     });
     const { savedList } = createRes.json();
 
@@ -774,7 +752,7 @@ describe('shared list api', () => {
     const badDeleteRes = await app.inject({
       method: 'DELETE',
       url: `/api/lists/${savedList.id}`,
-      payload: { actorRole: 'stakeholder' }
+      payload: {}
     });
     expect(badDeleteRes.statusCode).toBe(400);
 
@@ -782,14 +760,14 @@ describe('shared list api', () => {
     const deleteRes = await app.inject({
       method: 'DELETE',
       url: `/api/lists/${savedList.id}`,
-      payload: { actorRole: 'stakeholder', confirmed: true }
+      payload: { confirmed: true }
     });
     expect(deleteRes.statusCode).toBe(204);
 
     // List should be gone
     const getRes = await app.inject({
       method: 'GET',
-      url: `/api/lists/${savedList.id}?actorRole=stakeholder`
+      url: `/api/lists/${savedList.id}`
     });
     expect(getRes.statusCode).toBe(404);
 
@@ -805,22 +783,22 @@ describe('shared list api', () => {
     const createRes = await app.inject({
       method: 'POST',
       url: '/api/lists',
-      payload: { actorRole: 'stakeholder', title: 'Shared List' }
+      payload: { title: 'Shared List' }
     });
     const { savedList } = createRes.json();
     await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items`,
-      payload: { actorRole: 'stakeholder', body: 'Buy milk' }
+      payload: { body: 'Buy milk' }
     });
 
     // Spouse can read list index
-    const indexRes = await app.inject({ method: 'GET', url: '/api/lists?actorRole=spouse' });
+    const indexRes = await app.inject({ method: 'GET', url: '/api/lists' });
     expect(indexRes.statusCode).toBe(200);
     expect(indexRes.json().lists).toHaveLength(1);
 
     // Spouse can read list detail
-    const detailRes = await app.inject({ method: 'GET', url: `/api/lists/${savedList.id}?actorRole=spouse` });
+    const detailRes = await app.inject({ method: 'GET', url: `/api/lists/${savedList.id}` });
     expect(detailRes.statusCode).toBe(200);
     expect(detailRes.json().items).toHaveLength(1);
 
@@ -828,7 +806,7 @@ describe('shared list api', () => {
     const spouseCreateRes = await app.inject({
       method: 'POST',
       url: '/api/lists',
-      payload: { actorRole: 'spouse', title: 'Spouse List' }
+      payload: { title: 'Spouse List' }
     });
     expect(spouseCreateRes.statusCode).toBe(201);
 
@@ -836,7 +814,7 @@ describe('shared list api', () => {
     const spouseAddItemRes = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items`,
-      payload: { actorRole: 'spouse', body: 'Eggs' }
+      payload: { body: 'Eggs' }
     });
     expect(spouseAddItemRes.statusCode).toBe(201);
 
@@ -845,7 +823,7 @@ describe('shared list api', () => {
     const spouseCheckRes = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items/${items[0].id}/check`,
-      payload: { actorRole: 'spouse', expectedVersion: items[0].version }
+      payload: { expectedVersion: items[0].version }
     });
     expect(spouseCheckRes.statusCode).toBe(200);
 
@@ -860,7 +838,7 @@ describe('shared list api', () => {
     const createRes = await app.inject({
       method: 'POST',
       url: '/api/lists',
-      payload: { actorRole: 'stakeholder', title: 'Conflict Test' }
+      payload: { title: 'Conflict Test' }
     });
     const { savedList } = createRes.json();
 
@@ -868,7 +846,7 @@ describe('shared list api', () => {
     const conflictRes = await app.inject({
       method: 'PATCH',
       url: `/api/lists/${savedList.id}/title`,
-      payload: { actorRole: 'stakeholder', expectedVersion: 99, title: 'New Title' }
+      payload: { expectedVersion: 99, title: 'New Title' }
     });
     expect(conflictRes.statusCode).toBe(409);
     expect(conflictRes.json().code).toBe('VERSION_CONFLICT');
@@ -877,14 +855,14 @@ describe('shared list api', () => {
     const addRes = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items`,
-      payload: { actorRole: 'stakeholder', body: 'Test Item' }
+      payload: { body: 'Test Item' }
     });
     const { savedItem } = addRes.json();
 
     const itemConflictRes = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items/${savedItem.id}/check`,
-      payload: { actorRole: 'stakeholder', expectedVersion: 99 }
+      payload: { expectedVersion: 99 }
     });
     expect(itemConflictRes.statusCode).toBe(409);
 
@@ -899,7 +877,7 @@ describe('shared list api', () => {
     const createRes = await app.inject({
       method: 'POST',
       url: '/api/lists',
-      payload: { actorRole: 'stakeholder', title: 'Confirm Test' }
+      payload: { title: 'Confirm Test' }
     });
     const { savedList } = createRes.json();
 
@@ -907,7 +885,7 @@ describe('shared list api', () => {
     const badArchive = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/archive`,
-      payload: { actorRole: 'stakeholder', expectedVersion: savedList.version }
+      payload: { expectedVersion: savedList.version }
     });
     expect(badArchive.statusCode).toBe(400);
 
@@ -922,19 +900,19 @@ describe('shared list api', () => {
     const createRes = await app.inject({
       method: 'POST',
       url: '/api/lists',
-      payload: { actorRole: 'stakeholder', title: 'Summary Test' }
+      payload: { title: 'Summary Test' }
     });
     const { savedList } = createRes.json();
 
     const item1Res = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items`,
-      payload: { actorRole: 'stakeholder', body: 'Item A' }
+      payload: { body: 'Item A' }
     });
     const item2Res = await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items`,
-      payload: { actorRole: 'stakeholder', body: 'Item B' }
+      payload: { body: 'Item B' }
     });
     const item1 = item1Res.json().savedItem;
 
@@ -942,12 +920,12 @@ describe('shared list api', () => {
     await app.inject({
       method: 'POST',
       url: `/api/lists/${savedList.id}/items/${item1.id}/check`,
-      payload: { actorRole: 'stakeholder', expectedVersion: item1.version }
+      payload: { expectedVersion: item1.version }
     });
 
     const detailRes = await app.inject({
       method: 'GET',
-      url: `/api/lists/${savedList.id}?actorRole=stakeholder`
+      url: `/api/lists/${savedList.id}`
     });
     expect(detailRes.statusCode).toBe(200);
     const detail = detailRes.json();
@@ -972,7 +950,6 @@ describe('recurring routines api', () => {
       method: 'POST',
       url: '/api/routines',
       payload: {
-        actorRole: 'stakeholder',
         title: 'Take out trash',
         assigneeUserId: null,
         recurrenceRule: 'weekly',
@@ -985,12 +962,12 @@ describe('recurring routines api', () => {
     expect(savedRoutine.dueState).toBe('overdue');
 
     // List routines
-    const listRes = await app.inject({ method: 'GET', url: '/api/routines?actorRole=stakeholder' });
+    const listRes = await app.inject({ method: 'GET', url: '/api/routines' });
     expect(listRes.statusCode).toBe(200);
     expect(listRes.json().routines).toHaveLength(1);
 
     // Spouse can read
-    const spouseListRes = await app.inject({ method: 'GET', url: '/api/routines?actorRole=spouse' });
+    const spouseListRes = await app.inject({ method: 'GET', url: '/api/routines' });
     expect(spouseListRes.statusCode).toBe(200);
 
     // Spouse can also create routines (full write access)
@@ -998,7 +975,6 @@ describe('recurring routines api', () => {
       method: 'POST',
       url: '/api/routines',
       payload: {
-        actorRole: 'spouse',
         title: 'Spouse Routine',
         assigneeUserId: null,
         recurrenceRule: 'daily',
@@ -1011,7 +987,7 @@ describe('recurring routines api', () => {
     const completeRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/complete`,
-      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version }
+      payload: { expectedVersion: savedRoutine.version }
     });
     expect(completeRes.statusCode).toBe(200);
     const { savedRoutine: completedRoutine, occurrence } = completeRes.json();
@@ -1024,7 +1000,7 @@ describe('recurring routines api', () => {
     // Get routine detail including occurrence history
     const detailRes = await app.inject({
       method: 'GET',
-      url: `/api/routines/${savedRoutine.id}?actorRole=stakeholder`
+      url: `/api/routines/${savedRoutine.id}`
     });
     expect(detailRes.statusCode).toBe(200);
     const detail = detailRes.json();
@@ -1034,14 +1010,14 @@ describe('recurring routines api', () => {
     const pauseWithoutConfirm = await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/pause`,
-      payload: { actorRole: 'stakeholder', expectedVersion: completedRoutine.version }
+      payload: { expectedVersion: completedRoutine.version }
     });
     expect(pauseWithoutConfirm.statusCode).toBe(400); // missing confirmed: true
 
     const pauseRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/pause`,
-      payload: { actorRole: 'stakeholder', expectedVersion: completedRoutine.version, confirmed: true }
+      payload: { expectedVersion: completedRoutine.version, confirmed: true }
     });
     expect(pauseRes.statusCode).toBe(200);
     expect(pauseRes.json().savedRoutine.status).toBe('paused');
@@ -1053,7 +1029,7 @@ describe('recurring routines api', () => {
     const resumeRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/resume`,
-      payload: { actorRole: 'stakeholder', expectedVersion: pausedVersion }
+      payload: { expectedVersion: pausedVersion }
     });
     expect(resumeRes.statusCode).toBe(200);
     expect(resumeRes.json().savedRoutine.status).toBe('active');
@@ -1064,7 +1040,7 @@ describe('recurring routines api', () => {
     const archiveRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/archive`,
-      payload: { actorRole: 'stakeholder', expectedVersion: resumedVersion, confirmed: true }
+      payload: { expectedVersion: resumedVersion, confirmed: true }
     });
     expect(archiveRes.statusCode).toBe(200);
     expect(archiveRes.json().savedRoutine.status).toBe('archived');
@@ -1072,18 +1048,18 @@ describe('recurring routines api', () => {
     const archivedVersion = archiveRes.json().savedRoutine.version;
 
     // Original routine should be archived; spouse routine remains active
-    const activeAfterArchive = await app.inject({ method: 'GET', url: '/api/routines?actorRole=stakeholder' });
+    const activeAfterArchive = await app.inject({ method: 'GET', url: '/api/routines' });
     expect(activeAfterArchive.json().routines).toHaveLength(1);
     expect(activeAfterArchive.json().routines[0].title).toBe('Spouse Routine');
 
-    const archivedIndex = await app.inject({ method: 'GET', url: '/api/routines/archived?actorRole=stakeholder' });
+    const archivedIndex = await app.inject({ method: 'GET', url: '/api/routines/archived' });
     expect(archivedIndex.json().routines).toHaveLength(1);
 
     // Restore routine
     const restoreRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/restore`,
-      payload: { actorRole: 'stakeholder', expectedVersion: archivedVersion }
+      payload: { expectedVersion: archivedVersion }
     });
     expect(restoreRes.statusCode).toBe(200);
     expect(restoreRes.json().savedRoutine.status).toBe('active');
@@ -1095,14 +1071,14 @@ describe('recurring routines api', () => {
     const deleteRes = await app.inject({
       method: 'DELETE',
       url: `/api/routines/${savedRoutine.id}`,
-      payload: { actorRole: 'stakeholder', confirmed: true }
+      payload: { confirmed: true }
     });
     expect(deleteRes.statusCode).toBe(200);
     expect(deleteRes.json().deleted).toBe(true);
     void restoredVersion;
 
     // Original routine should be gone; spouse routine remains
-    const afterDelete = await app.inject({ method: 'GET', url: '/api/routines?actorRole=stakeholder' });
+    const afterDelete = await app.inject({ method: 'GET', url: '/api/routines' });
     expect(afterDelete.json().routines).toHaveLength(1);
     expect(afterDelete.json().routines[0].title).toBe('Spouse Routine');
 
@@ -1118,7 +1094,6 @@ describe('recurring routines api', () => {
       method: 'POST',
       url: '/api/routines',
       payload: {
-        actorRole: 'stakeholder',
         title: 'Deep clean',
         assigneeUserId: null,
         recurrenceRule: 'every_n_days',
@@ -1135,7 +1110,7 @@ describe('recurring routines api', () => {
     const completeRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/complete`,
-      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version }
+      payload: { expectedVersion: savedRoutine.version }
     });
     expect(completeRes.statusCode).toBe(200);
 
@@ -1143,7 +1118,7 @@ describe('recurring routines api', () => {
     const stalePauseRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/pause`,
-      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version, confirmed: true }
+      payload: { expectedVersion: savedRoutine.version, confirmed: true }
     });
     expect(stalePauseRes.statusCode).toBe(409);
     expect(stalePauseRes.json().code).toBe('VERSION_CONFLICT');
@@ -1215,7 +1190,6 @@ describe('unified weekly view api', () => {
       method: 'POST',
       url: '/api/routines',
       payload: {
-        actorRole: 'stakeholder',
         title: 'Daily vitamins',
         assigneeUserId: null,
         recurrenceRule: 'daily',
@@ -1248,7 +1222,6 @@ describe('unified weekly view api', () => {
       method: 'POST',
       url: '/api/routines',
       payload: {
-        actorRole: 'stakeholder',
         title: 'Watering plants',
         assigneeUserId: null,
         recurrenceRule: 'weekly',
@@ -1279,7 +1252,7 @@ describe('unified weekly view api', () => {
     const planRes = await app.inject({
       method: 'POST',
       url: '/api/meal-plans',
-      payload: { actorRole: 'stakeholder', title: 'Week of meals', weekStartDate: weekStart }
+      payload: { title: 'Week of meals', weekStartDate: weekStart }
     });
     expect(planRes.statusCode).toBe(201);
     const { plan: savedPlan } = planRes.json();
@@ -1287,7 +1260,7 @@ describe('unified weekly view api', () => {
     await app.inject({
       method: 'POST',
       url: `/api/meal-plans/${savedPlan.id}/entries`,
-      payload: { actorRole: 'stakeholder', dayOfWeek: 2, name: 'Pasta' }
+      payload: { dayOfWeek: 2, name: 'Pasta' }
     });
 
     const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
@@ -1328,13 +1301,12 @@ describe('unified weekly view api', () => {
     tuesday.setHours(12, 0, 0, 0);
 
     await createInboxItemViaApi(app, 'Call the vet');
-    const allRes = await app.inject({ method: 'GET', url: '/api/inbox/items?actorRole=stakeholder&view=all' });
+    const allRes = await app.inject({ method: 'GET', url: '/api/inbox/items?view=all' });
     const item = allRes.json().itemsByStatus.open[0];
     await app.inject({
       method: 'POST',
       url: '/api/inbox/items/confirm-update',
       payload: {
-        actorRole: 'stakeholder',
         itemId: item.id,
         expectedVersion: item.version,
         approved: true,
@@ -1357,13 +1329,12 @@ describe('unified weekly view api', () => {
     const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
 
     await createInboxItemViaApi(app, 'Old task');
-    const allRes = await app.inject({ method: 'GET', url: '/api/inbox/items?actorRole=stakeholder&view=all' });
+    const allRes = await app.inject({ method: 'GET', url: '/api/inbox/items?view=all' });
     const item = allRes.json().itemsByStatus.open[0];
     await app.inject({
       method: 'POST',
       url: '/api/inbox/items/confirm-update',
       payload: {
-        actorRole: 'stakeholder',
         itemId: item.id,
         expectedVersion: item.version,
         approved: true,
@@ -1389,14 +1360,14 @@ describe('unified weekly view api', () => {
     const listRes = await app.inject({
       method: 'POST',
       url: '/api/lists',
-      payload: { actorRole: 'stakeholder', title: 'Grocery list' }
+      payload: { title: 'Grocery list' }
     });
     expect(listRes.statusCode).toBe(201);
     const list = listRes.json().savedList;
     await app.inject({
       method: 'POST',
       url: `/api/lists/${list.id}/items`,
-      payload: { actorRole: 'stakeholder', body: 'Milk' }
+      payload: { body: 'Milk' }
     });
 
     const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
@@ -1459,7 +1430,6 @@ describe('unified weekly view api', () => {
       method: 'POST',
       url: '/api/routines',
       payload: {
-        actorRole: 'stakeholder',
         title: 'Paused routine',
         assigneeUserId: null,
         recurrenceRule: 'daily',
@@ -1471,7 +1441,7 @@ describe('unified weekly view api', () => {
     await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/pause`,
-      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version, confirmed: true }
+      payload: { expectedVersion: savedRoutine.version, confirmed: true }
     });
 
     const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
@@ -1522,7 +1492,6 @@ describe('activity history api', () => {
       method: 'POST',
       url: '/api/routines',
       payload: {
-        actorRole: 'stakeholder',
         title: 'Morning walk',
         assigneeUserId: null,
         recurrenceRule: 'daily',
@@ -1536,7 +1505,7 @@ describe('activity history api', () => {
     const completeRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/complete`,
-      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version }
+      payload: { expectedVersion: savedRoutine.version }
     });
     expect(completeRes.statusCode).toBe(200);
 
@@ -1563,7 +1532,6 @@ describe('activity history api', () => {
       method: 'POST',
       url: '/api/routines',
       payload: {
-        actorRole: 'stakeholder',
         title: 'Archived routine',
         assigneeUserId: null,
         recurrenceRule: 'daily',
@@ -1576,7 +1544,7 @@ describe('activity history api', () => {
     const completeRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/complete`,
-      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version }
+      payload: { expectedVersion: savedRoutine.version }
     });
     const { savedRoutine: completedRoutine } = completeRes.json();
 
@@ -1584,7 +1552,7 @@ describe('activity history api', () => {
     await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/archive`,
-      payload: { actorRole: 'stakeholder', expectedVersion: completedRoutine.version, confirmed: true }
+      payload: { expectedVersion: completedRoutine.version, confirmed: true }
     });
 
     const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
@@ -1604,7 +1572,7 @@ describe('activity history api', () => {
     await app.inject({
       method: 'POST',
       url: '/api/reminders/complete',
-      payload: { actorRole: 'stakeholder', reminderId: savedReminder.id, expectedVersion: savedReminder.version, approved: true }
+      payload: { reminderId: savedReminder.id, expectedVersion: savedReminder.version, approved: true }
     });
 
     const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
@@ -1625,7 +1593,7 @@ describe('activity history api', () => {
     await app.inject({
       method: 'POST',
       url: '/api/reminders/cancel',
-      payload: { actorRole: 'stakeholder', reminderId: savedReminder.id, expectedVersion: savedReminder.version, approved: true }
+      payload: { reminderId: savedReminder.id, expectedVersion: savedReminder.version, approved: true }
     });
 
     const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
@@ -1648,7 +1616,6 @@ describe('activity history api', () => {
       method: 'POST',
       url: '/api/inbox/items/confirm-update',
       payload: {
-        actorRole: 'stakeholder',
         itemId: item.id,
         expectedVersion: item.version,
         approved: true,
@@ -1687,19 +1654,19 @@ describe('activity history api', () => {
 
     const listRes = await app.inject({
       method: 'POST', url: '/api/lists',
-      payload: { actorRole: 'stakeholder', title: 'Grocery List' }
+      payload: { title: 'Grocery List' }
     });
     const list = listRes.json().savedList;
 
     const addRes = await app.inject({
       method: 'POST', url: `/api/lists/${list.id}/items`,
-      payload: { actorRole: 'stakeholder', body: 'Oat milk' }
+      payload: { body: 'Oat milk' }
     });
     const listItem = addRes.json().savedItem;
 
     await app.inject({
       method: 'POST', url: `/api/lists/${list.id}/items/${listItem.id}/check`,
-      payload: { actorRole: 'stakeholder', expectedVersion: listItem.version }
+      payload: { expectedVersion: listItem.version }
     });
 
     const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
@@ -1719,24 +1686,24 @@ describe('activity history api', () => {
 
     const listRes = await app.inject({
       method: 'POST', url: '/api/lists',
-      payload: { actorRole: 'stakeholder', title: 'Shopping' }
+      payload: { title: 'Shopping' }
     });
     const list = listRes.json().savedList;
 
     const addRes = await app.inject({
       method: 'POST', url: `/api/lists/${list.id}/items`,
-      payload: { actorRole: 'stakeholder', body: 'Butter' }
+      payload: { body: 'Butter' }
     });
     const listItem = addRes.json().savedItem;
     // Check then uncheck
     const checkRes = await app.inject({
       method: 'POST', url: `/api/lists/${list.id}/items/${listItem.id}/check`,
-      payload: { actorRole: 'stakeholder', expectedVersion: listItem.version }
+      payload: { expectedVersion: listItem.version }
     });
     const checkedItem = checkRes.json().savedItem;
     await app.inject({
       method: 'POST', url: `/api/lists/${list.id}/items/${listItem.id}/uncheck`,
-      payload: { actorRole: 'stakeholder', expectedVersion: checkedItem.version }
+      payload: { expectedVersion: checkedItem.version }
     });
 
     const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
@@ -1756,7 +1723,7 @@ describe('activity history api', () => {
     const lastMonday = lastWeekMonday();
     const createPlanRes = await app.inject({
       method: 'POST', url: '/api/meal-plans',
-      payload: { actorRole: 'stakeholder', title: 'Last week', weekStartDate: lastMonday }
+      payload: { title: 'Last week', weekStartDate: lastMonday }
     });
     expect(createPlanRes.statusCode).toBe(201);
     const plan = createPlanRes.json().plan;
@@ -1764,7 +1731,7 @@ describe('activity history api', () => {
     // Add a meal entry for Monday (dayOfWeek=0) of that plan
     const addEntryRes = await app.inject({
       method: 'POST', url: `/api/meal-plans/${plan.id}/entries`,
-      payload: { actorRole: 'stakeholder', dayOfWeek: 0, name: 'Pasta carbonara' }
+      payload: { dayOfWeek: 0, name: 'Pasta carbonara' }
     });
     expect(addEntryRes.statusCode).toBe(201);
 
@@ -1788,7 +1755,7 @@ describe('activity history api', () => {
     await app.inject({
       method: 'POST', url: '/api/inbox/items/confirm-update',
       payload: {
-        actorRole: 'stakeholder', itemId: item.id, expectedVersion: item.version,
+        itemId: item.id, expectedVersion: item.version,
         approved: true, proposedChange: { status: 'done' }
       }
     });
@@ -1815,7 +1782,7 @@ describe('activity history api', () => {
     await app.inject({
       method: 'POST', url: '/api/inbox/items/confirm-update',
       payload: {
-        actorRole: 'stakeholder', itemId: item1.id, expectedVersion: item1.version,
+        itemId: item1.id, expectedVersion: item1.version,
         approved: true, proposedChange: { status: 'done' }
       }
     });
@@ -1824,7 +1791,7 @@ describe('activity history api', () => {
     await app.inject({
       method: 'POST', url: '/api/inbox/items/confirm-update',
       payload: {
-        actorRole: 'stakeholder', itemId: item2.id, expectedVersion: item2.version,
+        itemId: item2.id, expectedVersion: item2.version,
         approved: true, proposedChange: { status: 'done' }
       }
     });
@@ -1848,7 +1815,7 @@ describe('activity history api', () => {
     await app.inject({
       method: 'POST', url: '/api/inbox/items/confirm-update',
       payload: {
-        actorRole: 'stakeholder', itemId: item.id, expectedVersion: item.version,
+        itemId: item.id, expectedVersion: item.version,
         approved: true, proposedChange: { status: 'done' }
       }
     });
@@ -1909,20 +1876,12 @@ describe('planning ritual AI summaries api', () => {
     const genRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${ritual.id}/generate-ritual-summary`,
-      payload: { actorRole: 'stakeholder', occurrenceId }
+      payload: { occurrenceId }
     });
     expect(genRes.statusCode).toBe(200);
     const genBody = genRes.json();
     expect(genBody).toHaveProperty('recapDraft');
     expect(genBody).toHaveProperty('overviewDraft');
-
-    // Spouse blocked
-    const spouseRes = await app.inject({
-      method: 'POST',
-      url: `/api/routines/${ritual.id}/generate-ritual-summary`,
-      payload: { actorRole: 'spouse', occurrenceId }
-    });
-    expect(spouseRes.statusCode).toBe(403);
 
     await app.close();
     rmSync(dir, { recursive: true, force: true });
@@ -1936,7 +1895,7 @@ describe('planning ritual AI summaries api', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/api/routines/00000000-0000-0000-0000-000000000000/generate-ritual-summary`,
-      payload: { actorRole: 'stakeholder', occurrenceId: randomUUID() }
+      payload: { occurrenceId: randomUUID() }
     });
     expect(res.statusCode).toBe(404);
 
@@ -1953,7 +1912,6 @@ describe('planning ritual AI summaries api', () => {
       method: 'POST',
       url: '/api/routines',
       payload: {
-        actorRole: 'stakeholder',
         title: 'Take out trash',
         assigneeUserId: null,
         recurrenceRule: 'weekly',
@@ -1966,7 +1924,7 @@ describe('planning ritual AI summaries api', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/api/routines/${savedRoutine.id}/generate-ritual-summary`,
-      payload: { actorRole: 'stakeholder', occurrenceId: randomUUID() }
+      payload: { occurrenceId: randomUUID() }
     });
     expect(res.statusCode).toBe(400);
 
@@ -1989,7 +1947,6 @@ describe('planning ritual AI summaries api', () => {
       method: 'POST',
       url: `/api/routines/${ritual.id}/complete-ritual`,
       payload: {
-        actorRole: 'stakeholder',
         occurrenceId,
         carryForwardNotes: null,
         recapNarrative: 'Last week was productive.',
@@ -2002,7 +1959,7 @@ describe('planning ritual AI summaries api', () => {
     // Stakeholder can read narrative fields
     const rrRes = await app.inject({
       method: 'GET',
-      url: `/api/review-records/${reviewRecordId}?role=stakeholder`
+      url: `/api/review-records/${reviewRecordId}`
     });
     expect(rrRes.statusCode).toBe(200);
     const rr = rrRes.json();
@@ -2013,7 +1970,7 @@ describe('planning ritual AI summaries api', () => {
     // Spouse can read narrative fields
     const spouseRrRes = await app.inject({
       method: 'GET',
-      url: `/api/review-records/${reviewRecordId}?role=spouse`
+      url: `/api/review-records/${reviewRecordId}`
     });
     expect(spouseRrRes.statusCode).toBe(200);
     expect(spouseRrRes.json().recapNarrative).toBe('Last week was productive.');
@@ -2036,7 +1993,6 @@ describe('planning ritual AI summaries api', () => {
       method: 'POST',
       url: `/api/routines/${ritual.id}/complete-ritual`,
       payload: {
-        actorRole: 'stakeholder',
         occurrenceId: randomUUID(),
         carryForwardNotes: 'Some notes here.'
       }
@@ -2046,7 +2002,7 @@ describe('planning ritual AI summaries api', () => {
 
     const rrRes = await app.inject({
       method: 'GET',
-      url: `/api/review-records/${reviewRecordId}?role=stakeholder`
+      url: `/api/review-records/${reviewRecordId}`
     });
     expect(rrRes.statusCode).toBe(200);
     const rr = rrRes.json();
@@ -2118,7 +2074,7 @@ describe('proactive household nudges api', () => {
     const { dir, dbPath } = makeDir();
     const app = await buildApp({ config: createConfig(dbPath) });
 
-    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    const res = await app.inject({ method: 'GET', url: '/api/nudges' });
     expect(res.statusCode).toBe(200);
     expect(res.json().nudges).toHaveLength(0);
 
@@ -2133,7 +2089,7 @@ describe('proactive household nudges api', () => {
     db.close();
 
     const app = await buildApp({ config: createConfig(dbPath) });
-    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    const res = await app.inject({ method: 'GET', url: '/api/nudges' });
     expect(res.statusCode).toBe(200);
     const { nudges } = res.json();
     expect(nudges).toHaveLength(1);
@@ -2152,7 +2108,7 @@ describe('proactive household nudges api', () => {
     db.close();
 
     const app = await buildApp({ config: createConfig(dbPath) });
-    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    const res = await app.inject({ method: 'GET', url: '/api/nudges' });
     expect(res.statusCode).toBe(200);
     const { nudges } = res.json();
     expect(nudges).toHaveLength(1);
@@ -2172,7 +2128,7 @@ describe('proactive household nudges api', () => {
       scheduledAt: addHours(new Date(), 2).toISOString()
     });
 
-    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    const res = await app.inject({ method: 'GET', url: '/api/nudges' });
     expect(res.statusCode).toBe(200);
     const { nudges } = res.json();
     expect(nudges).toHaveLength(1);
@@ -2193,7 +2149,7 @@ describe('proactive household nudges api', () => {
       scheduledAt: addHours(new Date(), 25).toISOString()
     });
 
-    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    const res = await app.inject({ method: 'GET', url: '/api/nudges' });
     expect(res.statusCode).toBe(200);
     expect(res.json().nudges).toHaveLength(0);
 
@@ -2212,11 +2168,11 @@ describe('proactive household nudges api', () => {
     const completeRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${routine.id}/complete`,
-      payload: { actorRole: 'stakeholder', expectedVersion: 1 }
+      payload: { expectedVersion: 1 }
     });
     expect(completeRes.statusCode).toBe(200);
 
-    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    const res = await app.inject({ method: 'GET', url: '/api/nudges' });
     expect(res.statusCode).toBe(200);
     expect(res.json().nudges).toHaveLength(0);
 
@@ -2238,7 +2194,7 @@ describe('proactive household nudges api', () => {
       scheduledAt: addHours(new Date(), 1).toISOString()
     });
 
-    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    const res = await app.inject({ method: 'GET', url: '/api/nudges' });
     expect(res.statusCode).toBe(200);
     const { nudges } = res.json();
     expect(nudges.length).toBeGreaterThanOrEqual(3);
@@ -2263,11 +2219,11 @@ describe('proactive household nudges api', () => {
     const completeRes = await app.inject({
       method: 'POST',
       url: '/api/reminders/complete',
-      payload: { actorRole: 'stakeholder', reminderId: reminder.id, expectedVersion: reminder.version, approved: true }
+      payload: { reminderId: reminder.id, expectedVersion: reminder.version, approved: true }
     });
     expect(completeRes.statusCode).toBe(200);
 
-    const res = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    const res = await app.inject({ method: 'GET', url: '/api/nudges' });
     expect(res.statusCode).toBe(200);
     expect(res.json().nudges).toHaveLength(0);
 
@@ -2286,7 +2242,7 @@ describe('proactive household nudges api', () => {
     const skipRes = await app.inject({
       method: 'POST',
       url: `/api/routines/${routine.id}/skip`,
-      payload: { actorRole: 'stakeholder', expectedVersion: 1 }
+      payload: { expectedVersion: 1 }
     });
     expect(skipRes.statusCode).toBe(200);
     const body = skipRes.json();
@@ -2308,7 +2264,7 @@ describe('proactive household nudges api', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/api/routines/${routine.id}/skip`,
-      payload: { actorRole: 'spouse', expectedVersion: 1 }
+      payload: { expectedVersion: 1 }
     });
     expect(res.statusCode).toBe(200);
 
@@ -2323,7 +2279,7 @@ describe('proactive household nudges api', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/api/routines/${randomUUID()}/skip`,
-      payload: { actorRole: 'stakeholder', expectedVersion: 1 }
+      payload: { expectedVersion: 1 }
     });
     expect(res.statusCode).toBe(404);
 
@@ -2342,7 +2298,7 @@ describe('proactive household nudges api', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/api/routines/${routine.id}/skip`,
-      payload: { actorRole: 'stakeholder', expectedVersion: 99 }
+      payload: { expectedVersion: 99 }
     });
     expect(res.statusCode).toBe(409);
 
@@ -2358,16 +2314,16 @@ describe('proactive household nudges api', () => {
 
     const app = await buildApp({ config: createConfig(dbPath) });
 
-    const before = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    const before = await app.inject({ method: 'GET', url: '/api/nudges' });
     expect(before.json().nudges.some((n: { entityId: string }) => n.entityId === routine.id)).toBe(true);
 
     await app.inject({
       method: 'POST',
       url: `/api/routines/${routine.id}/skip`,
-      payload: { actorRole: 'stakeholder', expectedVersion: 1 }
+      payload: { expectedVersion: 1 }
     });
 
-    const after = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
+    const after = await app.inject({ method: 'GET', url: '/api/nudges' });
     expect(after.json().nudges.some((n: { entityId: string }) => n.entityId === routine.id)).toBe(false);
 
     await app.close();

@@ -52,7 +52,7 @@ export function RemindersPage() {
 
   const reminderQuery = useQuery({
     queryKey: ['reminder-view', role],
-    queryFn: () => loadReminderView(role),
+    queryFn: () => loadReminderView(),
   });
 
   const { filteredReminders, counts } = useMemo(() => {
@@ -113,7 +113,7 @@ export function RemindersPage() {
   const handleCreateSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateSheet(false);
     try {
-      await confirmCreateReminderCommand(role, draft);
+      await confirmCreateReminderCommand(draft);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setBanner({ message: 'Reminder created', variant: 'mint' });
@@ -127,7 +127,7 @@ export function RemindersPage() {
     if (!snoozeTarget) return;
     setSnoozeTarget(null);
     try {
-      await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
+      await snoozeReminderCommand(snoozeTarget.id, snoozeTarget.version, isoString);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setBanner({ message: `😴 Snoozed until ${formatSnoozeUntil(isoString)}`, variant: 'sky' });

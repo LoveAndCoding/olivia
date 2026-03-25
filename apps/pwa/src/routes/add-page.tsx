@@ -36,7 +36,7 @@ export function AddPage() {
     setBusy(true);
     setError(null);
     try {
-      const response = await previewCreateCommand(role, inputText);
+      const response = await previewCreateCommand(inputText);
       setPreview(response);
     } catch (caughtError) {
       setError((caughtError as Error).message);
@@ -50,7 +50,7 @@ export function AddPage() {
     setBusy(true);
     setError(null);
     try {
-      const savedItem = await confirmCreateCommand(role, preview.parsedItem, preview.draftId);
+      const savedItem = await confirmCreateCommand(preview.parsedItem, preview.draftId);
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       navigate({ to: '/items/$itemId', params: { itemId: savedItem.id } });
@@ -66,7 +66,7 @@ export function AddPage() {
     setError(null);
     try {
       const id = crypto.randomUUID();
-      const savedItem = await confirmCreateCommand(role, {
+      const savedItem = await confirmCreateCommand({
         id,
         title: structuredTitle,
         assigneeUserId: structuredAssigneeUserId,

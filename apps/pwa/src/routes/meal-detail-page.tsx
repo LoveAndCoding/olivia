@@ -47,7 +47,7 @@ export function MealDetailPage() {
 
   const detailQuery = useQuery({
     queryKey: ['meal-plan-detail', role, params.planId],
-    queryFn: () => loadMealPlanDetail(role, params.planId),
+    queryFn: () => loadMealPlanDetail(params.planId),
   });
 
   const plan = detailQuery.data?.plan;
@@ -74,7 +74,7 @@ export function MealDetailPage() {
     setShowEditTitleSheet(false);
     setBusy(true);
     try {
-      await updateMealPlanTitleCommand(role, plan.id, plan.version, newTitle);
+      await updateMealPlanTitleCommand(plan.id, plan.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
     } catch (err) {
@@ -89,7 +89,7 @@ export function MealDetailPage() {
     setShowArchiveSheet(false);
     setBusy(true);
     try {
-      await archiveMealPlanCommand(role, plan.id, plan.version);
+      await archiveMealPlanCommand(plan.id, plan.version);
       await invalidate();
       showBanner('Archived', 'sky');
     } catch (err) {
@@ -104,7 +104,7 @@ export function MealDetailPage() {
     setShowDeletePlanSheet(false);
     setBusy(true);
     try {
-      await deleteMealPlanCommand(role, plan.id);
+      await deleteMealPlanCommand(plan.id);
       await invalidate();
       void navigate({ to: '/meals' });
     } catch (err) {
@@ -118,7 +118,7 @@ export function MealDetailPage() {
     if (!plan || !newMealName.trim()) return;
     setBusy(true);
     try {
-      await addMealEntryCommand(role, plan.id, dayOfWeek, newMealName.trim());
+      await addMealEntryCommand(plan.id, dayOfWeek, newMealName.trim());
       await invalidate();
       setNewMealDay(null);
       setNewMealName('');
@@ -133,7 +133,7 @@ export function MealDetailPage() {
     if (!plan) return;
     setBusy(true);
     try {
-      await updateMealEntryItemsCommand(role, plan.id, entry.id, entry.version, items);
+      await updateMealEntryItemsCommand(plan.id, entry.id, entry.version, items);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not update meal items');
@@ -147,7 +147,7 @@ export function MealDetailPage() {
     setDeleteMealTarget(null);
     setBusy(true);
     try {
-      await deleteMealEntryCommand(role, plan.id, deleteMealTarget.id);
+      await deleteMealEntryCommand(plan.id, deleteMealTarget.id);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not delete meal');
@@ -160,7 +160,7 @@ export function MealDetailPage() {
     if (!plan) return;
     setGenerating(true);
     try {
-      const result = await generateGroceryListCommand(role, plan.id);
+      const result = await generateGroceryListCommand(plan.id);
       await invalidate();
       void navigate({ to: '/lists/$listId', params: { listId: result.list.id } });
     } catch (err) {

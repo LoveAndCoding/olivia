@@ -43,7 +43,7 @@ export function MorePage() {
   // Get open item count for badge
   const itemQuery = useQuery({
     queryKey: ['inbox-view', role, 'active'],
-    queryFn: () => loadInboxView(role, 'active'),
+    queryFn: () => loadInboxView('active'),
   });
   const pendingCount = (itemQuery.data?.itemsByStatus.open.length ?? 0) + (itemQuery.data?.itemsByStatus.in_progress.length ?? 0);
 

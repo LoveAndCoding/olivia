@@ -228,8 +228,8 @@ export function SettingsPage() {
   const { role } = useRole();
   const queryClient = useQueryClient();
   const [activeTheme, setActiveTheme] = useState<ThemeMode>(readSavedTheme);
-  const notificationQuery = useQuery({ queryKey: ['notification-subscriptions', role], queryFn: () => loadNotificationState(role) });
-  const reminderSettingsQuery = useQuery({ queryKey: ['reminder-settings', role], queryFn: () => loadReminderSettings(role) });
+  const notificationQuery = useQuery({ queryKey: ['notification-subscriptions', role], queryFn: () => loadNotificationState() });
+  const reminderSettingsQuery = useQuery({ queryKey: ['reminder-settings', role], queryFn: () => loadReminderSettings() });
 
   const diagnostics = useLiveQuery(async () => {
     const pending = await clientDb.outbox.where('state').equals('pending').count();
@@ -274,7 +274,7 @@ export function SettingsPage() {
   useEffect(() => {
     if (!isNative) return;
     const registrationListener = PushNotifications.addListener('registration', (token) => {
-      void saveNativeNotificationSubscription(role, token.value);
+      void saveNativeNotificationSubscription(token.value);
     });
     const errorListener = PushNotifications.addListener('registrationError', (error) => {
       console.error('Push registration error:', error);
@@ -298,7 +298,7 @@ export function SettingsPage() {
       ...update,
     };
     try {
-      await saveReminderSettingsCommand(role, current);
+      await saveReminderSettingsCommand(current);
       await queryClient.invalidateQueries({ queryKey: ['reminder-settings', role] });
     } catch {
       // Offline or error — silently fail and let the UI reflect cached state
@@ -518,7 +518,7 @@ export function SettingsPage() {
                   }
                 } else {
                   if (typeof Notification !== 'undefined' && Notification.permission === 'default') await Notification.requestPermission();
-                  await saveDemoNotificationSubscription(role);
+                  await saveDemoNotificationSubscription();
                 }
                 await queryClient.invalidateQueries({ queryKey: ['notification-subscriptions', role] });
               }}

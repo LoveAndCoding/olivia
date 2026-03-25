@@ -65,7 +65,7 @@ export function ReviewRecordDetailPage() {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['review-record', reviewRecordId, role],
-    queryFn: () => loadReviewRecord(reviewRecordId, role),
+    queryFn: () => loadReviewRecord(reviewRecordId),
     staleTime: 60_000,
   });
 

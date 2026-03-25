@@ -51,12 +51,12 @@ export function ItemDetailPage() {
 
   const itemQuery = useQuery({
     queryKey: ['item-detail', role, params.itemId],
-    queryFn: () => loadItemDetail(role, params.itemId),
+    queryFn: () => loadItemDetail(params.itemId),
   });
 
   const reminderQuery = useQuery({
     queryKey: ['reminder-view', role],
-    queryFn: () => loadReminderView(role),
+    queryFn: () => loadReminderView(),
   });
 
   const linkedReminders = useMemo(() => {
@@ -87,7 +87,7 @@ export function ItemDetailPage() {
     setBusy(true);
     setError(null);
     try {
-      await confirmUpdateCommand(role, itemQuery.data.item.id, itemQuery.data.item.version, change);
+      await confirmUpdateCommand(itemQuery.data.item.id, itemQuery.data.item.version, change);
       await queryClient.invalidateQueries({ queryKey: ['item-detail', role, params.itemId] });
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
@@ -103,7 +103,7 @@ export function ItemDetailPage() {
   const handleCreateReminderSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateReminder(false);
     try {
-      await confirmCreateReminderCommand(role, draft);
+      await confirmCreateReminderCommand(draft);
       await invalidateReminders();
       showBanner('Reminder created', 'mint');
     } catch (err) {
@@ -113,7 +113,7 @@ export function ItemDetailPage() {
 
   const handleCompleteReminder = useCallback(async (reminder: Reminder) => {
     try {
-      await completeReminderCommand(role, reminder.id, reminder.version);
+      await completeReminderCommand(reminder.id, reminder.version);
       await invalidateReminders();
       showBanner('Done', 'mint');
     } catch (err) {
@@ -126,7 +126,7 @@ export function ItemDetailPage() {
     const target = snoozeReminder;
     setSnoozeReminder(null);
     try {
-      await snoozeReminderCommand(role, target.id, target.version, isoString);
+      await snoozeReminderCommand(target.id, target.version, isoString);
       await invalidateReminders();
       showBanner(`Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
     } catch (err) {
@@ -139,7 +139,7 @@ export function ItemDetailPage() {
     const target = cancelReminder;
     setCancelReminder(null);
     try {
-      await cancelReminderCommand(role, target.id, target.version);
+      await cancelReminderCommand(target.id, target.version);
       await invalidateReminders();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not cancel reminder');
@@ -151,7 +151,7 @@ export function ItemDetailPage() {
     const target = editReminder;
     setEditReminder(null);
     try {
-      await confirmUpdateReminderCommand(role, target.id, target.version, change);
+      await confirmUpdateReminderCommand(target.id, target.version, change);
       await invalidateReminders();
       showBanner('Updated', 'mint');
     } catch (err) {

@@ -602,7 +602,7 @@ export function ReviewFlowPage() {
 
   const routineQuery = useQuery({
     queryKey: ['routine-detail', routineId, role],
-    queryFn: () => loadRoutineDetail(role, routineId),
+    queryFn: () => loadRoutineDetail(routineId),
   });
 
   const routine = routineQuery.data?.routine;
@@ -703,7 +703,7 @@ export function ReviewFlowPage() {
 
     try {
       await submitRitualCompletion(
-        role, routineId, occurrenceId, routine.version,
+        routineId, occurrenceId, routine.version,
         notes.trim() || null,
         acceptedRecapNarrative,
         acceptedOverviewNarrative

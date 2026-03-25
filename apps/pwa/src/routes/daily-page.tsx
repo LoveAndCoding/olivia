@@ -149,7 +149,7 @@ export function DailyPage() {
   // Full reminder data (for segment view with filters)
   const reminderQuery = useQuery({
     queryKey: ['reminder-view', role],
-    queryFn: () => loadReminderView(role),
+    queryFn: () => loadReminderView(),
     enabled: activeSegment === 'reminders',
   });
 
@@ -206,7 +206,7 @@ export function DailyPage() {
   const handleCreateSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateSheet(false);
     try {
-      await confirmCreateReminderCommand(role, draft);
+      await confirmCreateReminderCommand(draft);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setBanner({ message: 'Reminder created', variant: 'mint' });
@@ -220,7 +220,7 @@ export function DailyPage() {
     if (!snoozeTarget) return;
     setSnoozeTarget(null);
     try {
-      await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
+      await snoozeReminderCommand(snoozeTarget.id, snoozeTarget.version, isoString);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setBanner({ message: `😴 Snoozed until ${formatSnoozeUntil(isoString)}`, variant: 'sky' });

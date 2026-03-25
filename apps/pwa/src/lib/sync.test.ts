@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
-  ActorRole,
   DraftReminder,
   OutboxCommand,
   Reminder,
@@ -12,7 +11,7 @@ import type {
 const stores = vi.hoisted(() => ({
   reminders: new Map<string, Reminder>(),
   timelines: new Map<string, ReminderTimelineEntry[]>(),
-  settings: new Map<ActorRole, ReminderNotificationPreferences>(),
+  settings: new Map<string, ReminderNotificationPreferences>(),
   outbox: [] as Array<OutboxCommand & { createdAt: string; state: 'pending' | 'conflict'; lastError?: string }>,
   meta: new Map<string, unknown>()
 }));
@@ -93,7 +92,7 @@ vi.mock('./client-db', async () => {
       stores.timelines.set(detail.reminder.id, detail.timeline);
     }),
     cacheReminderSettings: vi.fn(async (response: ReminderSettingsResponse) => {
-      stores.settings.set(response.preferences.actorRole, response.preferences);
+      stores.settings.set(response.preferences.userId, response.preferences);
     }),
     cacheReminderView,
     enqueueCommand: vi.fn(async (command: OutboxCommand, state: 'pending' | 'conflict' = 'pending', lastError?: string) => {
@@ -105,7 +104,11 @@ vi.mock('./client-db', async () => {
       const reminder = stores.reminders.get(reminderId);
       return reminder ? { reminder, timeline: stores.timelines.get(reminderId) ?? [] } : null;
     }),
-    getCachedReminderSettings: vi.fn(async (actorRole: ActorRole) => stores.settings.get(actorRole) ?? null),
+    getCachedReminderSettings: vi.fn(async (userId: string) => stores.settings.get(userId) ?? null),
+    getFirstCachedReminderSettings: vi.fn(async () => {
+      const first = stores.settings.values().next().value;
+      return first ?? null;
+    }),
     getCachedReminderTimeline: vi.fn(async (reminderId: string) => stores.timelines.get(reminderId) ?? []),
     listOutbox: vi.fn(async () => [...stores.outbox]),
     markOutboxConflict: vi.fn(async (commandId: string, errorMessage: string) => {
@@ -208,7 +211,7 @@ function createTimelineEntry(reminderId: string, eventType: ReminderTimelineEntr
   return {
     id: crypto.randomUUID(),
     reminderId,
-    actorRole: eventType === 'recurrence_advanced' ? 'system_rule' : 'stakeholder',
+    userId: eventType === 'recurrence_advanced' ? null : '00000000-0000-0000-0000-000000000001',
     eventType,
     fromValue: null,
     toValue: null,
@@ -238,8 +241,8 @@ describe('reminder sync flows', () => {
     setOnline(false);
     const draft = createDraftReminder();
 
-    const savedReminder = await confirmCreateReminderCommand('stakeholder', draft);
-    const cachedView = await loadReminderView('stakeholder');
+    const savedReminder = await confirmCreateReminderCommand(draft);
+    const cachedView = await loadReminderView();
 
     expect(savedReminder.pendingSync).toBe(true);
     expect(stores.outbox).toHaveLength(1);
@@ -259,8 +262,8 @@ describe('reminder sync flows', () => {
     stores.timelines.set(reminder.id, [createTimelineEntry(reminder.id, 'created')]);
 
     const snoozedUntil = new Date('2026-03-14T18:00:00.000Z').toISOString();
-    const snoozed = await snoozeReminderCommand('stakeholder', reminder.id, reminder.version, snoozedUntil);
-    const completed = await completeReminderCommand('stakeholder', reminder.id, snoozed.version);
+    const snoozed = await snoozeReminderCommand(reminder.id, reminder.version, snoozedUntil);
+    const completed = await completeReminderCommand(reminder.id, snoozed.version);
 
     expect(snoozed.pendingSync).toBe(true);
     expect(snoozed.snoozedUntil).toBe(snoozedUntil);
@@ -283,7 +286,6 @@ describe('reminder sync flows', () => {
       {
         kind: 'reminder_create',
         commandId: crypto.randomUUID(),
-        actorRole: 'stakeholder',
         approved: true,
         finalReminder: draft,
         createdAt: new Date('2026-03-14T08:00:00.000Z').toISOString(),
@@ -292,7 +294,6 @@ describe('reminder sync flows', () => {
       {
         kind: 'reminder_update',
         commandId: crypto.randomUUID(),
-        actorRole: 'stakeholder',
         reminderId,
         expectedVersion: 1,
         approved: true,
@@ -315,8 +316,8 @@ describe('reminder sync flows', () => {
 
     await flushOutbox();
 
-    expect(apiMocks.confirmCreateReminder).toHaveBeenCalledWith('stakeholder', draft);
-    expect(apiMocks.confirmUpdateReminder).toHaveBeenCalledWith('stakeholder', reminderId, 1, { title: updatedReminder.title });
+    expect(apiMocks.confirmCreateReminder).toHaveBeenCalledWith(draft);
+    expect(apiMocks.confirmUpdateReminder).toHaveBeenCalledWith(reminderId, 1, { title: updatedReminder.title });
     expect(stores.outbox).toHaveLength(0);
     expect(stores.reminders.get(reminderId)).toMatchObject({
       id: reminderId,
@@ -334,7 +335,6 @@ describe('reminder sync flows', () => {
     stores.outbox.push({
       kind: 'reminder_complete',
       commandId: crypto.randomUUID(),
-      actorRole: 'stakeholder',
       reminderId,
       expectedVersion: 2,
       approved: true,
@@ -354,7 +354,7 @@ describe('reminder sync flows', () => {
   it('loads reminder settings from the server, caches them, and falls back offline', async () => {
     const response: ReminderSettingsResponse = {
       preferences: {
-        actorRole: 'stakeholder',
+        userId: '00000000-0000-0000-0000-000000000001',
         enabled: true,
         dueRemindersEnabled: true,
         dailySummaryEnabled: false,
@@ -364,9 +364,9 @@ describe('reminder sync flows', () => {
 
     apiMocks.fetchReminderSettings.mockResolvedValue(response);
 
-    const online = await loadReminderSettings('stakeholder');
+    const online = await loadReminderSettings();
     setOnline(false);
-    const offline = await loadReminderSettings('stakeholder');
+    const offline = await loadReminderSettings();
 
     expect(online).toEqual(response);
     expect(offline).toEqual(response);
@@ -375,7 +375,7 @@ describe('reminder sync flows', () => {
   it('saves reminder settings online and rejects offline writes', async () => {
     const response: ReminderSettingsResponse = {
       preferences: {
-        actorRole: 'stakeholder',
+        userId: '00000000-0000-0000-0000-000000000001',
         enabled: true,
         dueRemindersEnabled: false,
         dailySummaryEnabled: true,
@@ -385,7 +385,7 @@ describe('reminder sync flows', () => {
 
     apiMocks.saveReminderSettings.mockResolvedValue(response);
 
-    const saved = await saveReminderSettingsCommand('stakeholder', {
+    const saved = await saveReminderSettingsCommand({
       enabled: true,
       dueRemindersEnabled: false,
       dailySummaryEnabled: true
@@ -395,7 +395,7 @@ describe('reminder sync flows', () => {
 
     setOnline(false);
     await expect(
-      saveReminderSettingsCommand('stakeholder', {
+      saveReminderSettingsCommand({
         enabled: false,
         dueRemindersEnabled: false,
         dailySummaryEnabled: false
