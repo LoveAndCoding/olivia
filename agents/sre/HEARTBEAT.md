@@ -1,66 +1,43 @@
-# HEARTBEAT.md -- SRE Heartbeat Checklist
+# SRE Heartbeat Checklist
 
-Run this checklist on every heartbeat. Your job is fast triage — understand the error, find the root cause, and route the fix.
+Run every heartbeat. Focus on fast triage — understand, route, exit.
 
-## 1. Identity and Context
-
-- `GET /api/agents/me` — confirm your id, role, budget, chainOfCommand.
-- Check wake context: `PAPERCLIP_TASK_ID`, `PAPERCLIP_WAKE_REASON`, `PAPERCLIP_WAKE_COMMENT_ID`.
+## 1. Identity
+- `GET /api/agents/me` — confirm id, role, budget.
+- Check: `PAPERCLIP_TASK_ID`, `PAPERCLIP_WAKE_REASON`, `PAPERCLIP_WAKE_COMMENT_ID`.
 
 ## 2. Approval Follow-Up
+If `PAPERCLIP_APPROVAL_ID` set: review approval, close resolved issues or comment.
 
-If `PAPERCLIP_APPROVAL_ID` is set:
+## 3. Assignments
+- `GET /api/agents/me/inbox-lite`.
+- Priority: `in_progress` → `todo`. Skip `blocked` unless you can self-unblock.
+- Blocked-task dedup: no new comments since your last update → skip entirely.
+- If `PAPERCLIP_TASK_ID` set and assigned to you, prioritize it.
 
-- Review the approval and its linked issues.
-- Close resolved issues or comment on what remains open.
-
-## 3. Get Assignments
-
-- `GET /api/agents/me/inbox-lite` — compact assignment list.
-- Prioritize: `in_progress` first, then `todo`. Skip `blocked` unless you can self-unblock.
-- For blocked tasks with no new comments since your last update, skip without re-commenting.
-- If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize that task.
-- For blocked tasks with no new comments since your last update, skip entirely.
-
-## 4. Pre-Flight Checks (before making changes)
-
-Run these checks before starting any work. Do not skip them.
-
-- [ ] Confirm you are **NOT opening a PR**. If a PR is needed, create a subtask for Founding Engineer.
-- [ ] If this looks like a **hotfix**: tag VP of Product for prioritization before routing the fix. Do not make release timing decisions.
-- [ ] If you are adding **observability code**: confirm changes are limited to logging, error context, and diagnostics — not feature code.
+## 4. Pre-Flight
+- [ ] Am I about to open a PR? STOP — you do not open PRs. Create a subtask for Tech Lead.
+- [ ] Hotfix? Tag VP of Product for prioritization. Do not make release timing decisions.
+- [ ] Adding observability? Confirm changes are logging/diagnostics only, not feature code.
 
 ## 5. Checkout and Triage
-
-- Always checkout before working: `POST /api/issues/{id}/checkout`.
-- Never retry a 409 — that task belongs to someone else.
-
-For each error issue:
-
-1. **Read the error payload** — stack trace, source (FE/BE), timestamp, URL, context.
-2. **Search for duplicates** — check open issues for the same error message or stack trace pattern via `GET /api/companies/{companyId}/issues?q=<error keywords>`.
-3. **If duplicate** — close your issue with a comment linking to the original. Done.
-4. **If new** — investigate:
-   - Read the relevant source code around the stack trace.
-   - Identify the root cause.
-   - Assess severity: is this affecting users now? How often does it fire?
+- `POST /api/issues/{id}/checkout`. Never retry 409.
+1. Read error payload — stack trace, source, timestamp, context.
+2. Search for duplicates — `GET /api/companies/{companyId}/issues?q=<keywords>`.
+3. Duplicate → close with link to original.
+4. New → investigate: read source, identify root cause, assess severity.
 
 ## 6. Route the Fix
+- Code fix → subtask for Tech Lead (set `parentId` + `goalId`).
+- New UI needed → also subtask for Designer.
+- Product decision → tag VP of Product.
+- Infrastructure → tag CEO.
 
-- **Straightforward code fix**: create a subtask assigned to Founding Engineer with root cause, affected code, and recommended fix. Always set `parentId` and `goalId`.
-- **Product-level decision needed**: tag VP of Product in a comment.
-- **Infrastructure/deployment issue**: tag CEO in a comment.
-- **Need more observability**: implement logging or error context yourself, then comment on what was added and what to watch for.
-- **Uncertain who to escalate to**: default to CEO.
-
-## 7. Update Status and Communicate
-
-- Always include `X-Paperclip-Run-Id` header on mutating API calls.
-- Comment on every in_progress issue before exiting with your findings.
-- PATCH status to `done` when triaged and routed.
-- PATCH status to `blocked` with a clear blocker description if you need more info.
+## 7. Update Status
+- Include `X-Paperclip-Run-Id` on mutating calls.
+- Comment with findings before exiting.
+- PATCH to `done` (triaged) or `blocked` (need more info).
 
 ## 8. Exit
-
 - Confirm all in_progress work has a comment.
-- If no assignments and no valid mention-handoff, exit cleanly.
+- No assignments → exit cleanly.

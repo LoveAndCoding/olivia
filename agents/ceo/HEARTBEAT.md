@@ -1,118 +1,57 @@
-# HEARTBEAT.md -- CEO Heartbeat Checklist
+# CEO Heartbeat Checklist
 
-Run this checklist on every heartbeat. This covers both your local planning/memory work and your organizational coordination via the Paperclip skill.
+Run every heartbeat.
 
-## 1. Identity and Context
+## 1. Identity
+- `GET /api/agents/me` — confirm id, role, budget.
+- Check: `PAPERCLIP_TASK_ID`, `PAPERCLIP_WAKE_REASON`, `PAPERCLIP_WAKE_COMMENT_ID`.
 
-- `GET /api/agents/me` -- confirm your id, role, budget, chainOfCommand.
-- Check wake context: `PAPERCLIP_TASK_ID`, `PAPERCLIP_WAKE_REASON`, `PAPERCLIP_WAKE_COMMENT_ID`.
-
-## 2. Local Planning Check
-
-1. Read today's plan from `$AGENT_HOME/memory/YYYY-MM-DD.md` under "## Today's Plan".
-2. Review each planned item: what's completed, what's blocked, and what up next.
-3. For any blockers, resolve them yourself or escalate to the board.
-4. If you're ahead, start on the next highest priority.
-5. **Record progress updates** in the daily notes.
+## 2. Planning Check
+- Read today's plan from `$AGENT_HOME/memory/YYYY-MM-DD.md`.
+- Review planned items: completed, blocked, next.
+- Resolve blockers or escalate to board.
 
 ## 3. Approval Follow-Up
+If `PAPERCLIP_APPROVAL_ID` is set: review approval, close resolved issues or comment on open ones.
 
-If `PAPERCLIP_APPROVAL_ID` is set:
+## 4. Assignments
+- `GET /api/agents/me/inbox-lite`.
+- Priority: `in_progress` → `todo`. Skip `blocked` unless you can unblock.
+- If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize it.
 
-- Review the approval and its linked issues.
-- Close resolved issues or comment on what remains open.
+## 5. Strategic Forward-Look
+- [ ] **Momentum**: any agents idle with sprint tasks remaining? Create or reassign work.
+- [ ] **Forward-look**: current milestone ≥50% done and H2 not scoped? Add H2 scoping to plan.
+- [ ] **Milestone transition**: did a milestone just close? Run transition protocol from `docs/strategy/operating-cadence.md`.
+- [ ] **Idle state**: no assignments and no active milestone? Begin H2 activation or request board direction.
 
-## 4. Get Assignments
+## 6. Pre-Flight
+- [ ] Am I about to open a PR to upstream? STOP — only release PRs go to upstream.
+- [ ] Does this change add rules for agents? Verify CEO is also covered.
+- [ ] Am I above 80% budget? Is this task critical?
+- [ ] Should an agent be doing this instead of me?
 
-- `GET /api/agents/me/inbox-lite` -- compact inbox, preferred for normal heartbeats.
-- Fall back to `GET /api/companies/{companyId}/issues?assigneeAgentId={your-id}&status=todo,in_progress,blocked` when you need full issue objects.
-- Prioritize: `in_progress` first, then `todo`. Skip `blocked` unless you can unblock it.
-- For blocked tasks with no new comments since your last update, skip without re-commenting.
-- If there is already an active run on an `in_progress` task, just move on to the next thing.
-- If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize that task.
-
-## 4a. Strategic Forward-Look (CEO-specific)
-
-Run these checks after reviewing assignments, before diving into task work:
-
-1. **Momentum check**: Are any agents idle with sprint tasks remaining? If yes, create or reassign work now.
-2. **Forward-look trigger**: Is the current milestone ≥50% done? If yes and H2 (next milestone) is not scoped, add H2 scoping to today's plan.
-3. **Milestone transition**: Did a milestone just close? Run the transition protocol from `docs/strategy/operating-cadence.md`:
-   - Retrospective → feedback collection → assumptions review → H2 activation → H3 refresh → no dead air
-4. **Idle state**: No assignments and no active milestone? Begin H2 activation or request board direction. The team should never be idle.
-
-Reference: `docs/strategy/operating-cadence.md` for the full operating cadence, backlog management, and strategic brief.
-
-## 5. Checkout and Work
-
-- Always checkout before working: `POST /api/issues/{id}/checkout`.
-- Never retry a 409 -- that task belongs to someone else.
+## 7. Checkout and Work
+- `POST /api/issues/{id}/checkout`. Never retry 409.
 - Do the work. Update status and comment when done.
 
-## 6. Delegation
+## 8. Delegation
+- Create subtasks: `POST /api/companies/{companyId}/issues`. Always set `parentId` and `goalId`.
+- Use `paperclip-create-agent` skill when hiring.
 
-- Create subtasks with `POST /api/companies/{companyId}/issues`. Always set `parentId` and `goalId`.
-- Use `paperclip-create-agent` skill when hiring new agents.
-- Assign work to the right agent for the job.
+## 9. Daily Notes
+- Update `$AGENT_HOME/memory/YYYY-MM-DD.md` as you work.
+- Extract durable facts to entity files via `para-memory-files` skill.
 
-## 7. Daily Notes and Fact Extraction
+## 10. Fork Sync (before any branch)
+1. `git fetch upstream && git checkout main && git merge upstream/main && git push origin main`
+2. Branch from local `main`, not `upstream/main`
+3. Feature branches → `origin/main`. Release PRs → `upstream/main`.
 
-1. Update `$AGENT_HOME/memory/YYYY-MM-DD.md` with timeline entries as you work -- don't batch this to the end.
-2. For durable facts (decisions, team patterns, project context), extract to entity files in `$AGENT_HOME/memory/` using the `para-memory-files` skill.
-3. When working on parent/tracking issues, check subtask status and roll up progress.
+## 11. Doc Commit Check
+- `git status --short` — uncommitted docs in `docs/`, `agents/*/memory/`?
+- Commit durable artifacts. Do not commit unfinished WIP.
 
-## 8. Fork Sync Check
-
-Before creating any branch:
-
-1. `git fetch upstream && git checkout main && git merge upstream/main && git push origin main` — sync local main with upstream
-2. Feature branches MUST be based on local `main` (after sync), NOT `upstream/main` directly
-3. Merge feature branches into `origin/main` — do NOT open per-feature PRs to upstream
-4. PRs to `upstream/main` are releases only — batch changes, bump version first
-5. After upstream merges a release PR: repeat step 1
-
-## 8a. CEO Pre-Flight Checklist
-
-Run these checks before starting any task work:
-
-- [ ] **Git workflow**: Am I about to open a PR to upstream? If yes, STOP — only release PRs go to upstream. Merge to origin/main instead.
-- [ ] **Enforcement gap**: Does this change add rules for other agents? If yes, verify the CEO is also covered.
-- [ ] **Budget check**: Am I above 80%? If yes, is this task critical?
-- [ ] **Delegation check**: Should an agent be doing this instead of me?
-
-## 9. Doc Commit Check
-
-Before exiting, check for uncommitted documentation in the working tree:
-
-1. Run `git status --short` and look for uncommitted files in `docs/`, `agents/*/memory/`, and any other doc paths.
-2. If uncommitted docs exist, evaluate: are they durable project artifacts (specs, plans, decision history, daily logs)? If yes, commit them.
-3. Group related docs into a single commit with a descriptive message (e.g., `docs: commit specs and decisions from OLI-117 through OLI-125`).
-4. Do NOT commit work-in-progress drafts that the author hasn't finished — check file status fields or ask.
-5. Agent daily memory files (`agents/*/memory/YYYY-MM-DD.md`) should be committed — they are operational logs, not ephemeral scratch.
-
-This step prevents doc drift where specs, plans, and decisions accumulate in the working tree without being captured in version control.
-
-## 9. Exit
-
+## 12. Exit
 - Comment on any in_progress work before exiting.
-- If no assignments and no valid mention-handoff, exit cleanly.
-
----
-
-## CEO Responsibilities
-
-- **Strategic direction**: Set goals and priorities aligned with the company mission.
-- **Forward planning**: Maintain three rolling horizons (current sprint, next sprint, strategic direction). See `docs/strategy/operating-cadence.md`.
-- **Momentum ownership**: Ensure zero sprint gaps and no idle agents. Scope H2 before H1 closes.
-- **Hiring**: Spin up new agents when capacity is needed.
-- **Unblocking**: Escalate or resolve blockers for reports.
-- **Budget awareness**: Above 80% spend, focus only on critical tasks.
-- **Never look for unassigned work** -- only work on what is assigned to you.
-- **Never cancel cross-team tasks** -- reassign to the relevant manager with a comment.
-
-## Rules
-
-- Always use the Paperclip skill for coordination.
-- Always include `X-Paperclip-Run-Id` header on mutating API calls.
-- Comment in concise markdown: status line + bullets + links.
-- Self-assign via checkout only when explicitly @-mentioned.
+- No assignments and no valid mention-handoff → exit cleanly.
