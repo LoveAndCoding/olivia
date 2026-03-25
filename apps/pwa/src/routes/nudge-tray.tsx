@@ -326,7 +326,7 @@ interface NudgeTrayProps {
 export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const isSpouse = role === 'spouse';
+  const isSpouse = false; // M32: all authenticated users have write access
 
   const displayed = nudges.slice(0, NUDGE_MAX_DISPLAY_COUNT);
   const overflowCount = nudges.length - NUDGE_MAX_DISPLAY_COUNT;

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CheckCircle } from '@phosphor-icons/react';
-import { useRole } from '../lib/role';
+import { useActorRole } from '../lib/auth';
 import {
   fetchStaleItems,
   confirmFreshness,
@@ -33,8 +33,7 @@ const TYPE_ORDER = ['routine', 'reminder', 'list', 'inbox', 'mealPlan'];
 export function HealthCheckPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { role } = useRole();
-  const isSpouse = role === 'spouse';
+  const role = useActorRole();
 
   const [items, setItems] = useState<StaleItem[]>([]);
   const [totalStaleCount, setTotalStaleCount] = useState(0);
@@ -254,7 +253,7 @@ export function HealthCheckPage() {
                   <button
                     type="button"
                     className={`health-check-item__btn health-check-item__btn--primary${checkedId === item.entityId ? ' health-check-item__btn--checked' : ''}`}
-                    disabled={isSpouse || collapsingIds.has(item.entityId)}
+                    disabled={collapsingIds.has(item.entityId)}
                     onClick={() => void handleStillActive(item)}
                   >
                     {checkedId === item.entityId ? '\u2713' : 'Still active'}
@@ -263,7 +262,7 @@ export function HealthCheckPage() {
                     <button
                       type="button"
                       className="health-check-item__btn health-check-item__btn--secondary"
-                      disabled={isSpouse || collapsingIds.has(item.entityId)}
+                      disabled={collapsingIds.has(item.entityId)}
                       onClick={() => setArchiveTarget(item)}
                     >
                       Archive

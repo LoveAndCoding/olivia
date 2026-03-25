@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { CheckSquare, ClockCounterClockwise, CalendarBlank, GearSix, CaretRight } from '@phosphor-icons/react';
-import { useRole } from '../lib/role';
+import { useActorRole } from '../lib/auth';
 import { loadInboxView } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
 
@@ -38,7 +38,7 @@ function MoreRow({ to, icon, iconBg, iconColor, title, subtitle, badge }: MoreRo
 }
 
 export function MorePage() {
-  const { role } = useRole();
+  const role = useActorRole();
 
   // Get open item count for badge
   const itemQuery = useQuery({

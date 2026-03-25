@@ -2,8 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UpdateChange, DraftReminder, Reminder, ReminderUpdateChange, User } from '@olivia/contracts';
-import { useRole } from '../lib/role';
-import { useAuth } from '../lib/auth';
+import { useAuth, useActorRole } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { resolveUserName } from '../lib/reminder-helpers';
 import {
@@ -30,7 +29,7 @@ import { showErrorToast } from '../lib/error-toast';
 export function ItemDetailPage() {
   const params = useParams({ from: '/items/$itemId' });
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);

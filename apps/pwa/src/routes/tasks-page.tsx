@@ -3,9 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useMemo } from 'react';
 import { computeFlags } from '@olivia/domain';
 import type { InboxItem, User } from '@olivia/contracts';
-import { useRole } from '../lib/role';
 import { loadInboxView, previewCreateCommand, confirmCreateCommand } from '../lib/sync';
-import { useAuth } from '../lib/auth';
+import { useAuth, useActorRole } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { resolveUserName } from '../lib/reminder-helpers';
 import { BottomNav } from '../components/bottom-nav';
@@ -14,7 +13,7 @@ import type { AddTaskPreview, CompletedTask, FullTask } from '../types/display';
 
 export function TasksPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);

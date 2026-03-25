@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MealPlan } from '@olivia/contracts';
-import { useRole } from '../lib/role';
+import { useActorRole } from '../lib/auth';
 import { ForkKnife, Plus } from '@phosphor-icons/react';
 import {
   loadActiveMealPlanIndex,
@@ -27,9 +27,8 @@ type MealFilter = 'active' | 'archived';
 
 export function MealsPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
-  const isSpouse = role === 'spouse';
 
   const [filter, setFilter] = useState<MealFilter>('active');
   const [showCreateSheet, setShowCreateSheet] = useState(false);
@@ -178,12 +177,6 @@ export function MealsPage() {
             }
           </div>
 
-          {isSpouse && (
-            <div className="list-spouse-banner" role="status" style={{ marginBottom: 16 }}>
-              Viewing as household member — Lexi manages meal plans.
-            </div>
-          )}
-
           <div className="rem-filters">
             <button
               type="button"
@@ -201,7 +194,7 @@ export function MealsPage() {
             </button>
           </div>
 
-          {!isSpouse && filter === 'active' && (
+          {filter === 'active' && (
             <div style={{ marginBottom: 20 }}>
               <button
                 type="button"
@@ -235,19 +228,17 @@ export function MealsPage() {
               <div className="rem-empty-icon"><ForkKnife size={48} weight="bold" /></div>
               <div className="rem-empty-title">No meal plans yet</div>
               <div className="rem-empty-sub">Plan your meals for the week and generate grocery lists automatically.</div>
-              {!isSpouse && (
-                <div style={{ marginTop: 16, width: '100%' }}>
-                  <button
-                    type="button"
-                    className="add-rem-btn add-rem-btn-prominent"
-                    onClick={() => setShowCreateSheet(true)}
-                    style={{ width: '100%' }}
-                  >
-                    <span className="add-icon"><Plus size={20} /></span>
-                    <span className="add-label">New meal plan…</span>
-                  </button>
-                </div>
-              )}
+              <div style={{ marginTop: 16, width: '100%' }}>
+                <button
+                  type="button"
+                  className="add-rem-btn add-rem-btn-prominent"
+                  onClick={() => setShowCreateSheet(true)}
+                  style={{ width: '100%' }}
+                >
+                  <span className="add-icon"><Plus size={20} /></span>
+                  <span className="add-label">New meal plan…</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -265,7 +256,7 @@ export function MealsPage() {
                   plan={plan}
                   onClick={() => void navigate({ to: '/meals/$planId', params: { planId: plan.id } })}
                   onOverflow={(e) => { e.stopPropagation(); setOverflowTarget(plan); }}
-                  showOverflow={!isSpouse}
+                  showOverflow
                 />
               ))}
             </div>

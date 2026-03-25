@@ -7,9 +7,8 @@ import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix, Stethoscope } from '@p
 import { rankRemindersForSurfacing } from '@olivia/domain';
 import { getWeekBounds } from '@olivia/domain';
 import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, WeeklyReminder, WeeklyMealEntry, WeeklyInboxItem, User } from '@olivia/contracts';
-import { useRole } from '../lib/role';
 import { loadWeeklyView, confirmCreateReminderCommand, snoozeReminderCommand, loadReminderView } from '../lib/sync';
-import { useAuth } from '../lib/auth';
+import { useAuth, useActorRole } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { BottomNav } from '../components/bottom-nav';
 import { NudgeTray, useNudges } from './nudge-tray';
@@ -400,7 +399,7 @@ function UpcomingPreview({ days, todayStr }: { days: WeeklyDayView[]; todayStr: 
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { user: currentUser, getSessionToken } = useAuth();

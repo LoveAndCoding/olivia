@@ -6,8 +6,6 @@ import { expect, test } from '@playwright/test';
  * Navigation: verify the restructured nav (OLI-284) with Daily hub + More tab.
  * Concurrency: two browser contexts editing simultaneously without corruption.
  *
- * Role switching uses localStorage (the RoleProvider mechanism).
- *
  * Bottom nav structure: Home | Daily | Olivia | Lists | More
  * - Reminders, routines, meals are segments within the Daily tab
  * - Tasks, History, Settings are under the More tab
@@ -15,15 +13,7 @@ import { expect, test } from '@playwright/test';
 
 const BASE_URL = 'http://127.0.0.1:4173';
 
-async function switchRole(page: import('@playwright/test').Page, role: 'stakeholder' | 'spouse') {
-  await page.evaluate((r) => localStorage.setItem('olivia-role', r), role);
-}
-
 test.describe('Navigation: Daily hub provides ≤2 taps to key features', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await switchRole(page, 'stakeholder');
-  });
 
   test('home → Daily tab → reminders in ≤2 taps', async ({ page }) => {
     await page.goto('/');
@@ -128,13 +118,6 @@ test.describe('Concurrency: simultaneous editing', () => {
     const pageB = await contextB.newPage();
 
     try {
-      // Both use stakeholder role (spouse can't create tasks)
-      await pageA.goto('/');
-      await pageA.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
-
-      await pageB.goto('/');
-      await pageB.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
-
       // Both navigate to tasks concurrently
       await Promise.all([
         pageA.goto('/tasks'),
@@ -195,10 +178,6 @@ test.describe('Concurrency: simultaneous editing', () => {
     const pageB = await contextB.newPage();
 
     try {
-      // Set up stakeholder in both contexts
-      await pageA.goto('/');
-      await pageA.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
-
       // Context A creates a list
       await pageA.goto('/lists');
       await expect(pageA.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
@@ -214,8 +193,6 @@ test.describe('Concurrency: simultaneous editing', () => {
 
       // Context B opens the same list
       const listPath = new URL(pageA.url()).pathname;
-      await pageB.goto('/');
-      await pageB.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
       await pageB.goto(listPath);
       await expect(pageB.locator('.list-add-input')).toBeVisible({ timeout: 10_000 });
       await expect(pageB.locator('.list-item-text', { hasText: 'Item from A' })).toBeVisible({ timeout: 10_000 });

@@ -7,7 +7,7 @@ import { Keyboard } from '@capacitor/keyboard';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { flushOutbox, saveNativeNotificationSubscription } from '../lib/sync';
 import { abortActiveOperations, resetActiveOperations } from '../lib/app-lifecycle';
-import { useRole } from '../lib/role';
+import { useActorRole } from '../lib/auth';
 import { checkConnectivityNow } from '../lib/connectivity';
 import { router } from '../router';
 import { OfflineIndicator } from './OfflineIndicator';
@@ -15,7 +15,7 @@ import { ErrorToastContainer } from './ErrorToastContainer';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const { role } = useRole();
+  const role = useActorRole();
 
   useEffect(() => {
     const syncNow = async () => {

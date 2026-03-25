@@ -13,7 +13,6 @@ import { expect, test } from '@playwright/test';
  * - AC7: Clear completed removes checked items
  * - AC8: "Uncheck all" confirmation with count
  * - AC9: Uncheck all returns items to unchecked state
- * - AC11: Spouse cannot access bulk actions
  * - AC12: No completed section when no items are checked
  */
 
@@ -53,12 +52,6 @@ async function setupListWithCheckedItems(
 }
 
 test.describe('Completed-item management', () => {
-  test.beforeEach(async ({ page }) => {
-    // Ensure stakeholder role via localStorage
-    await page.goto('/');
-    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
-  });
-
   test('AC12: no completed section when no items are checked', async ({ page }) => {
     await page.goto('/lists');
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
@@ -221,31 +214,6 @@ test.describe('Completed-item management', () => {
     // All 3 items should be in the main section as unchecked
     const uncheckedCheckboxes = page.locator('.list-detail-items [aria-label="Check item"]');
     await expect(uncheckedCheckboxes).toHaveCount(3, { timeout: 5_000 });
-  });
-
-  test('AC11: spouse cannot access clear completed or uncheck all', async ({ page }) => {
-    // First, create a list with checked items as stakeholder
-    await setupListWithCheckedItems(page, 'Spouse restriction test', ['Milk', 'Bread'], [0]);
-
-    // Verify completed section is visible
-    await expect(page.locator('.list-completed-header')).toBeVisible({ timeout: 5_000 });
-
-    // Switch to spouse via localStorage
-    await page.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
-    await page.goto('/lists');
-    await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
-
-    // Look for the list we created
-    const listCard = page.locator('.list-card-title', { hasText: 'Spouse restriction test' });
-    if (await listCard.isVisible({ timeout: 5_000 })) {
-      await listCard.click();
-
-      // Spouse should NOT see the overflow menu button at all
-      await expect(page.locator('[aria-label="List options"]')).toHaveCount(0);
-    }
-
-    // Restore stakeholder role
-    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 
   test('bulk actions hidden in overflow menu when no checked items exist', async ({ page }) => {

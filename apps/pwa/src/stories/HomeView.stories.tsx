@@ -89,7 +89,7 @@ export const SingleOverdueTask: Story = {
   },
 };
 
-/** Viewing as Christian (spouse). */
-export const SpouseView: Story = {
-  args: { displayName: 'Christian' },
+/** Viewing as a second household member. */
+export const MemberView: Story = {
+  args: { displayName: 'Member' },
 };

@@ -4,7 +4,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { clientDb } from '../lib/client-db';
-import { useRole } from '../lib/role';
+import { useActorRole } from '../lib/auth';
 import { effectiveApiBaseUrl, resolveApiUrl } from '../lib/api';
 import { HouseholdSection } from '../components/auth/HouseholdSection';
 import { runDiagnosticProbe, type ConnectivityDiagnostic } from '../lib/connectivity';
@@ -225,7 +225,7 @@ function ScheduledNotifications() {
 }
 
 export function SettingsPage() {
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
   const [activeTheme, setActiveTheme] = useState<ThemeMode>(readSavedTheme);
   const notificationQuery = useQuery({ queryKey: ['notification-subscriptions', role], queryFn: () => loadNotificationState(role) });

@@ -2,15 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@olivia/contracts';
-import { useRole } from '../lib/role';
-import { useAuth } from '../lib/auth';
+import { useAuth, useActorRole } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { confirmCreateCommand, previewCreateCommand } from '../lib/sync';
 
 export function AddPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { role } = useRole();
+  const role = useActorRole();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
   useEffect(() => {
@@ -27,10 +26,6 @@ export function AddPage() {
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof previewCreateCommand>> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  if (role === 'spouse') {
-    return <section className="card">The spouse role is read-only in this slice, so add-item capture stays with the stakeholder.</section>;
-  }
 
   const handlePreview = async () => {
     setBusy(true);

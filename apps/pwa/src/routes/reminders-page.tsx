@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DraftReminder, Reminder, ReminderState } from '@olivia/contracts';
 import { computeReminderState } from '@olivia/domain';
 import { Bell, Plus } from '@phosphor-icons/react';
-import { useRole } from '../lib/role';
+import { useActorRole } from '../lib/auth';
 import {
   loadReminderView,
   confirmCreateReminderCommand,
@@ -42,7 +42,7 @@ function stateMatchesFilter(state: ReminderState, filter: FilterTab): boolean {
 
 export function RemindersPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
 
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
@@ -138,8 +138,7 @@ export function RemindersPage() {
   }, [snoozeTarget, role, queryClient]);
 
   const isEmpty = !reminderQuery.isLoading && filteredReminders.length === 0;
-  const isSpouse = role === 'spouse';
-  const showAddButton = activeFilter !== 'done' && !isSpouse;
+  const showAddButton = activeFilter !== 'done';
 
   return (
     <div className="screen">
@@ -208,15 +207,13 @@ export function RemindersPage() {
               <OliviaMessage
                 text="No reminders yet. You can say something like 'Remind me next Thursday to call the vet' and I'll take care of it."
               />
-              {!isSpouse && (
-                <div style={{ marginTop: 16, width: '100%' }}>
-                  <AddReminderButton
-                    label="Add a reminder…"
-                    icon={<Plus size={20} />}
-                    onClick={() => setShowCreateSheet(true)}
-                  />
-                </div>
-              )}
+              <div style={{ marginTop: 16, width: '100%' }}>
+                <AddReminderButton
+                  label="Add a reminder…"
+                  icon={<Plus size={20} />}
+                  onClick={() => setShowCreateSheet(true)}
+                />
+              </div>
             </div>
           )}
 

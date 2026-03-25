@@ -5,8 +5,7 @@ import type { ReminderUpdateChange, User } from '@olivia/contracts';
 import { computeReminderState, scheduleNextOccurrence } from '@olivia/domain';
 import { format } from 'date-fns';
 import { Check, Moon, PencilSimple, X, ArrowCounterClockwise, ArrowsClockwise, LinkSimple } from '@phosphor-icons/react';
-import { useRole } from '../lib/role';
-import { useAuth } from '../lib/auth';
+import { useAuth, useActorRole } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import {
   loadReminderDetail,
@@ -32,7 +31,7 @@ import { showErrorToast } from '../lib/error-toast';
 export function ReminderDetailPage() {
   const params = useParams({ from: '/reminders/$reminderId' });
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
