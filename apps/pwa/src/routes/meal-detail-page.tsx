@@ -3,7 +3,7 @@ import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MealEntry } from '@olivia/contracts';
 import { formatWeekRange } from '@olivia/domain';
-import { useRole } from '../lib/role';
+import { useActorRole } from '../lib/auth';
 import {
   loadMealPlanDetail,
   archiveMealPlanCommand,
@@ -29,9 +29,8 @@ const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satu
 export function MealDetailPage() {
   const params = useParams({ from: '/meals/$planId' });
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
-  const isSpouse = role === 'spouse';
   const isOffline = !window.navigator.onLine;
 
   const [showEditTitleSheet, setShowEditTitleSheet] = useState(false);
@@ -53,7 +52,7 @@ export function MealDetailPage() {
   const plan = detailQuery.data?.plan;
   const entries: MealEntry[] = detailQuery.data?.entries ?? [];
   const isArchived = plan?.status === 'archived';
-  const readOnly = isSpouse || isArchived;
+  const readOnly = isArchived;
 
   const hasShoppingItems = entries.some((e) => e.shoppingItems.length > 0);
 
@@ -215,27 +214,19 @@ export function MealDetailPage() {
               </div>
               <div className="screen-sub" style={{ marginBottom: 16 }}>{weekRange}</div>
             </div>
-            {!isSpouse && (
-              <button
-                type="button"
-                className="list-card-overflow"
-                aria-label="Plan options"
-                style={{ marginTop: 4 }}
-                onClick={() => setShowListOverflow(true)}
-              >
-                ···
-              </button>
-            )}
+            <button
+              type="button"
+              className="list-card-overflow"
+              aria-label="Plan options"
+              style={{ marginTop: 4 }}
+              onClick={() => setShowListOverflow(true)}
+            >
+              ···
+            </button>
           </div>
         </div>
 
         <div style={{ padding: '0 16px' }}>
-          {isSpouse && (
-            <div className="list-spouse-banner" role="status" style={{ marginBottom: 16 }}>
-              Viewing as household member — Lexi manages meal plans.
-            </div>
-          )}
-
           {isArchived && (
             <div className="list-offline-banner" style={{ marginBottom: 16 }}>
               This plan is archived. Restore it to make changes.
@@ -287,7 +278,7 @@ export function MealDetailPage() {
                         entry={entry}
                         onUpdateItems={(items) => void handleUpdateItems(entry, items)}
                         onDelete={() => setDeleteMealTarget(entry)}
-                        isSpouse={isSpouse}
+                        isSpouse={false}
                         isArchived={isArchived}
                       />
                     ))}

@@ -55,13 +55,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Full task list with open and completed tasks — stakeholder (Lexi) view. */
-export const StakeholderView: Story = {};
-
-/** Spouse (Christian) view — read-only, no add button. */
-export const SpouseView: Story = {
-  args: { role: 'spouse' },
-};
+/** Full task list with open and completed tasks. */
+export const DefaultView: Story = {};
 
 /** All tasks complete — empty state with celebration copy. */
 export const EmptyOpenTasks: Story = {

@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ListItem } from '@olivia/contracts';
-import { useRole } from '../lib/role';
+import { useActorRole } from '../lib/auth';
 import {
   loadListDetail,
   updateListTitleCommand,
@@ -35,7 +35,7 @@ import { showErrorToast } from '../lib/error-toast';
 export function ListDetailPage() {
   const params = useParams({ from: '/lists/$listId' });
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
   const [showEditTitleSheet, setShowEditTitleSheet] = useState(false);
   const [showArchiveSheet, setShowArchiveSheet] = useState(false);

@@ -4,10 +4,9 @@ import { expect, test } from '@playwright/test';
  * OLI-303: Multi-User Session Path E2E Tests
  *
  * Validates the full session-based multi-user workflow:
- * User A (stakeholder) creates item → User B (spouse) sees item → modifies it.
+ * User A creates item → User B sees item → modifies it.
  *
- * Uses two browser contexts with localStorage role switching
- * to simulate distinct user sessions.
+ * Uses two browser contexts to simulate distinct user sessions.
  */
 
 const BASE_URL = 'http://127.0.0.1:4173';
@@ -22,9 +21,7 @@ test.describe('Multi-user session paths', () => {
     try {
       const taskName = `session-path-${Date.now()}`;
 
-      // ── User A (stakeholder) creates a task ──
-      await pageA.goto('/');
-      await pageA.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
+      // ── User A creates a task ──
       await pageA.goto('/tasks');
       await expect(pageA.locator('.screen-sub')).toContainText('completed', { timeout: 15_000 });
 
@@ -35,14 +32,12 @@ test.describe('Multi-user session paths', () => {
       await pageA.getByRole('button', { name: 'Confirm & save' }).click();
       await expect(pageA.locator('.tf-name', { hasText: taskName })).toBeVisible({ timeout: 10_000 });
 
-      // ── User B (spouse) sees the task ──
-      await pageB.goto('/');
-      await pageB.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
+      // ── User B sees the task ──
       await pageB.goto('/tasks');
       await expect(pageB.locator('.screen-sub')).toContainText('completed', { timeout: 15_000 });
       await expect(pageB.locator('.tf-name', { hasText: taskName })).toBeVisible({ timeout: 10_000 });
 
-      // ── User B interacts with the task (completes it if checkbox is available) ──
+      // ── User B interacts with the task ──
       const taskRow = pageB.locator('.task-row', { hasText: taskName });
       const checkbox = taskRow.locator('.task-checkbox');
       const hasCheckbox = await checkbox.isVisible().catch(() => false);
@@ -71,9 +66,7 @@ test.describe('Multi-user session paths', () => {
       const listName = `session-list-${Date.now()}`;
       const itemName = `item-${Date.now()}`;
 
-      // ── User A (stakeholder) creates a list with an item ──
-      await pageA.goto('/');
-      await pageA.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
+      // ── User A creates a list with an item ──
       await pageA.goto('/lists');
       await expect(pageA.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
@@ -86,9 +79,7 @@ test.describe('Multi-user session paths', () => {
       await pageA.locator('.list-add-input').press('Enter');
       await expect(pageA.locator('.list-item-text', { hasText: itemName })).toBeVisible({ timeout: 10_000 });
 
-      // ── User B (spouse) sees the list and item ──
-      await pageB.goto('/');
-      await pageB.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
+      // ── User B sees the list and item ──
       await pageB.goto('/lists');
       await expect(pageB.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
@@ -111,13 +102,7 @@ test.describe('Multi-user session paths', () => {
       const taskA = `simul-A-${Date.now()}`;
       const taskB = `simul-B-${Date.now() + 1}`;
 
-      // Both contexts set up role and navigate to tasks
-      await pageA.goto('/');
-      await pageA.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
-
-      await pageB.goto('/');
-      await pageB.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
-
+      // Both contexts navigate to tasks
       await Promise.all([pageA.goto('/tasks'), pageB.goto('/tasks')]);
       await Promise.all([
         expect(pageA.locator('.screen-sub')).toContainText('completed', { timeout: 15_000 }),

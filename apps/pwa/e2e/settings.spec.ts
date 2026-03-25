@@ -62,19 +62,6 @@ test.describe('Settings page', () => {
     expect(autoTheme).toBeNull();
   });
 
-  test('spouse role makes tasks page read-only (regression OLI-177)', async ({ page }) => {
-    // Set spouse role via localStorage
-    await page.goto('/');
-    await page.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
-    await page.goto('/tasks');
-    await expect(page.locator('.screen-title')).toContainText('Tasks', { timeout: 10_000 });
-    await expect(page.getByRole('button', { name: 'Add a new task' })).toHaveCount(0);
-    await expect(page.getByText('read-only')).toBeVisible();
-
-    // Restore stakeholder role
-    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
-  });
-
   test('notification toggles are interactive', async ({ page }) => {
     await page.goto('/settings');
     await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });

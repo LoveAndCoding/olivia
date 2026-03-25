@@ -5,8 +5,7 @@ import { format, isToday, isTomorrow, formatDistanceToNow } from 'date-fns';
 import type { Routine, RoutineDueState, RoutineRecurrenceRule, User } from '@olivia/contracts';
 import { computeRoutineDueState as computeDueState, formatRecurrenceLabel as formatRecurrenceLabelDomain, calculateFirstDueDate } from '@olivia/domain';
 import { ArrowsClockwise, Plus } from '@phosphor-icons/react';
-import { useRole } from '../lib/role';
-import { useAuth } from '../lib/auth';
+import { useAuth, useActorRole } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import {
   loadActiveRoutineIndex,
@@ -213,7 +212,7 @@ function todayIso(): string {
 
 export function RoutinesPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
@@ -348,7 +347,7 @@ export function RoutinesPage() {
     }
   }, [form, role, queryClient, showBanner]);
 
-  const isReadOnly = currentUser?.role === 'member' || role === 'spouse';
+  const isReadOnly = false; // M32: all authenticated users have write access
   const isLoading = currentQuery.isLoading;
   const isError = currentQuery.isError;
 

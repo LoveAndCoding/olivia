@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { Bell, ArrowsClockwise, CookingPot, CalendarCheck, Plus } from '@phosphor-icons/react';
 import { getWeekBounds } from '@olivia/domain';
 import type { WeeklyReminder, WeeklyRoutineOccurrence, WeeklyMealEntry, Reminder, DraftReminder } from '@olivia/contracts';
-import { useRole } from '../lib/role';
+import { useActorRole } from '../lib/auth';
 import { loadWeeklyView, loadReminderView, confirmCreateReminderCommand, snoozeReminderCommand } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
 import { ReminderRow } from '../components/reminders/ReminderRow';
@@ -117,7 +117,7 @@ const MAX_COMBINED_ITEMS = 5;
 
 export function DailyPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
 
   // Read segment from URL search params
@@ -230,8 +230,6 @@ export function DailyPage() {
     }
   }, [snoozeTarget, role, queryClient]);
 
-  const isSpouse = role === 'spouse';
-
   // ── Reminders segment: full list with grouping ────────────────────────────
 
   const reminderGroups = useMemo(() => {
@@ -302,22 +300,20 @@ export function DailyPage() {
                   <div className="daily-olivia-message">
                     <em>Nothing planned for today. Your day is wide open.</em>
                   </div>
-                  {!isSpouse && (
-                    <div className="daily-empty-actions">
-                      <button type="button" className="add-rem-btn" onClick={() => { setActiveSegment('reminders'); setShowCreateSheet(true); }}>
-                        <span className="add-icon"><Plus size={18} /></span>
-                        <span className="add-label">Add Reminder</span>
-                      </button>
-                      <button type="button" className="add-rem-btn" onClick={() => void navigate({ to: '/routines' })}>
-                        <span className="add-icon"><Plus size={18} /></span>
-                        <span className="add-label">Add Routine</span>
-                      </button>
-                      <button type="button" className="add-rem-btn" onClick={() => void navigate({ to: '/meals' })}>
-                        <span className="add-icon"><Plus size={18} /></span>
-                        <span className="add-label">Plan Meal</span>
-                      </button>
-                    </div>
-                  )}
+                  <div className="daily-empty-actions">
+                    <button type="button" className="add-rem-btn" onClick={() => { setActiveSegment('reminders'); setShowCreateSheet(true); }}>
+                      <span className="add-icon"><Plus size={18} /></span>
+                      <span className="add-label">Add Reminder</span>
+                    </button>
+                    <button type="button" className="add-rem-btn" onClick={() => void navigate({ to: '/routines' })}>
+                      <span className="add-icon"><Plus size={18} /></span>
+                      <span className="add-label">Add Routine</span>
+                    </button>
+                    <button type="button" className="add-rem-btn" onClick={() => void navigate({ to: '/meals' })}>
+                      <span className="add-icon"><Plus size={18} /></span>
+                      <span className="add-label">Plan Meal</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -398,15 +394,13 @@ export function DailyPage() {
           {/* ── Reminders segment ── */}
           {activeSegment === 'reminders' && (
             <>
-              {!isSpouse && (
-                <div style={{ marginBottom: 16 }}>
-                  <AddReminderButton
-                    label="Add a reminder…"
-                    icon={<Plus size={20} />}
-                    onClick={() => setShowCreateSheet(true)}
-                  />
-                </div>
-              )}
+              <div style={{ marginBottom: 16 }}>
+                <AddReminderButton
+                  label="Add a reminder…"
+                  icon={<Plus size={20} />}
+                  onClick={() => setShowCreateSheet(true)}
+                />
+              </div>
 
               {reminderQuery.isLoading && (
                 <div style={{ padding: '16px 6px', color: 'var(--ink-3)', fontSize: 13 }}>Loading reminders…</div>
@@ -443,14 +437,12 @@ export function DailyPage() {
           {/* ── Routines segment ── */}
           {activeSegment === 'routines' && weeklyQuery.data && (
             <>
-              {!isSpouse && (
-                <div style={{ marginBottom: 16 }}>
-                  <button type="button" className="add-rem-btn" onClick={() => void navigate({ to: '/routines' })} style={{ width: '100%' }}>
-                    <span className="add-icon"><Plus size={20} /></span>
-                    <span className="add-label">Manage routines…</span>
-                  </button>
-                </div>
-              )}
+              <div style={{ marginBottom: 16 }}>
+                <button type="button" className="add-rem-btn" onClick={() => void navigate({ to: '/routines' })} style={{ width: '100%' }}>
+                  <span className="add-icon"><Plus size={20} /></span>
+                  <span className="add-label">Manage routines…</span>
+                </button>
+              </div>
 
               {todayData && todayData.routines.length > 0 ? (
                 <div className="rem-list">
@@ -477,14 +469,12 @@ export function DailyPage() {
           {/* ── Meals segment ── */}
           {activeSegment === 'meals' && weeklyQuery.data && (
             <>
-              {!isSpouse && (
-                <div style={{ marginBottom: 16 }}>
-                  <button type="button" className="add-rem-btn" onClick={() => void navigate({ to: '/meals' })} style={{ width: '100%' }}>
-                    <span className="add-icon"><Plus size={20} /></span>
-                    <span className="add-label">Manage meal plans…</span>
-                  </button>
-                </div>
-              )}
+              <div style={{ marginBottom: 16 }}>
+                <button type="button" className="add-rem-btn" onClick={() => void navigate({ to: '/meals' })} style={{ width: '100%' }}>
+                  <span className="add-icon"><Plus size={20} /></span>
+                  <span className="add-label">Manage meal plans…</span>
+                </button>
+              </div>
 
               {todayData && todayData.meals.length > 0 ? (
                 <div className="rem-list">

@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SharedList } from '@olivia/contracts';
-import { useRole } from '../lib/role';
+import { useActorRole } from '../lib/auth';
 import { Plus } from '@phosphor-icons/react';
 import {
   loadActiveListIndex,
@@ -28,7 +28,7 @@ type ListFilter = 'active' | 'archived';
 
 export function ListsPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<ListFilter>('active');
   const [showCreateSheet, setShowCreateSheet] = useState(false);

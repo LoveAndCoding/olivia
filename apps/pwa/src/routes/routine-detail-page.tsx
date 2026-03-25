@@ -5,8 +5,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import type { RoutineDueState, User } from '@olivia/contracts';
 import { computeRoutineDueState as computeDueState, formatRecurrenceLabel as formatRecurrenceLabelDomain } from '@olivia/domain';
 import { Check } from '@phosphor-icons/react';
-import { useRole } from '../lib/role';
-import { useAuth } from '../lib/auth';
+import { useAuth, useActorRole } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { resolveUserName } from '../lib/reminder-helpers';
 import {
@@ -47,7 +46,7 @@ function formatLastDone(lastCompletedAt: string | null | undefined): string {
 export function RoutineDetailPage() {
   const params = useParams({ from: '/routines/$routineId' });
   const navigate = useNavigate();
-  const { role } = useRole();
+  const role = useActorRole();
   const queryClient = useQueryClient();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);

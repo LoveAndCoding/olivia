@@ -14,7 +14,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
-import { RoleProvider } from './lib/role';
 import { AuthProvider } from './lib/auth';
 import { showErrorToast } from './lib/error-toast';
 import { reportError, errorMessage, errorStack } from './lib/error-reporter';
@@ -77,9 +76,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <RoleProvider>
-          <RouterProvider router={router} />
-        </RoleProvider>
+        <RouterProvider router={router} />
       </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>

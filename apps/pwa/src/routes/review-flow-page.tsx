@@ -10,7 +10,7 @@ import type {
 } from '@olivia/contracts';
 import { getReviewWindowsForOccurrence, formatReviewWindowAsDateStrings } from '@olivia/domain';
 import { ArrowsClockwise, Bell, ForkKnife, Tray, Check } from '@phosphor-icons/react';
-import { useRole } from '../lib/role';
+import { useActorRole } from '../lib/auth';
 import { loadRoutineDetail, loadActivityHistory, loadWeeklyView, submitRitualCompletion, loadRitualSummaries } from '../lib/sync';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -583,7 +583,7 @@ export function ReviewFlowPage() {
   const { routineId, occurrenceId } = params;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { role } = useRole();
+  const role = useActorRole();
 
   const [step, setStep] = useState<Step>(1);
   const [notes, setNotes] = useState('');
