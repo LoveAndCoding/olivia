@@ -385,15 +385,18 @@ export function SettingsPage() {
                     const next = !masterEnabled;
                     void (async () => {
                       // Request permission + register if enabling
-                      if (next && browserPermission === 'default') {
+                      if (next) {
                         if (isNative) {
-                          const permResult = await PushNotifications.requestPermissions();
-                          const granted = permResult.receive === 'granted';
-                          setBrowserPermission(granted ? 'granted' : 'denied');
-                          if (!granted) return;
-                          // Register will fire the 'registration' event handled below
+                          if (browserPermission === 'default') {
+                            const permResult = await PushNotifications.requestPermissions();
+                            const granted = permResult.receive === 'granted';
+                            setBrowserPermission(granted ? 'granted' : 'denied');
+                            if (!granted) return;
+                          }
+                          // Always register on native when enabling — ensures APNs token is saved
+                          // even if permission was already granted via iOS settings
                           await PushNotifications.register();
-                        } else if (typeof Notification !== 'undefined') {
+                        } else if (browserPermission === 'default' && typeof Notification !== 'undefined') {
                           const perm = await Notification.requestPermission();
                           setBrowserPermission(perm);
                           if (perm !== 'granted') return;
