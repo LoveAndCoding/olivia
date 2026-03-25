@@ -180,10 +180,10 @@ export function TasksView({
         </div>
       )}
 
-      {/* Spouse notice */}
+      {/* Member notice */}
       {role === 'spouse' && (
         <div style={{ padding: '4px 16px 12px', fontSize: 12, color: 'var(--ink-3)' }}>
-          You're viewing as Christian. Tasks are read-only.
+          You're viewing as a household member. Tasks are read-only.
         </div>
       )}
 

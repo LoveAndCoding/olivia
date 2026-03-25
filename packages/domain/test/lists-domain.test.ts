@@ -20,9 +20,9 @@ const NOW = new Date('2026-03-15T10:00:00.000Z');
 describe('list domain', () => {
   describe('createSharedList', () => {
     it('creates a new list with default fields', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       expect(list.title).toBe('Grocery Run');
-      expect(list.owner).toBe('stakeholder');
+      expect(list.assigneeUserId).toBeNull();
       expect(list.status).toBe('active');
       expect(list.version).toBe(1);
       expect(list.activeItemCount).toBe(0);
@@ -33,21 +33,21 @@ describe('list domain', () => {
     });
 
     it('trims whitespace from title', () => {
-      const list = createSharedList('  Packing List  ', 'stakeholder', NOW);
+      const list = createSharedList('  Packing List  ', null, NOW);
       expect(list.title).toBe('Packing List');
     });
   });
 
   describe('updateListTitle', () => {
     it('updates title and increments version', () => {
-      const list = createSharedList('Grocery', 'stakeholder', NOW);
+      const list = createSharedList('Grocery', null, NOW);
       const updated = updateListTitle(list, 'Weekly Groceries', NOW);
       expect(updated.title).toBe('Weekly Groceries');
       expect(updated.version).toBe(2);
     });
 
     it('trims whitespace from new title', () => {
-      const list = createSharedList('Old Title', 'stakeholder', NOW);
+      const list = createSharedList('Old Title', null, NOW);
       const updated = updateListTitle(list, '  New Title  ', NOW);
       expect(updated.title).toBe('New Title');
     });
@@ -55,7 +55,7 @@ describe('list domain', () => {
 
   describe('archiveList', () => {
     it('archives an active list', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const archived = archiveList(list, NOW);
       expect(archived.status).toBe('archived');
       expect(archived.archivedAt).toBe(NOW.toISOString());
@@ -63,7 +63,7 @@ describe('list domain', () => {
     });
 
     it('throws when archiving an already-archived list', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const archived = archiveList(list, NOW);
       expect(() => archiveList(archived, NOW)).toThrow('already archived');
     });
@@ -71,7 +71,7 @@ describe('list domain', () => {
 
   describe('restoreList', () => {
     it('restores an archived list', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const archived = archiveList(list, NOW);
       const restored = restoreList(archived, NOW);
       expect(restored.status).toBe('active');
@@ -80,14 +80,14 @@ describe('list domain', () => {
     });
 
     it('throws when restoring an active list', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       expect(() => restoreList(list, NOW)).toThrow('not archived');
     });
   });
 
   describe('addListItem', () => {
     it('creates a new item with correct fields', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item = addListItem(list.id, 'Oat milk', 0, NOW);
       expect(item.body).toBe('Oat milk');
       expect(item.listId).toBe(list.id);
@@ -98,7 +98,7 @@ describe('list domain', () => {
     });
 
     it('uses append-order position', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item0 = addListItem(list.id, 'Item A', 0, NOW);
       const item1 = addListItem(list.id, 'Item B', 1, NOW);
       expect(item0.position).toBe(0);
@@ -106,7 +106,7 @@ describe('list domain', () => {
     });
 
     it('trims whitespace from body', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item = addListItem(list.id, '  Eggs  ', 0, NOW);
       expect(item.body).toBe('Eggs');
     });
@@ -114,7 +114,7 @@ describe('list domain', () => {
 
   describe('updateItemBody', () => {
     it('updates body and increments version', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item = addListItem(list.id, 'Oat milk', 0, NOW);
       const updated = updateItemBody(item, 'Almond milk', NOW);
       expect(updated.body).toBe('Almond milk');
@@ -124,7 +124,7 @@ describe('list domain', () => {
 
   describe('checkItem', () => {
     it('sets checked and checkedAt', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item = addListItem(list.id, 'Oat milk', 0, NOW);
       const checked = checkItem(item, NOW);
       expect(checked.checked).toBe(true);
@@ -135,7 +135,7 @@ describe('list domain', () => {
 
   describe('uncheckItem', () => {
     it('clears checked and checkedAt', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item = addListItem(list.id, 'Oat milk', 0, NOW);
       const checked = checkItem(item, NOW);
       const unchecked = uncheckItem(checked, NOW);
@@ -154,7 +154,7 @@ describe('list domain', () => {
     });
 
     it('counts active and checked items correctly', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item0 = addListItem(list.id, 'Item A', 0, NOW);
       const item1 = checkItem(addListItem(list.id, 'Item B', 1, NOW), NOW);
       const item2 = addListItem(list.id, 'Item C', 2, NOW);
@@ -165,7 +165,7 @@ describe('list domain', () => {
     });
 
     it('reports allChecked when every item is checked', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item0 = checkItem(addListItem(list.id, 'Item A', 0, NOW), NOW);
       const item1 = checkItem(addListItem(list.id, 'Item B', 1, NOW), NOW);
       const summary = deriveListSummary([item0, item1]);
@@ -177,7 +177,7 @@ describe('list domain', () => {
 
   describe('history entry helpers', () => {
     it('createSharedList produces list_created history', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const entry = createListCreatedHistoryEntry(list, 'stakeholder');
       expect(entry.eventType).toBe('list_created');
       expect(entry.listId).toBe(list.id);
@@ -186,7 +186,7 @@ describe('list domain', () => {
     });
 
     it('createItemAddedHistoryEntry produces item_added history', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item = addListItem(list.id, 'Oat milk', 0, NOW);
       const entry = createItemAddedHistoryEntry(item, 'stakeholder');
       expect(entry.eventType).toBe('item_added');
@@ -195,7 +195,7 @@ describe('list domain', () => {
     });
 
     it('createItemsClearedHistoryEntry produces items_cleared history with count', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const entry = createItemsClearedHistoryEntry(list.id, 5, 'stakeholder', NOW);
       expect(entry.eventType).toBe('items_cleared');
       expect(entry.listId).toBe(list.id);
@@ -206,7 +206,7 @@ describe('list domain', () => {
     });
 
     it('createItemsUncheckedAllHistoryEntry produces items_unchecked_all history with count', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const entry = createItemsUncheckedAllHistoryEntry(list.id, 3, 'stakeholder', NOW);
       expect(entry.eventType).toBe('items_unchecked_all');
       expect(entry.listId).toBe(list.id);
@@ -219,7 +219,7 @@ describe('list domain', () => {
 
   describe('deriveListSummary — completed-item scenarios', () => {
     it('returns correct counts after clearing completed items (simulated)', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item0 = addListItem(list.id, 'Milk', 0, NOW);
       const item1 = checkItem(addListItem(list.id, 'Bread', 1, NOW), NOW);
       const item2 = addListItem(list.id, 'Eggs', 2, NOW);
@@ -232,7 +232,7 @@ describe('list domain', () => {
     });
 
     it('returns correct counts after unchecking all items (simulated)', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item0 = checkItem(addListItem(list.id, 'Milk', 0, NOW), NOW);
       const item1 = checkItem(addListItem(list.id, 'Bread', 1, NOW), NOW);
       const item2 = checkItem(addListItem(list.id, 'Eggs', 2, NOW), NOW);
@@ -245,7 +245,7 @@ describe('list domain', () => {
     });
 
     it('allChecked is false after clearing when unchecked items remain', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item0 = addListItem(list.id, 'Milk', 0, NOW);
       const item1 = checkItem(addListItem(list.id, 'Bread', 1, NOW), NOW);
       // Clear completed → only unchecked remain
@@ -255,7 +255,7 @@ describe('list domain', () => {
     });
 
     it('summary is empty after clearing all items from a fully-checked list', () => {
-      const list = createSharedList('Grocery Run', 'stakeholder', NOW);
+      const list = createSharedList('Grocery Run', null, NOW);
       const item0 = checkItem(addListItem(list.id, 'Milk', 0, NOW), NOW);
       const item1 = checkItem(addListItem(list.id, 'Bread', 1, NOW), NOW);
       // Clear completed on a fully-checked list → empty

@@ -39,10 +39,13 @@ export function createDatabase(dbPath: string): Database.Database {
     const sql = readFileSync(migrationPath, 'utf8');
     const appliedAt = new Date().toISOString();
 
+    // Disable FK checks during migrations that may rebuild tables with circular references
+    db.pragma('foreign_keys = OFF');
     db.transaction(() => {
       db.exec(sql);
       markMigrationApplied.run(migrationFile, appliedAt);
     })();
+    db.pragma('foreign_keys = ON');
   }
 
   return db;

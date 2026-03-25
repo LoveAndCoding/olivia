@@ -1,11 +1,13 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ReminderUpdateChange } from '@olivia/contracts';
+import type { ReminderUpdateChange, User } from '@olivia/contracts';
 import { computeReminderState, scheduleNextOccurrence } from '@olivia/domain';
 import { format } from 'date-fns';
 import { Check, Moon, PencilSimple, X, ArrowCounterClockwise, ArrowsClockwise, LinkSimple } from '@phosphor-icons/react';
 import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
+import { getHouseholdMembers } from '../lib/auth-api';
 import {
   loadReminderDetail,
   completeReminderCommand,
@@ -17,7 +19,7 @@ import {
   getReminderDueDisplay,
   formatScheduledLabel,
   formatRecurrenceLabel,
-  ownerLabel,
+  resolveUserName,
 } from '../lib/reminder-helpers';
 import { BottomNav } from '../components/bottom-nav';
 import { OliviaMessage } from '../components/reminders/OliviaMessage';
@@ -32,6 +34,13 @@ export function ReminderDetailPage() {
   const navigate = useNavigate();
   const { role } = useRole();
   const queryClient = useQueryClient();
+  const { user: currentUser, getSessionToken } = useAuth();
+  const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    getHouseholdMembers(token).then(res => setMembers(res.members)).catch(() => {});
+  }, [getSessionToken]);
 
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [showSnoozeSheet, setShowSnoozeSheet] = useState(false);
@@ -126,7 +135,7 @@ export function ReminderDetailPage() {
     }
   }, [reminder, role, invalidateAndRefresh, showBanner]);
 
-  const isSpouse = role === 'spouse';
+  const isReadOnly = currentUser?.role === 'member';
   const isCompleted = state === 'completed';
   const isCancelled = state === 'cancelled';
   const isDueOrOverdue = state === 'due' || state === 'overdue';
@@ -166,7 +175,7 @@ export function ReminderDetailPage() {
 
               {isCompleted && (
                 <div className="rem-status-banner rem-status-banner-mint">
-                  <Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Completed · {reminder.completedAt ? format(new Date(reminder.completedAt), 'MMM d') : ''} · by {ownerLabel(reminder.owner)}
+                  <Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Completed · {reminder.completedAt ? format(new Date(reminder.completedAt), 'MMM d') : ''} · by {resolveUserName(reminder.assigneeUserId, members)}
                 </div>
               )}
 
@@ -184,7 +193,7 @@ export function ReminderDetailPage() {
                   <div className="linked-task-card-label"><LinkSimple size={14} style={{ marginRight: 4, verticalAlign: -2 }} /> Linked task</div>
                   <div className="linked-task-card-title">{reminder.linkedInboxItem.title}</div>
                   <div className="linked-task-card-meta">
-                    Owner: {ownerLabel(reminder.linkedInboxItem.owner)} · Status: {reminder.linkedInboxItem.status.replace('_', ' ')}
+                    Assignee: {resolveUserName(reminder.linkedInboxItem.assigneeUserId, members)} · Status: {reminder.linkedInboxItem.status.replace('_', ' ')}
                     {reminder.linkedInboxItem.status === 'open' && state === 'overdue' && ' · Needs attention'}
                   </div>
                 </div>
@@ -246,9 +255,9 @@ export function ReminderDetailPage() {
                   );
                 })()}
                 <div className="rem-detail-field">
-                  <span className="rem-detail-field-label">Owner</span>
+                  <span className="rem-detail-field-label">Assignee</span>
                   <span className="rem-detail-field-value">
-                    {ownerLabel(reminder.owner)}{reminder.owner === role ? ' (stakeholder)' : ''}
+                    {resolveUserName(reminder.assigneeUserId, members)}{reminder.assigneeUserId === currentUser?.id ? ' (you)' : ''}
                   </span>
                 </div>
                 <div className="rem-detail-field">
@@ -269,14 +278,14 @@ export function ReminderDetailPage() {
                 )}
               </div>
 
-              {isSpouse && (
+              {isReadOnly && (
                 <div className="rem-status-banner rem-status-banner-sky" style={{ marginBottom: 16 }}>
-                  View only — actions are available to Lexi
+                  View only — read-only access
                 </div>
               )}
 
               {/* Actions — DET-1: upcoming => Edit, Snooze, Cancel */}
-              {!isSpouse && state === 'upcoming' && (
+              {!isReadOnly && state === 'upcoming' && (
                 <div className="rem-actions-row" style={{ marginBottom: 20 }}>
                   <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => setShowEditSheet(true)}>
                     <PencilSimple size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Edit
@@ -291,7 +300,7 @@ export function ReminderDetailPage() {
               )}
 
               {/* Actions — DET-2/DET-3: due or overdue => Done, Snooze, Edit, Cancel */}
-              {!isSpouse && isDueOrOverdue && (
+              {!isReadOnly && isDueOrOverdue && (
                 <div style={{ marginBottom: 20 }}>
                   <div className="rem-actions-row" style={{ marginBottom: 10 }}>
                     <button type="button" className="rem-btn rem-btn-done" style={{ flex: 1 }} disabled={busy} onClick={handleComplete}>
@@ -313,7 +322,7 @@ export function ReminderDetailPage() {
               )}
 
               {/* Actions — ACTION-4: snoozed => Change snooze, Un-snooze, Mark done now, Cancel */}
-              {!isSpouse && isSnoozed && (
+              {!isReadOnly && isSnoozed && (
                 <div style={{ marginBottom: 20 }}>
                   <div className="rem-actions-row" style={{ marginBottom: 10 }}>
                     <button type="button" className="rem-btn rem-btn-secondary" disabled={busy} onClick={() => setShowSnoozeSheet(true)}>
@@ -337,7 +346,7 @@ export function ReminderDetailPage() {
               )}
 
               {/* Actions — DET-4: completed => Undo completion */}
-              {!isSpouse && isCompleted && (
+              {!isReadOnly && isCompleted && (
                 <div className="rem-actions-row" style={{ marginBottom: 20 }}>
                   <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => {
                     void navigate({ to: '/reminders' });
@@ -359,7 +368,7 @@ export function ReminderDetailPage() {
                           <strong>{formatEventType(entry.eventType)}</strong>
                           {' · '}
                           {format(new Date(entry.createdAt), 'MMM d')}
-                          {entry.actorRole === 'stakeholder' && ' · by Lexi'}
+                          {entry.userId && ` · by ${resolveUserName(entry.userId, members)}`}
                         </div>
                       </div>
                     ))}
@@ -375,7 +384,7 @@ export function ReminderDetailPage() {
 
       {banner && <ConfirmBanner message={banner.message} variant={banner.variant} />}
 
-      {reminder && !isSpouse && (
+      {reminder && !isReadOnly && (
         <>
           <EditReminderSheet
             open={showEditSheet}

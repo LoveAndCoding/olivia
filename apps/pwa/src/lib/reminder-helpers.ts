@@ -96,7 +96,11 @@ export function formatDateShort(dateStr: string): string {
   return format(d, 'MMM d');
 }
 
-export function formatReminderMeta(reminder: Reminder, userRole: string): string {
+export function formatReminderMeta(
+  reminder: Reminder,
+  currentUserId: string | null,
+  members: Array<{ id: string; name: string }> = [],
+): string {
   const scheduled = new Date(reminder.scheduledAt);
   const parts: string[] = [];
 
@@ -108,8 +112,8 @@ export function formatReminderMeta(reminder: Reminder, userRole: string): string
     parts.push(`${format(scheduled, 'MMM d')} · ${format(scheduled, 'h:mm a')}`);
   }
 
-  if (reminder.owner !== userRole && reminder.owner !== 'unassigned') {
-    parts.push(ownerLabel(reminder.owner));
+  if (reminder.assigneeUserId !== null && reminder.assigneeUserId !== currentUserId) {
+    parts.push(resolveUserName(reminder.assigneeUserId, members));
   }
 
   return parts.join(' · ');
@@ -131,10 +135,13 @@ export function formatRecurrenceLabel(cadence: RecurrenceCadence): string {
   }
 }
 
-export function ownerLabel(owner: string): string {
-  if (owner === 'stakeholder') return 'Lexi';
-  if (owner === 'spouse') return 'Christian';
-  return 'Unassigned';
+export function resolveUserName(
+  userId: string | null,
+  members: Array<{ id: string; name: string }>,
+): string {
+  if (userId === null) return 'Unassigned';
+  const member = members.find((m) => m.id === userId);
+  return member ? member.name : 'Unknown user';
 }
 
 export type SnoozeOption = {

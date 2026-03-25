@@ -29,7 +29,7 @@ function makeRoutine(overrides: Partial<Routine> = {}): Routine {
   return {
     id: ROUTINE_ID,
     title: 'Test routine',
-    owner: 'stakeholder',
+    assigneeUserId: null,
     recurrenceRule: 'weekly',
     intervalDays: null,
     intervalWeeks: null,
@@ -51,7 +51,7 @@ function makeOccurrence(overrides: Partial<RoutineOccurrence> = {}): RoutineOccu
     routineId: ROUTINE_ID,
     dueDate: localNoon(2026, 3, 19),
     completedAt: null,
-    completedBy: null,
+    completedByUserId: null,
     skipped: false,
     createdAt: localNoon(2026, 3, 19),
     ...overrides

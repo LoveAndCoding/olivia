@@ -1,17 +1,25 @@
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { computeFlags } from '@olivia/domain';
-import type { InboxItem, Owner } from '@olivia/contracts';
+import type { InboxItem, User } from '@olivia/contracts';
 import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
+import { getHouseholdMembers } from '../lib/auth-api';
+import { resolveUserName } from '../lib/reminder-helpers';
 import { loadInboxView } from '../lib/sync';
-
-const ownerOptions: Array<Owner | 'all'> = ['all', 'stakeholder', 'spouse', 'unassigned'];
 
 export function ReviewPage() {
   const { role } = useRole();
+  const { user: currentUser, getSessionToken } = useAuth();
+  const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    getHouseholdMembers(token).then(res => setMembers(res.members)).catch(() => {});
+  }, [getSessionToken]);
   const [view, setView] = useState<'active' | 'all'>('active');
-  const [ownerFilter, setOwnerFilter] = useState<Owner | 'all'>('all');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
 
   const inboxQuery = useQuery({
     queryKey: ['inbox-view', role, view],
@@ -23,7 +31,7 @@ export function ReviewPage() {
     if (!response) {
       return null;
     }
-    const filterItems = (items: InboxItem[]) => (ownerFilter === 'all' ? items : items.filter((item) => item.owner === ownerFilter));
+    const filterItems = (items: InboxItem[]) => (ownerFilter === 'all' ? items : ownerFilter === 'unassigned' ? items.filter((item) => item.assigneeUserId === null) : items.filter((item) => item.assigneeUserId === ownerFilter));
     return {
       open: filterItems(response.itemsByStatus.open),
       inProgress: filterItems(response.itemsByStatus.in_progress),
@@ -47,7 +55,7 @@ export function ReviewPage() {
       { label: 'Active items', value: groups.open.length + groups.inProgress.length, tone: 'neutral' },
       { label: 'Need attention', value: attentionCount, tone: 'warning' },
       { label: 'Suggestions', value: inboxQuery.data.suggestions.length, tone: 'info' },
-      { label: 'Viewing as', value: role === 'stakeholder' ? 'Stakeholder' : 'Spouse', tone: 'success' }
+      { label: 'Viewing as', value: currentUser?.name ?? role, tone: 'success' }
     ];
   }, [groups, inboxQuery.data, role, view]);
 
@@ -94,13 +102,19 @@ export function ReviewPage() {
           </div>
         </div>
         <div className="stack-sm">
-          <span className="field-label">Owner</span>
+          <span className="field-label">Assignee</span>
           <div className="filter-tabs">
-            {ownerOptions.map((option) => (
-              <button key={option} type="button" className={`filter-tab${ownerFilter === option ? ' active' : ''}`} onClick={() => setOwnerFilter(option)}>
-                {option}
+            <button type="button" className={`filter-tab${ownerFilter === 'all' ? ' active' : ''}`} onClick={() => setOwnerFilter('all')}>
+              All
+            </button>
+            {members.map((m) => (
+              <button key={m.id} type="button" className={`filter-tab${ownerFilter === m.id ? ' active' : ''}`} onClick={() => setOwnerFilter(m.id)}>
+                {m.name}
               </button>
             ))}
+            <button type="button" className={`filter-tab${ownerFilter === 'unassigned' ? ' active' : ''}`} onClick={() => setOwnerFilter('unassigned')}>
+              Unassigned
+            </button>
           </div>
         </div>
       </section>
@@ -132,17 +146,17 @@ export function ReviewPage() {
             </div>
           </section>
 
-          <StatusGroup title="Open" items={groups?.open ?? []} tone="accent-open" />
-          <StatusGroup title="In progress" items={groups?.inProgress ?? []} tone="accent-progress" />
-          {view === 'all' ? <StatusGroup title="Deferred" items={groups?.deferred ?? []} tone="accent-deferred" /> : null}
-          {view === 'all' ? <StatusGroup title="Done" items={groups?.done ?? []} tone="accent-done" /> : null}
+          <StatusGroup title="Open" items={groups?.open ?? []} tone="accent-open" members={members} />
+          <StatusGroup title="In progress" items={groups?.inProgress ?? []} tone="accent-progress" members={members} />
+          {view === 'all' ? <StatusGroup title="Deferred" items={groups?.deferred ?? []} tone="accent-deferred" members={members} /> : null}
+          {view === 'all' ? <StatusGroup title="Done" items={groups?.done ?? []} tone="accent-done" members={members} /> : null}
         </>
       ) : null}
     </div>
   );
 }
 
-function StatusGroup({ title, items, tone }: { title: string; items: InboxItem[]; tone: string }) {
+function StatusGroup({ title, items, tone, members }: { title: string; items: InboxItem[]; tone: string; members: Array<{ id: string; name: string }> }) {
   return (
     <section className={`card stack-md ${tone}`}>
       <div className="section-header">
@@ -172,7 +186,7 @@ function StatusGroup({ title, items, tone }: { title: string; items: InboxItem[]
                 </div>
                 {item.pendingSync ? <span className="chip pending">Pending sync</span> : null}
               </div>
-              <p className="muted">Owner: {item.owner} · Status: {item.status.replace('_', ' ')}</p>
+              <p className="muted">Assignee: {resolveUserName(item.assigneeUserId, members)} · Status: {item.status.replace('_', ' ')}</p>
               {item.dueText ? <p className="muted">Due: {item.dueText}</p> : null}
               <div className="chip-row">
                 {flags.overdue ? <span className="chip danger">Overdue</span> : null}

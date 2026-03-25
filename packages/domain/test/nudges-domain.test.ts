@@ -11,7 +11,7 @@ function makeWeeklyRoutine(overrides: Partial<Routine> = {}): Routine {
   return {
     id: ROUTINE_ID,
     title: 'Test routine',
-    owner: 'stakeholder',
+    assigneeUserId: null,
     recurrenceRule: 'weekly',
     intervalDays: null,
     intervalWeeks: null,
@@ -41,7 +41,7 @@ function makeNudge(overrides: Partial<Nudge> & { entityType: Nudge['entityType']
 describe('skipRoutineOccurrence', () => {
   it('advances currentDueDate schedule-anchored, sets skipped: true', () => {
     const routine = makeWeeklyRoutine({ currentDueDate: '2026-03-08T12:00:00.000Z' });
-    const { updatedRoutine, occurrence } = skipRoutineOccurrence(routine, 'stakeholder');
+    const { updatedRoutine, occurrence } = skipRoutineOccurrence(routine, null);
     expect(occurrence.skipped).toBe(true);
     expect(occurrence.dueDate).toBe('2026-03-08T12:00:00.000Z');
     // next weekly due date is 7 days later (noon UTC avoids DST issues)
@@ -49,21 +49,21 @@ describe('skipRoutineOccurrence', () => {
     expect(updatedRoutine.version).toBe(routine.version + 1);
   });
 
-  it('records skippedBy as completedBy on the occurrence', () => {
+  it('records skippedByUserId as completedByUserId on the occurrence', () => {
     const routine = makeWeeklyRoutine();
-    const { occurrence } = skipRoutineOccurrence(routine, 'spouse');
-    expect(occurrence.completedBy).toBe('spouse');
+    const { occurrence } = skipRoutineOccurrence(routine, 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+    expect(occurrence.completedByUserId).toBe('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
     expect(occurrence.skipped).toBe(true);
   });
 
   it('throws on paused routine', () => {
     const routine = makeWeeklyRoutine({ status: 'paused' });
-    expect(() => skipRoutineOccurrence(routine, 'stakeholder')).toThrow('Cannot skip a paused routine.');
+    expect(() => skipRoutineOccurrence(routine, null)).toThrow('Cannot skip a paused routine.');
   });
 
   it('throws on archived routine', () => {
     const routine = makeWeeklyRoutine({ status: 'archived' });
-    expect(() => skipRoutineOccurrence(routine, 'stakeholder')).toThrow('Cannot skip an archived routine.');
+    expect(() => skipRoutineOccurrence(routine, null)).toThrow('Cannot skip an archived routine.');
   });
 });
 

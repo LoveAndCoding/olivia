@@ -25,7 +25,7 @@ function buildList(overrides: Record<string, unknown> = {}) {
   return {
     id: listId,
     title: 'Grocery Run',
-    owner: 'stakeholder',
+    assigneeUserId: null,
     status: 'active',
     activeItemCount: 3,
     checkedItemCount: 1,

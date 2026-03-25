@@ -1,18 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Owner } from '@olivia/contracts';
+import type { User } from '@olivia/contracts';
 import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
+import { getHouseholdMembers } from '../lib/auth-api';
 import { confirmCreateCommand, previewCreateCommand } from '../lib/sync';
 
 export function AddPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { role } = useRole();
+  const { user: currentUser, getSessionToken } = useAuth();
+  const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    getHouseholdMembers(token).then(res => setMembers(res.members)).catch(() => {});
+  }, [getSessionToken]);
   const [inputText, setInputText] = useState('');
   const [structuredMode, setStructuredMode] = useState(false);
   const [structuredTitle, setStructuredTitle] = useState('');
-  const [structuredOwner, setStructuredOwner] = useState<Owner>('unassigned');
+  const [structuredAssigneeUserId, setStructuredAssigneeUserId] = useState<string | null>(null);
   const [structuredDueText, setStructuredDueText] = useState('');
   const [structuredDescription, setStructuredDescription] = useState('');
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof previewCreateCommand>> | null>(null);
@@ -60,7 +69,7 @@ export function AddPage() {
       const savedItem = await confirmCreateCommand(role, {
         id,
         title: structuredTitle,
-        owner: structuredOwner,
+        assigneeUserId: structuredAssigneeUserId,
         status: 'open',
         dueText: structuredDueText || null,
         dueAt: null,
@@ -104,11 +113,12 @@ export function AddPage() {
               <input value={structuredTitle} onChange={(event) => setStructuredTitle(event.target.value)} />
             </label>
             <label className="stack-sm">
-              <span className="field-label">Owner</span>
-              <select value={structuredOwner} onChange={(event) => setStructuredOwner(event.target.value as Owner)}>
-                <option value="unassigned">unassigned</option>
-                <option value="stakeholder">stakeholder</option>
-                <option value="spouse">spouse</option>
+              <span className="field-label">Assignee</span>
+              <select value={structuredAssigneeUserId ?? ''} onChange={(event) => setStructuredAssigneeUserId(event.target.value || null)}>
+                <option value="">Unassigned</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
               </select>
             </label>
             <label className="stack-sm">
@@ -162,8 +172,8 @@ export function AddPage() {
               <strong>{preview.parsedItem.title}</strong>
             </div>
             <div className="preview-field">
-              <span className="field-label">Owner</span>
-              <strong>{preview.parsedItem.owner}</strong>
+              <span className="field-label">Assignee</span>
+              <strong>{preview.parsedItem.assigneeUserId ? members.find(m => m.id === preview.parsedItem.assigneeUserId)?.name ?? 'Unknown' : 'Unassigned'}</strong>
             </div>
             <div className="preview-field">
               <span className="field-label">Status</span>

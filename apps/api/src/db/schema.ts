@@ -4,7 +4,7 @@ export const inboxItemsTable = sqliteTable('inbox_items', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   description: text('description'),
-  owner: text('owner').notNull(),
+  assigneeUserId: text('assignee_user_id'),
   createdByUserId: text('created_by_user_id'),
   status: text('status').notNull(),
   dueAt: text('due_at'),
@@ -48,7 +48,7 @@ export const remindersTable = sqliteTable('reminders', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   note: text('note'),
-  owner: text('owner').notNull(),
+  assigneeUserId: text('assignee_user_id'),
   createdByUserId: text('created_by_user_id'),
   linkedInboxItemId: text('linked_inbox_item_id'),
   recurrenceCadence: text('recurrence_cadence').notNull(),
@@ -101,7 +101,7 @@ export const schemaMigrationsTable = sqliteTable('schema_migrations', {
 export const sharedListsTable = sqliteTable('shared_lists', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
-  owner: text('owner').notNull(),
+  assigneeUserId: text('assignee_user_id'),
   createdByUserId: text('created_by_user_id'),
   status: text('status').notNull(),
   createdAt: text('created_at').notNull(),
@@ -138,7 +138,7 @@ export const listItemHistoryTable = sqliteTable('list_item_history', {
 export const routinesTable = sqliteTable('routines', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
-  owner: text('owner').notNull(),
+  assigneeUserId: text('assignee_user_id'),
   createdByUserId: text('created_by_user_id'),
   recurrenceRule: text('recurrence_rule').notNull(),
   intervalDays: integer('interval_days'),
@@ -159,7 +159,6 @@ export const routineOccurrencesTable = sqliteTable('routine_occurrences', {
   routineId: text('routine_id').notNull(),
   dueDate: text('due_date').notNull(),
   completedAt: text('completed_at'),
-  completedBy: text('completed_by'),
   completedByUserId: text('completed_by_user_id'),
   skipped: integer('skipped', { mode: 'boolean' }).notNull(),
   createdAt: text('created_at').notNull()

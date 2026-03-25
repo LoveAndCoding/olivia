@@ -49,7 +49,7 @@ const REMINDER_SELECT = `
     inbox_items.id AS linked_item_id,
     inbox_items.title AS linked_item_title,
     inbox_items.status AS linked_item_status,
-    inbox_items.owner AS linked_item_owner,
+    inbox_items.assignee_user_id AS linked_item_assignee_user_id,
     inbox_items.due_at AS linked_item_due_at
   FROM reminders
   LEFT JOIN inbox_items ON inbox_items.id = reminders.linked_inbox_item_id
@@ -82,7 +82,7 @@ const mapItemRow = (row: Record<string, unknown>): InboxItem =>
     id: row.id,
     title: row.title,
     description: row.description ?? null,
-    owner: row.owner,
+    assigneeUserId: row.assignee_user_id ?? null,
     createdByUserId: row.created_by_user_id ?? null,
     status: row.status,
     dueAt: row.due_at ?? null,
@@ -113,7 +113,7 @@ const mapReminderRow = (row: Record<string, unknown>, now: Date = new Date()): R
     id: String(row.id),
     title: String(row.title),
     note: row.note ? String(row.note) : null,
-    owner: row.owner,
+    assigneeUserId: row.assignee_user_id ?? null,
     createdByUserId: row.created_by_user_id ?? null,
     scheduledAt: String(row.scheduled_at),
     recurrenceCadence: row.recurrence_cadence,
@@ -123,7 +123,7 @@ const mapReminderRow = (row: Record<string, unknown>, now: Date = new Date()): R
           id: String(row.linked_item_id),
           title: String(row.linked_item_title),
           status: row.linked_item_status,
-          owner: row.linked_item_owner,
+          assigneeUserId: row.linked_item_assignee_user_id ?? null,
           dueAt: row.linked_item_due_at ? String(row.linked_item_due_at) : null
         }
       : null,
@@ -172,7 +172,7 @@ const mapSharedListRow = (row: Record<string, unknown>): SharedList =>
   sharedListSchema.parse({
     id: row.id,
     title: row.title,
-    owner: row.owner,
+    assigneeUserId: row.assignee_user_id ?? null,
     createdByUserId: row.created_by_user_id ?? null,
     status: row.status,
     // Summary counts are computed separately and not stored on the row; default to 0
@@ -235,7 +235,7 @@ export class InboxRepository {
   createItem(item: InboxItem, historyEntry: HistoryEntry): void {
     const insertItem = this.db.prepare(`
       INSERT INTO inbox_items (
-        id, title, description, owner, created_by_user_id, status, due_at, due_text, created_at, updated_at, version, last_status_changed_at, last_note_at, archived_at
+        id, title, description, assignee_user_id, created_by_user_id, status, due_at, due_text, created_at, updated_at, version, last_status_changed_at, last_note_at, archived_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertHistory = this.db.prepare(`
@@ -248,7 +248,7 @@ export class InboxRepository {
         item.id,
         item.title,
         item.description,
-        item.owner,
+        item.assigneeUserId,
         item.createdByUserId ?? null,
         item.status,
         item.dueAt,
@@ -278,7 +278,7 @@ export class InboxRepository {
   updateItem(item: InboxItem, historyEntry: HistoryEntry, expectedVersion: number): boolean {
     const updateItem = this.db.prepare(`
       UPDATE inbox_items
-      SET title = ?, description = ?, owner = ?, status = ?, due_at = ?, due_text = ?, updated_at = ?, version = ?, last_status_changed_at = ?, last_note_at = ?, archived_at = ?
+      SET title = ?, description = ?, assignee_user_id = ?, status = ?, due_at = ?, due_text = ?, updated_at = ?, version = ?, last_status_changed_at = ?, last_note_at = ?, archived_at = ?
       WHERE id = ? AND version = ?
     `);
     const insertHistory = this.db.prepare(`
@@ -290,7 +290,7 @@ export class InboxRepository {
       const result = updateItem.run(
         item.title,
         item.description,
-        item.owner,
+        item.assigneeUserId,
         item.status,
         item.dueAt,
         item.dueText,
@@ -345,7 +345,7 @@ export class InboxRepository {
   createReminder(reminder: Reminder, timelineEntries: ReminderTimelineEntry[]): void {
     const insertReminder = this.db.prepare(`
       INSERT INTO reminders (
-        id, title, note, owner, created_by_user_id, linked_inbox_item_id, recurrence_cadence, scheduled_at, snoozed_until,
+        id, title, note, assignee_user_id, created_by_user_id, linked_inbox_item_id, recurrence_cadence, scheduled_at, snoozed_until,
         completed_at, cancelled_at, created_at, updated_at, version
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
@@ -359,7 +359,7 @@ export class InboxRepository {
         reminder.id,
         reminder.title,
         reminder.note,
-        reminder.owner,
+        reminder.assigneeUserId,
         reminder.createdByUserId ?? null,
         reminder.linkedInboxItemId,
         reminder.recurrenceCadence,
@@ -418,7 +418,7 @@ export class InboxRepository {
   updateReminder(reminder: Reminder, timelineEntries: ReminderTimelineEntry[], expectedVersion: number): boolean {
     const updateReminder = this.db.prepare(`
       UPDATE reminders
-      SET title = ?, note = ?, owner = ?, linked_inbox_item_id = ?, recurrence_cadence = ?, scheduled_at = ?,
+      SET title = ?, note = ?, assignee_user_id = ?, linked_inbox_item_id = ?, recurrence_cadence = ?, scheduled_at = ?,
           snoozed_until = ?, completed_at = ?, cancelled_at = ?, updated_at = ?, version = ?
       WHERE id = ? AND version = ?
     `);
@@ -431,7 +431,7 @@ export class InboxRepository {
       const result = updateReminder.run(
         reminder.title,
         reminder.note,
-        reminder.owner,
+        reminder.assigneeUserId,
         reminder.linkedInboxItemId,
         reminder.recurrenceCadence,
         reminder.scheduledAt,
@@ -668,7 +668,7 @@ export class InboxRepository {
 
   createSharedList(list: SharedList, historyEntry: ListItemHistoryEntry): void {
     const insertList = this.db.prepare(`
-      INSERT INTO shared_lists (id, title, owner, created_by_user_id, status, created_at, updated_at, archived_at, version)
+      INSERT INTO shared_lists (id, title, assignee_user_id, created_by_user_id, status, created_at, updated_at, archived_at, version)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertHistory = this.db.prepare(`
@@ -678,7 +678,7 @@ export class InboxRepository {
 
     this.db.transaction(() => {
       insertList.run(
-        list.id, list.title, list.owner, list.createdByUserId ?? null, list.status,
+        list.id, list.title, list.assigneeUserId, list.createdByUserId ?? null, list.status,
         list.createdAt, list.updatedAt, list.archivedAt, list.version
       );
       insertHistory.run(
@@ -861,7 +861,7 @@ export class InboxRepository {
     const base = routineSchema.parse({
       id: row.id,
       title: row.title,
-      owner: row.owner,
+      assigneeUserId: row.assignee_user_id ?? null,
       createdByUserId: row.created_by_user_id ?? null,
       recurrenceRule: row.recurrence_rule,
       intervalDays: row.interval_days ?? null,
@@ -885,7 +885,6 @@ export class InboxRepository {
       routineId: row.routine_id,
       dueDate: row.due_date,
       completedAt: row.completed_at ?? null,
-      completedBy: row.completed_by ?? null,
       completedByUserId: row.completed_by_user_id ?? null,
       skipped: Boolean(row.skipped),
       reviewRecordId: row.review_record_id ?? null,
@@ -934,11 +933,11 @@ export class InboxRepository {
   createRoutine(routine: Routine): void {
     this.db.prepare(`
       INSERT INTO routines (
-        id, title, owner, created_by_user_id, recurrence_rule, interval_days, interval_weeks, weekdays, status, current_due_date,
+        id, title, assignee_user_id, created_by_user_id, recurrence_rule, interval_days, interval_weeks, weekdays, status, current_due_date,
         ritual_type, created_at, updated_at, archived_at, version
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      routine.id, routine.title, routine.owner, routine.createdByUserId ?? null, routine.recurrenceRule, routine.intervalDays,
+      routine.id, routine.title, routine.assigneeUserId, routine.createdByUserId ?? null, routine.recurrenceRule, routine.intervalDays,
       routine.intervalWeeks, routine.weekdays ? JSON.stringify(routine.weekdays) : null,
       routine.status, routine.currentDueDate, routine.ritualType ?? null,
       routine.createdAt, routine.updatedAt, routine.archivedAt, routine.version
@@ -948,11 +947,11 @@ export class InboxRepository {
   updateRoutine(routine: Routine, expectedVersion: number): boolean {
     const result = this.db.prepare(`
       UPDATE routines
-      SET title = ?, owner = ?, recurrence_rule = ?, interval_days = ?, interval_weeks = ?, weekdays = ?, status = ?,
+      SET title = ?, assignee_user_id = ?, recurrence_rule = ?, interval_days = ?, interval_weeks = ?, weekdays = ?, status = ?,
           current_due_date = ?, ritual_type = ?, updated_at = ?, archived_at = ?, version = ?
       WHERE id = ? AND version = ?
     `).run(
-      routine.title, routine.owner, routine.recurrenceRule, routine.intervalDays,
+      routine.title, routine.assigneeUserId, routine.recurrenceRule, routine.intervalDays,
       routine.intervalWeeks, routine.weekdays ? JSON.stringify(routine.weekdays) : null,
       routine.status, routine.currentDueDate, routine.ritualType ?? null,
       routine.updatedAt, routine.archivedAt, routine.version,
@@ -996,8 +995,8 @@ export class InboxRepository {
     expectedVersion: number
   ): boolean {
     const insertOccurrence = this.db.prepare(`
-      INSERT INTO routine_occurrences (id, routine_id, due_date, completed_at, completed_by, completed_by_user_id, skipped, review_record_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO routine_occurrences (id, routine_id, due_date, completed_at, completed_by_user_id, skipped, review_record_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const updateRoutine = this.db.prepare(`
       UPDATE routines
@@ -1021,7 +1020,6 @@ export class InboxRepository {
         occurrence.routineId,
         occurrence.dueDate,
         occurrence.completedAt,
-        occurrence.completedBy,
         occurrence.completedByUserId ?? null,
         occurrence.skipped ? 1 : 0,
         occurrence.reviewRecordId ?? null,
@@ -1265,7 +1263,7 @@ export class InboxRepository {
 
     // Completed routine occurrences within the window (joined with non-archived routines)
     const routineOccurrenceRows = this.db.prepare(`
-      SELECT ro.*, r.title AS routine_title, r.owner AS routine_owner,
+      SELECT ro.*, r.title AS routine_title, r.assignee_user_id AS routine_assignee_user_id,
              r.recurrence_rule, r.interval_days, r.status AS routine_status,
              r.current_due_date, r.created_at AS routine_created_at,
              r.updated_at AS routine_updated_at, r.archived_at AS routine_archived_at,
@@ -1284,7 +1282,7 @@ export class InboxRepository {
       const routine = routineSchema.parse({
         id: row.routine_id,
         title: row.routine_title,
-        owner: row.routine_owner,
+        assigneeUserId: row.routine_assignee_user_id ?? null,
         recurrenceRule: row.recurrence_rule,
         intervalDays: row.interval_days ?? null,
         status: row.routine_status,
@@ -1450,7 +1448,7 @@ export class InboxRepository {
       currentWeekWindowEnd: row.current_week_window_end,
       carryForwardNotes: row.carry_forward_notes ?? null,
       completedAt: row.completed_at,
-      completedBy: row.completed_by,
+      completedByUserId: row.completed_by_user_id ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       version: row.version,
@@ -1473,7 +1471,7 @@ export class InboxRepository {
         id, ritual_occurrence_id, review_date,
         last_week_window_start, last_week_window_end,
         current_week_window_start, current_week_window_end,
-        carry_forward_notes, completed_at, completed_by,
+        carry_forward_notes, completed_at, completed_by_user_id,
         created_at, updated_at, version,
         recap_narrative, overview_narrative, ai_generation_used
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1481,7 +1479,7 @@ export class InboxRepository {
       full.id, full.ritualOccurrenceId, full.reviewDate,
       full.lastWeekWindowStart, full.lastWeekWindowEnd,
       full.currentWeekWindowStart, full.currentWeekWindowEnd,
-      full.carryForwardNotes, full.completedAt, full.completedBy,
+      full.carryForwardNotes, full.completedAt, full.completedByUserId ?? null,
       full.createdAt, full.updatedAt, full.version,
       full.recapNarrative ?? null, full.overviewNarrative ?? null,
       (full.aiGenerationUsed ?? false) ? 1 : 0
@@ -1509,15 +1507,15 @@ export class InboxRepository {
   ): boolean {
     const insertOccurrence = this.db.prepare(`
       INSERT INTO routine_occurrences (
-        id, routine_id, due_date, completed_at, completed_by, completed_by_user_id, skipped, review_record_id, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)
+        id, routine_id, due_date, completed_at, completed_by_user_id, skipped, review_record_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)
     `);
     const insertRecord = this.db.prepare(`
       INSERT INTO review_records (
         id, ritual_occurrence_id, review_date,
         last_week_window_start, last_week_window_end,
         current_week_window_start, current_week_window_end,
-        carry_forward_notes, completed_at, completed_by,
+        carry_forward_notes, completed_at, completed_by_user_id,
         created_at, updated_at, version,
         recap_narrative, overview_narrative, ai_generation_used
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1547,7 +1545,6 @@ export class InboxRepository {
         occurrence.routineId,
         occurrence.dueDate,
         occurrence.completedAt,
-        occurrence.completedBy,
         occurrence.completedByUserId ?? null,
         occurrence.skipped ? 1 : 0,
         occurrence.createdAt
@@ -1558,7 +1555,7 @@ export class InboxRepository {
         reviewRecord.id, reviewRecord.ritualOccurrenceId, reviewRecord.reviewDate,
         reviewRecord.lastWeekWindowStart, reviewRecord.lastWeekWindowEnd,
         reviewRecord.currentWeekWindowStart, reviewRecord.currentWeekWindowEnd,
-        reviewRecord.carryForwardNotes, reviewRecord.completedAt, reviewRecord.completedBy,
+        reviewRecord.carryForwardNotes, reviewRecord.completedAt, reviewRecord.completedByUserId ?? null,
         reviewRecord.createdAt, reviewRecord.updatedAt, reviewRecord.version,
         reviewRecord.recapNarrative ?? null, reviewRecord.overviewNarrative ?? null,
         (reviewRecord.aiGenerationUsed ?? false) ? 1 : 0

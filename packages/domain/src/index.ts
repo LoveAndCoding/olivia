@@ -36,7 +36,6 @@ import {
   COMPLETION_WINDOW_VARIANCE_THRESHOLD_HOURS,
   type CompletionWindowResult,
   type Nudge,
-  type Owner,
   type ParseConfidence,
   type ParserSource,
   type RecurrenceCadence,
@@ -81,7 +80,7 @@ type ParseInput = {
   inputText?: string;
   structuredInput?: Partial<DraftItem> & {
     title?: string;
-    owner?: Owner;
+    assigneeUserId?: string | null;
   };
   now?: Date;
 };
@@ -107,7 +106,7 @@ export type ReminderParseInput = {
   inputText?: string;
   structuredInput?: Partial<DraftReminder> & {
     title?: string;
-    owner?: Owner;
+    assigneeUserId?: string | null;
     note?: string | null;
     scheduledAt?: string;
     recurrenceCadence?: RecurrenceCadence;
@@ -120,12 +119,6 @@ export type ReminderMutationResult = {
   reminder: Reminder;
   timelineEntries: ReminderTimelineEntry[];
 };
-
-const OWNER_PATTERNS: Array<[RegExp, Owner]> = [
-  [/\bowner\s*[:=]?\s*(?:me|stakeholder)\b/i, 'stakeholder'],
-  [/\bowner\s*[:=]?\s*spouse\b/i, 'spouse'],
-  [/\bowner\s*[:=]?\s*unassigned\b/i, 'unassigned']
-];
 
 const STATUS_PATTERNS = [
   [/\bstatus\s*[:=]?\s*in[- ]?progress\b/i, 'in_progress'],
@@ -159,7 +152,7 @@ export function createDraft(input: ParseInput): ParseResult {
       id: structured.id ?? createId(),
       title: structured.title.trim(),
       description: structured.description?.trim() || null,
-      owner: structured.owner ?? 'unassigned',
+      assigneeUserId: structured.assigneeUserId ?? null,
       status: structured.status ?? 'open',
       dueText: structured.dueText?.trim() || null,
       dueAt: structured.dueAt ?? normalizeDueText(structured.dueText ?? null, now)
@@ -175,19 +168,10 @@ export function createDraft(input: ParseInput): ParseResult {
 
   const rawInput = stripPrefix(input.inputText ?? '');
   let remaining = rawInput;
-  let owner: Owner = 'unassigned';
   let status: InboxItem['status'] = 'open';
   let dueText: string | null = null;
   let dueAt: string | null = null;
   const ambiguities: string[] = [];
-
-  for (const [pattern, parsedOwner] of OWNER_PATTERNS) {
-    if (pattern.test(remaining)) {
-      owner = parsedOwner;
-      remaining = remaining.replace(pattern, '').trim();
-      break;
-    }
-  }
 
   for (const [pattern, parsedStatus] of STATUS_PATTERNS) {
     if (pattern.test(remaining)) {
@@ -216,7 +200,7 @@ export function createDraft(input: ParseInput): ParseResult {
     id: structured?.id ?? createId(),
     title: title || 'Untitled household item',
     description: structured?.description?.trim() || null,
-    owner,
+    assigneeUserId: null,
     status,
     dueText,
     dueAt
@@ -267,7 +251,7 @@ export function createReminderDraft(input: ReminderParseInput): ReminderParseRes
       id: structured.id ?? createId(),
       title: structured.title.trim(),
       note: structured.note?.trim() || null,
-      owner: structured.owner ?? 'unassigned',
+      assigneeUserId: structured.assigneeUserId ?? null,
       scheduledAt: structured.scheduledAt,
       recurrenceCadence: structured.recurrenceCadence ?? 'none',
       linkedInboxItemId: structured.linkedInboxItemId ?? null
@@ -283,18 +267,10 @@ export function createReminderDraft(input: ReminderParseInput): ReminderParseRes
 
   let remaining = stripReminderPrefix(input.inputText ?? '');
   const ambiguities: string[] = [];
-  let owner: Owner = structured?.owner ?? 'unassigned';
+  let assigneeUserId: string | null = structured?.assigneeUserId ?? null;
   let note = structured?.note?.trim() || null;
   let recurrenceCadence: RecurrenceCadence = structured?.recurrenceCadence ?? 'none';
   let linkedInboxItemId = structured?.linkedInboxItemId ?? null;
-
-  for (const [pattern, parsedOwner] of OWNER_PATTERNS) {
-    if (pattern.test(remaining)) {
-      owner = parsedOwner;
-      remaining = remaining.replace(pattern, '').trim();
-      break;
-    }
-  }
 
   for (const [pattern, parsedCadence] of REMINDER_RECURRENCE_PATTERNS) {
     if (pattern.test(remaining)) {
@@ -347,7 +323,7 @@ export function createReminderDraft(input: ReminderParseInput): ReminderParseRes
     id: structured?.id ?? createId(),
     title: title || 'Untitled reminder',
     note,
-    owner,
+    assigneeUserId,
     scheduledAt,
     recurrenceCadence,
     linkedInboxItemId
@@ -665,16 +641,16 @@ export function applyUpdate(item: InboxItem, change: UpdateChange, now: Date = n
       historyEntry = createHistoryEntry(item.id, 'status_changed', item.status, nextStatus, nextTimestamp);
       break;
     }
-    case 'owner': {
-      const nextOwner = rawValue as Owner;
-      if (nextOwner === item.owner) {
-        throw new Error('Owner is already set to the requested value.');
+    case 'assigneeUserId': {
+      const nextAssigneeUserId = rawValue as string | null;
+      if (nextAssigneeUserId === item.assigneeUserId) {
+        throw new Error('Assignee is already set to the requested value.');
       }
       updatedItem = {
         ...updatedItem,
-        owner: nextOwner
+        assigneeUserId: nextAssigneeUserId
       };
-      historyEntry = createHistoryEntry(item.id, 'owner_changed', item.owner, nextOwner, nextTimestamp);
+      historyEntry = createHistoryEntry(item.id, 'assignee_changed', item.assigneeUserId, nextAssigneeUserId, nextTimestamp);
       break;
     }
     case 'dueText':
@@ -743,7 +719,7 @@ export function computeFlags(item: InboxItem, now: Date = new Date(), thresholds
       !isAfter(dueDate, addDays(now, dueSoonDays))
   );
   const stale = active && differenceInCalendarDays(now, new Date(item.lastStatusChangedAt)) >= staleThresholdDays;
-  const unassigned = active && item.owner === 'unassigned';
+  const unassigned = active && item.assigneeUserId === null;
 
   return itemFlagsSchema.parse({ overdue, stale, dueSoon, unassigned });
 }
@@ -766,7 +742,7 @@ export function buildSuggestions(items: InboxItem[], now: Date = new Date(), thr
       continue;
     }
     if (flags.unassigned) {
-      ranked.push({ type: 'unassigned', itemId: item.id, title: item.title, message: `${item.title} is unassigned. Would you like to pick an owner?` });
+      ranked.push({ type: 'unassigned', itemId: item.id, title: item.title, message: `${item.title} is unassigned. Would you like to assign someone?` });
       continue;
     }
     if (flags.dueSoon) {
@@ -986,12 +962,12 @@ export function deriveListSummary(items: ListItem[]): ListSummary {
   return { activeItemCount, checkedItemCount, allChecked };
 }
 
-export function createSharedList(title: string, owner: ActorRole, now: Date = new Date()): SharedList {
+export function createSharedList(title: string, assigneeUserId: string | null, now: Date = new Date()): SharedList {
   const timestamp = now.toISOString();
   return sharedListSchema.parse({
     id: createId(),
     title: title.trim(),
-    owner,
+    assigneeUserId,
     status: 'active',
     activeItemCount: 0,
     checkedItemCount: 0,
@@ -1267,7 +1243,7 @@ export function computeRoutineDueState(
 
 export function createRoutine(
   title: string,
-  owner: Owner,
+  assigneeUserId: string | null,
   recurrenceRule: RoutineRecurrenceRule,
   firstDueDate: string | null,
   intervalDays?: number | null,
@@ -1288,7 +1264,7 @@ export function createRoutine(
   return routineSchema.parse({
     id: createId(),
     title: title.trim(),
-    owner,
+    assigneeUserId,
     recurrenceRule,
     intervalDays: intervalDays ?? null,
     intervalWeeks: intervalWeeks ?? null,
@@ -1306,7 +1282,7 @@ export function updateRoutine(
   routine: Routine,
   changes: {
     title?: string;
-    owner?: Owner;
+    assigneeUserId?: string | null;
     recurrenceRule?: RoutineRecurrenceRule;
     intervalDays?: number | null;
     intervalWeeks?: number | null;
@@ -1333,7 +1309,7 @@ export function updateRoutine(
   return routineSchema.parse({
     ...routine,
     title: changes.title !== undefined ? changes.title.trim() : routine.title,
-    owner: changes.owner ?? routine.owner,
+    assigneeUserId: changes.assigneeUserId !== undefined ? changes.assigneeUserId : routine.assigneeUserId,
     recurrenceRule: newRecurrenceRule,
     intervalDays: newIntervalDays,
     intervalWeeks: newIntervalWeeks,
@@ -1356,7 +1332,7 @@ export type CompleteRoutineResult = {
  */
 export function completeRoutineOccurrence(
   routine: Routine,
-  completedBy: Owner,
+  completedByUserId: string | null,
   now: Date = new Date()
 ): CompleteRoutineResult {
   if (routine.status === 'paused') {
@@ -1375,7 +1351,7 @@ export function completeRoutineOccurrence(
       routineId: routine.id,
       dueDate: timestamp,
       completedAt: timestamp,
-      completedBy,
+      completedByUserId,
       skipped: false,
       createdAt: timestamp
     });
@@ -1406,7 +1382,7 @@ export function completeRoutineOccurrence(
     routineId: routine.id,
     dueDate: originalDueDate,
     completedAt: timestamp,
-    completedBy,
+    completedByUserId,
     skipped: false,
     createdAt: timestamp
   });
@@ -2007,7 +1983,7 @@ export function formatReviewWindowAsDateStrings(window: { start: Date; end: Date
  */
 export function skipRoutineOccurrence(
   routine: Routine,
-  skippedBy: Owner,
+  skippedByUserId: string | null,
   now: Date = new Date()
 ): CompleteRoutineResult {
   if (routine.status === 'paused') {
@@ -2036,7 +2012,7 @@ export function skipRoutineOccurrence(
     routineId: routine.id,
     dueDate: originalDueDate,
     completedAt: timestamp,
-    completedBy: skippedBy,
+    completedByUserId: skippedByUserId,
     skipped: true,
     createdAt: timestamp
   });

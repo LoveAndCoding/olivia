@@ -905,7 +905,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     const userId = resolveUserId(request);
 
     const role = resolveActorRole(body.actorRole, request);
-    const list = createSharedList(body.title, role);
+    const list = createSharedList(body.title, userId ?? null);
     const attributedList = { ...list, createdByUserId: userId };
     const historyEntry = { ...createListCreatedHistoryEntry(list, role), userId };
     repository.createSharedList(attributedList, historyEntry);
@@ -1204,7 +1204,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     const userId = resolveUserId(request);
 
     const now = new Date();
-    const routine = createRoutine(body.title, body.owner, body.recurrenceRule, body.firstDueDate, body.intervalDays, now, body.weekdays, body.intervalWeeks);
+    const routine = createRoutine(body.title, body.assigneeUserId, body.recurrenceRule, body.firstDueDate, body.intervalDays, now, body.weekdays, body.intervalWeeks);
     const attributedRoutine = { ...routine, createdByUserId: userId };
     repository.createRoutine(attributedRoutine);
     request.log.info({ routineId: routine.id }, 'accepted routine create command');
@@ -1227,7 +1227,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     const updatedRoutine = updateRoutine(currentRoutine, {
       title: body.title,
-      owner: body.owner,
+      assigneeUserId: body.assigneeUserId,
       recurrenceRule: body.recurrenceRule,
       intervalDays: body.intervalDays,
       intervalWeeks: body.intervalWeeks,
@@ -1257,8 +1257,8 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (currentRoutine.version !== body.expectedVersion) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentRoutine.version, retryGuidance: 'Refresh and retry.' });
     }
-    const { updatedRoutine, occurrence } = completeRoutineOccurrence(currentRoutine, resolveActorRole(body.actorRole, request), now);
-    const attributedOccurrence = { ...occurrence, completedByUserId: userId };
+    const { updatedRoutine, occurrence } = completeRoutineOccurrence(currentRoutine, userId ?? null, now);
+    const attributedOccurrence = occurrence;
     const saved = repository.completeRoutineOccurrence(updatedRoutine, attributedOccurrence, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -1572,7 +1572,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       return reply.status(400).send({ code: 'NO_ITEMS', message: 'No shopping items found in this plan.' });
     }
     const listTitle = `Grocery \u2014 ${currentPlan.title}`;
-    const list = createSharedList(listTitle, actorRole);
+    const list = createSharedList(listTitle, resolveUserId(request) ?? null);
     const listHistoryEntry = createListCreatedHistoryEntry(list, actorRole);
     repository.createSharedList(list, listHistoryEntry);
     for (let i = 0; i < groceryItems.length; i++) {
@@ -1639,7 +1639,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         .map((r) => ({
           reminderId: r.id,
           title: r.title,
-          owner: r.owner,
+          assigneeUserId: r.assigneeUserId,
           scheduledAt: r.scheduledAt,
           dueState: r.state
         }));
@@ -1655,7 +1655,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
           dayRoutines.push({
             routineId: routine.id,
             routineTitle: routine.title,
-            owner: routine.owner,
+            assigneeUserId: routine.assigneeUserId,
             recurrenceRule: routine.recurrenceRule,
             intervalDays: routine.intervalDays ?? null,
             intervalWeeks: routine.intervalWeeks ?? null,
@@ -1687,7 +1687,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         .map((item) => ({
           itemId: item.id,
           title: item.title,
-          owner: item.owner,
+          assigneeUserId: item.assigneeUserId,
           dueAt: item.dueAt!,
           status: item.status
         }));
@@ -1731,7 +1731,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         type: 'routine' as const,
         routineId: routine.id,
         routineTitle: routine.title,
-        owner: routine.owner,
+        assigneeUserId: routine.assigneeUserId,
         dueDate: routineOccurrence.dueDate.split('T')[0],
         completedAt: routineOccurrence.completedAt!,
         reviewRecordId: routineOccurrence.reviewRecordId ?? null
@@ -1742,7 +1742,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         type: 'reminder' as const,
         reminderId: r.id,
         title: r.title,
-        owner: r.owner,
+        assigneeUserId: r.assigneeUserId,
         resolvedAt: r.state === 'completed' ? r.completedAt! : r.cancelledAt!,
         resolution: (r.state === 'completed' ? 'completed' : 'dismissed') as 'completed' | 'dismissed'
       })),
@@ -1767,7 +1767,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         type: 'inbox' as const,
         itemId: item.id,
         title: item.title,
-        owner: item.owner,
+        assigneeUserId: item.assigneeUserId,
         completedAt: item.lastStatusChangedAt
       })),
 
@@ -1834,7 +1834,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         type: 'routine' as const,
         routineId: r.id,
         routineTitle: r.title,
-        owner: r.owner,
+        assigneeUserId: r.assigneeUserId,
         dueDate: routineOccurrence.dueDate.split('T')[0],
         completedAt: routineOccurrence.completedAt!,
         reviewRecordId: routineOccurrence.reviewRecordId ?? null
@@ -1843,7 +1843,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         type: 'reminder' as const,
         reminderId: r.id,
         title: r.title,
-        owner: r.owner,
+        assigneeUserId: r.assigneeUserId,
         resolvedAt: r.state === 'completed' ? r.completedAt! : r.cancelledAt!,
         resolution: (r.state === 'completed' ? 'completed' : 'dismissed') as 'completed' | 'dismissed'
       })),
@@ -1864,7 +1864,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         type: 'inbox' as const,
         itemId: item.id,
         title: item.title,
-        owner: item.owner,
+        assigneeUserId: item.assigneeUserId,
         completedAt: item.lastStatusChangedAt
       })),
       ...histData.checkedListItems.map(({ item, listName }) => ({
@@ -1894,7 +1894,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         .map((r) => ({
           reminderId: r.id,
           title: r.title,
-          owner: r.owner,
+          assigneeUserId: r.assigneeUserId,
           scheduledAt: r.scheduledAt,
           dueState: r.state
         }));
@@ -1909,7 +1909,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
           dayRoutines.push({
             routineId: r.id,
             routineTitle: r.title,
-            owner: r.owner,
+            assigneeUserId: r.assigneeUserId,
             recurrenceRule: r.recurrenceRule,
             intervalDays: r.intervalDays ?? null,
             intervalWeeks: r.intervalWeeks ?? null,
@@ -1940,7 +1940,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         .map((item) => ({
           itemId: item.id,
           title: item.title,
-          owner: item.owner,
+          assigneeUserId: item.assigneeUserId,
           dueAt: item.dueAt!,
           status: item.status
         }));
@@ -2023,14 +2023,14 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       overviewNarrative,
       aiGenerationUsed,
       completedAt,
-      completedBy: body.actorRole as 'stakeholder',
+      completedByUserId: resolveUserId(request) ?? null,
       createdAt: nowIso,
       updatedAt: nowIso,
       version: 1
     };
 
     // Use domain function to advance currentDueDate; we override the occurrence ID and add reviewRecordId
-    const { updatedRoutine, occurrence: domainOccurrence } = completeRoutineOccurrence(routine, resolveActorRole(body.actorRole, request), now);
+    const { updatedRoutine, occurrence: domainOccurrence } = completeRoutineOccurrence(routine, resolveUserId(request) ?? null, now);
     const occurrenceWithReview = {
       ...domainOccurrence,
       id: occurrenceId,
@@ -2093,8 +2093,8 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (currentRoutine.version !== body.expectedVersion) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', currentVersion: currentRoutine.version, retryGuidance: 'Refresh and retry.' });
     }
-    const { updatedRoutine, occurrence } = skipRoutineOccurrence(currentRoutine, resolveActorRole(body.actorRole, request), now);
-    const attributedOccurrence = { ...occurrence, completedByUserId: userId };
+    const { updatedRoutine, occurrence } = skipRoutineOccurrence(currentRoutine, userId ?? null, now);
+    const attributedOccurrence = occurrence;
     const saved = repository.completeRoutineOccurrence(updatedRoutine, attributedOccurrence, body.expectedVersion);
     if (!saved) {
       return reply.status(409).send({ code: 'VERSION_CONFLICT', retryGuidance: 'Refresh and retry.' });
@@ -2377,7 +2377,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
           const parsed = createDraft({
             structuredInput: {
               title: String(toolCall.data.title ?? ''),
-              owner: (toolCall.data.owner as 'stakeholder' | 'spouse' | 'unassigned') ?? 'unassigned',
+              assigneeUserId: (toolCall.data.assigneeUserId as string | null) ?? null,
               dueText: dueText ?? null
             },
             now
@@ -2392,7 +2392,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
             structuredInput: {
               title: String(toolCall.data.title ?? ''),
               scheduledAt: toolCall.data.scheduledAt ? String(toolCall.data.scheduledAt) : now.toISOString(),
-              owner: (toolCall.data.owner as 'stakeholder' | 'spouse' | 'unassigned') ?? 'unassigned'
+              assigneeUserId: (toolCall.data.assigneeUserId as string | null) ?? null
             },
             now
           });
@@ -2438,10 +2438,10 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
           const firstDueDate = /^\d{4}-\d{2}-\d{2}$/.test(rawFirstDueDate)
             ? localDateToUtcNoon(rawFirstDueDate, config.householdTimezone)
             : rawFirstDueDate;
-          const owner = (toolCall.data.owner as 'stakeholder' | 'spouse' | 'unassigned') ?? 'stakeholder';
+          const assigneeUserId = (toolCall.data.assigneeUserId as string | null) ?? null;
           const routine = createRoutine(
             String(toolCall.data.title ?? ''),
-            owner,
+            assigneeUserId,
             recurrenceRule as 'daily' | 'weekly' | 'monthly' | 'every_n_days',
             firstDueDate,
             intervalDays,
@@ -2458,9 +2458,8 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
           break;
         }
         case 'create_shared_list': {
-          const rawListOwner = String(toolCall.data.owner ?? 'stakeholder');
-          const listOwner: 'stakeholder' | 'spouse' = rawListOwner === 'spouse' ? 'spouse' : 'stakeholder';
-          const list = createSharedList(String(toolCall.data.title ?? ''), listOwner, now);
+          const listAssigneeUserId = (toolCall.data.assigneeUserId as string | null) ?? null;
+          const list = createSharedList(String(toolCall.data.title ?? ''), listAssigneeUserId, now);
           const historyEntry = createListCreatedHistoryEntry(list, actorRole);
           repository.createSharedList(list, historyEntry);
           result = { list };

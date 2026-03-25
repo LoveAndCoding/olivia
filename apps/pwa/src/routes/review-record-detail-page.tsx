@@ -1,7 +1,12 @@
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import type { User } from '@olivia/contracts';
 import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
+import { getHouseholdMembers } from '../lib/auth-api';
+import { resolveUserName } from '../lib/reminder-helpers';
 import { loadReviewRecord } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
 
@@ -15,9 +20,9 @@ function formatReviewDate(isoDate: string): string {
   return format(new Date(isoDate + 'T00:00:00'), 'EEEE, MMM d');
 }
 
-function formatCompletionMeta(completedAt: string, completedBy: string): string {
+function formatCompletionMeta(completedAt: string, completedByUserId: string | null, members: Array<{ id: string; name: string }>): string {
   const time = format(new Date(completedAt), 'h:mm aa');
-  const who = completedBy === 'stakeholder' ? 'Lexi' : completedBy === 'spouse' ? 'Christian' : completedBy;
+  const who = resolveUserName(completedByUserId, members);
   return `Completed ${time} · ${who}`;
 }
 
@@ -50,6 +55,13 @@ export function ReviewRecordDetailPage() {
   const { reviewRecordId } = params;
   const navigate = useNavigate();
   const { role } = useRole();
+  const { user: currentUser, getSessionToken } = useAuth();
+  const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
+  useEffect(() => {
+    const token = getSessionToken();
+    if (!token) return;
+    getHouseholdMembers(token).then(res => setMembers(res.members)).catch(() => {});
+  }, [getSessionToken]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['review-record', reviewRecordId, role],
@@ -196,7 +208,7 @@ export function ReviewRecordDetailPage() {
             <div style={{ height: 1, background: 'var(--ink-4)', margin: '20px 0 12px' }} />
 
             <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              {formatCompletionMeta(data.completedAt, data.completedBy)}
+              {formatCompletionMeta(data.completedAt, data.completedByUserId ?? null, members)}
             </div>
           </div>
         )}
