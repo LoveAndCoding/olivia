@@ -99,11 +99,16 @@ test.describe('Settings page', () => {
   });
 
   test('back button navigates to More', async ({ page }) => {
+    // Navigate to /more first so history.back() has somewhere to go
+    await page.goto('/more');
+    await expect(page.locator('.screen-title').first()).toContainText('More', { timeout: 10_000 });
+
+    // Navigate to settings from More
     await page.goto('/settings');
     await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
 
-    // Click the back button
-    await page.getByLabel('Back to Home').click();
+    // Click the back button (uses history.back())
+    await page.getByLabel('Go back').click();
 
     // Should navigate to /more
     await expect(page).toHaveURL(/\/more/, { timeout: 5_000 });
