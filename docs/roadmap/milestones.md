@@ -314,6 +314,54 @@ Notes:
 - Track D (automation) and Track F (in-app feedback) are queued as M35 candidates once reliability is confirmed.
 - The board's env var comment may be about the Paperclip/deployment workflow, not the product — investigate before scoping.
 
+## M35: Identity Refactor & Automation Foundation
+Objective: eliminate the legacy role-based identity model (`actorRole`/`stakeholder`/`spouse`) in favor of userId-based identity across every layer, then build the first automation capabilities on the clean foundation.
+
+Status: todo
+
+Context:
+- M34 shipped reliability fixes and dynamic user assignment (PR #18), but the refactor was partial — only the database assignment column and UI pickers were changed.
+- The `actorRole` concept remains deeply embedded: ~90 contract schema fields, 129 API occurrences, 30+ frontend role checks, 50+ test references.
+- Board directive (2026-03-25): "Let's do it as a next iteration. Eventually we will want multi-tenancy and this will be a barrier."
+- Track D (automation) and Track F (in-app feedback) were queued from M33 feedback. The identity refactor is a prerequisite — automation rules need to target users, not roles.
+
+Priority areas (in order):
+
+1. **actorRole elimination** — Replace the stakeholder/spouse identity model with userId-based identity.
+   - Contracts layer: replace all `actorRole` schema fields with `userId` (breaking API change)
+   - API layer: resolve user from session token instead of role parameter on every route
+   - Frontend: remove all `role === 'spouse'` / `role === 'stakeholder'` checks, use auth-based access
+   - Remove SpouseBanner, role-based read-only gates, demo data hardcoded names
+   - Update all tests (E2E, contracts, domain, sync)
+   - Database: clean up any remaining role-based columns
+
+2. **Track D: Automation foundation** — Rule-based automation and push action buttons.
+   - Spec and build: user-defined automation rules (e.g., "remind me when X is overdue")
+   - Push notification action buttons (mark done, snooze from notification)
+   - Depends on: clean identity model from priority area 1
+
+3. **Track F: In-app feedback** — Lightweight friction reporting from within the app.
+   - Simple mechanism to report issues without leaving the app
+   - Pre-fill context (current screen, user, recent errors)
+
+Required artifacts:
+- Zero remaining `actorRole` references in contracts, API, and frontend source code (test fixtures may retain role concepts for backward-compat testing)
+- All API routes authenticate via session token, not role parameter
+- Automation rule engine spec and initial implementation
+- In-app feedback mechanism shipped
+
+Exit criteria:
+- `grep -r 'actorRole\|stakeholder\|spouse' apps/ packages/` returns zero hits in non-test source files
+- All tests pass with userId-based identity
+- At least one automation rule type is functional end-to-end
+- In-app feedback is accessible from Settings
+- Household confirms multi-user features work without role-based quirks
+
+Notes:
+- The actorRole refactor is the critical path. Track D and F should not start until the identity layer is clean.
+- This is a breaking API change — the frontend sync layer will need coordinated updates.
+- Multi-tenancy is the long-term goal. This refactor is the first step toward supporting multiple households.
+
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
 - Do the docs make the current phase legible to a new agent?
