@@ -548,6 +548,22 @@ export class InboxRepository {
     );
   }
 
+  listAllNotificationSubscriptions(): NotificationSubscription[] {
+    const rows = this.db
+      .prepare('SELECT * FROM notification_subscriptions ORDER BY created_at DESC')
+      .all() as Record<string, unknown>[];
+
+    return rows.map((row) =>
+      notificationSubscriptionSchema.parse({
+        id: row.id,
+        actorRole: row.actor_role,
+        endpoint: row.endpoint,
+        payload: parseJsonColumn(row.payload),
+        createdAt: row.created_at
+      })
+    );
+  }
+
   hasNotificationDelivery(
     notificationType: NotificationDeliveryRecord['notificationType'],
     actorRole: ActorRole,
@@ -1720,6 +1736,20 @@ export class InboxRepository {
   purgeStalePushNotificationLog(retentionMs: number, now: Date): void {
     const cutoff = new Date(now.getTime() - retentionMs).toISOString();
     this.db.prepare('DELETE FROM push_notification_log WHERE sent_at < ?').run(cutoff);
+  }
+
+  getLastPushNotificationTime(subscriptionId: string, entityType: string, entityId: string): string | null {
+    const row = this.db.prepare(`
+      SELECT sent_at FROM push_notification_log
+      WHERE subscription_id = ? AND entity_type = ? AND entity_id = ?
+      ORDER BY sent_at DESC LIMIT 1
+    `).get(subscriptionId, entityType, entityId) as { sent_at: string } | undefined;
+    return row?.sent_at ?? null;
+  }
+
+  getUserName(userId: string): string | null {
+    const row = this.db.prepare('SELECT name FROM users WHERE id = ?').get(userId) as { name: string } | undefined;
+    return row?.name ?? null;
   }
 
   // ─── Chat Conversations ────────────────────────────────────────────────────

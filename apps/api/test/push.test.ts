@@ -543,6 +543,121 @@ describe('per-user push targeting', () => {
   });
 });
 
+// ─── Test Notification Endpoint (OLI-306) ────────────────────────────────────
+
+describe('POST /api/push-subscriptions/test', () => {
+  let directory: string;
+  let dbPath: string;
+  let app: Awaited<ReturnType<typeof buildApp>>;
+
+  beforeEach(async () => {
+    directory = mkdtempSync(join(tmpdir(), 'olivia-test-notif-'));
+    dbPath = join(directory, 'test.sqlite');
+    const config = createConfig(dbPath);
+    app = await buildApp({ config });
+  });
+
+  afterEach(() => {
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('returns 400 when no push subscriptions exist', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/push-subscriptions/test' });
+    expect(res.statusCode).toBe(400);
+    const body = res.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toContain('No push subscriptions');
+  });
+
+  it('returns success when subscription exists (push disabled but no error)', async () => {
+    // Create a subscription first
+    await app.inject({
+      method: 'POST',
+      url: '/api/push-subscriptions',
+      payload: { endpoint: 'https://push.example.com/test-sub', keys: { p256dh: 'key1', auth: 'auth1' } },
+    });
+
+    const res = await app.inject({ method: 'POST', url: '/api/push-subscriptions/test' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    // Push is not configured in test config, so sentCount will be 0
+    expect(body.deviceCount).toBe(0);
+  });
+
+  it('returns 429 on rapid successive calls', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/api/push-subscriptions',
+      payload: { endpoint: 'https://push.example.com/test-sub', keys: { p256dh: 'key1', auth: 'auth1' } },
+    });
+
+    // First call succeeds
+    const res1 = await app.inject({ method: 'POST', url: '/api/push-subscriptions/test' });
+    expect(res1.statusCode).toBe(200);
+
+    // Second call within 60 seconds → 429
+    const res2 = await app.inject({ method: 'POST', url: '/api/push-subscriptions/test' });
+    expect(res2.statusCode).toBe(429);
+    expect(res2.json().error).toContain('wait');
+  });
+});
+
+// ─── Upcoming Notifications Endpoint (OLI-306) ──────────────────────────────
+
+describe('GET /api/push-notifications/upcoming', () => {
+  let directory: string;
+  let db: ReturnType<typeof createDatabase>;
+  let dbPath: string;
+  let app: Awaited<ReturnType<typeof buildApp>>;
+
+  beforeEach(async () => {
+    directory = mkdtempSync(join(tmpdir(), 'olivia-upcoming-'));
+    dbPath = join(directory, 'test.sqlite');
+    db = createDatabase(dbPath);
+    const config = createConfig(dbPath);
+    app = await buildApp({ config });
+  });
+
+  afterEach(() => {
+    db.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('returns empty items when no nudges exist', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/push-notifications/upcoming' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().items).toEqual([]);
+  });
+
+  it('returns overdue routine as pending', async () => {
+    insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
+
+    const res = await app.inject({ method: 'GET', url: '/api/push-notifications/upcoming' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.items.length).toBeGreaterThan(0);
+    const item = body.items.find((i: { entityId: string }) => i.entityId === 'r1');
+    expect(item).toBeDefined();
+    expect(item.entityName).toBe('Take out trash');
+    expect(item.status).toBe('pending');
+  });
+
+  it('returns recently-sent item with recently_sent status', async () => {
+    insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
+    const repository = new InboxRepository(db);
+    const sub = repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+    repository.recordPushNotificationLog(sub.id, 'routine', 'r1', new Date());
+
+    const res = await app.inject({ method: 'GET', url: '/api/push-notifications/upcoming' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    const item = body.items.find((i: { entityId: string }) => i.entityId === 'r1');
+    expect(item).toBeDefined();
+    expect(item.status).toBe('recently_sent');
+    expect(item.lastSentAt).toBeTruthy();
+  });
+});
+
 describe('isApnsSubscriptionPayload', () => {
   it('returns true for valid APNs payloads', () => {
     expect(isApnsSubscriptionPayload({ type: 'apns', token: 'abc123' })).toBe(true);

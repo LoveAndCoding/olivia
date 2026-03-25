@@ -49,6 +49,9 @@ Full details for completed milestones are archived in `milestones-archive.md`. C
 | M28 | Household Validation & Phase 3 Scoping | bypassed | Board directed chat as Phase 3 (D-053) |
 | M29 | Post-Chat Household Validation | complete | First-week feedback processed, stability direction chosen (D-065, D-066) |
 | M30 | Stability & Feature Depth | complete | All 7 priority areas shipped (v0.6.0), team scaled 5→8 (D-068) |
+| M31 | Post-M30 Household Feedback & Next Direction | complete | Board feedback collected via OLI-274, multi-user direction chosen |
+| M32 | Multi-User Household | complete | Auth, spouse write access, invitation flow, nav restructure, per-user push — v0.7.0 shipped (2026-03-23) |
+| M33 | Post-M32 Household Feedback & Next Direction | complete | Board feedback collected (OLI-294), reliability + push still top blockers, Track D+F queued for post-reliability |
 
 ## M28: Household Validation & Phase 3 Scoping
 
@@ -159,7 +162,7 @@ Notes:
 ## M31: Post-M30 Household Feedback & Next Direction
 Objective: collect household feedback on the M30 stability and feature depth improvements, then scope the next build cycle based on that signal.
 
-Status: todo
+Status: complete (2026-03-22)
 
 Context:
 - M30 shipped all 7 priority areas: reliability, lists depth, reminders depth, routines depth, push validation, AI chat recalibration, plus team scaling (5 → 8 agents).
@@ -188,6 +191,120 @@ Exit criteria:
 Notes:
 - Per operating cadence (D-068), this milestone should be fast — its purpose is feedback collection and direction-setting, not building.
 - The team should not be idle during this milestone. Backlog items and tech debt can fill the gap while waiting for board feedback.
+
+## M32: Multi-User Household
+Objective: transform Olivia from a single-operator app into a true multi-user household tool with authentication, identity, and shared write access.
+
+Status: complete (2026-03-23, v0.7.0)
+
+Context:
+- M31 (OLI-274) collected board feedback and identified multi-user as the clear next direction.
+- Board approved: magic link + PIN auth, full spouse write access (no restrictions), designer's call on navigation.
+
+Delivered:
+- **Auth & identity** — magic link + PIN login, user sessions, device management
+- **Spouse write access** — full sharing across all 14 workflow tables, actorRole → userId migration
+- **Invitation flow** — generate invite code, claim, onboard new household members end-to-end
+- **Navigation restructure** — daily hub + More tab, ≤2 taps to reminders/routines/meals
+- **Per-user push notifications** — subscriptions linked to userId instead of device
+- **E2E test coverage** — multi-user flows validated
+- **Integration testing** — full pass, 406+ tests green
+
+Exit criteria met:
+- All 13 subtasks completed
+- v0.7.0 released and merged upstream
+- PR #16 merged
+
+## M33: Post-M32 Household Feedback & Next Direction
+Objective: collect household feedback on the multi-user experience, then scope the next build cycle.
+
+Status: complete (2026-03-24)
+
+Context:
+- M32 shipped a major structural change — the app now supports multiple authenticated users with shared write access. This is the biggest product surface change since the original MVP.
+- The household can now onboard the spouse as a full participant, not just a viewer.
+- The operating cadence (D-068) requires feedback collection and next-direction scoping before building more.
+
+Board feedback needed:
+1. **Multi-user experience** — Has the spouse been invited? Is the onboarding flow clear? Are both users actively using the app?
+2. **Auth friction** — Is magic link + PIN login working smoothly? Any issues with sessions or device management?
+3. **Shared write access** — Is spouse write access working as expected? Any confusion about who did what?
+4. **Navigation** — Is the daily hub + More tab structure intuitive? Can both users find what they need?
+5. **Push notifications** — Are per-user notifications reaching the right person?
+6. **What hurts most** — What's the single biggest friction point in daily use right now?
+7. **What's next** — What would make the biggest difference in daily household use?
+
+M33 candidate tracks (post-M32):
+- **Track A: Deepen chat** — now with multi-user, chat could be personalized per user
+- **Track D: Increase autonomy** — rule-based automation, push action buttons
+- **Track E: Deepen coordination surface** — task steps (OLI-242), shared calendar (OLI-243)
+- **Track F: In-app feedback** — lightweight friction reporting from within the app
+- **Track G: Multi-user depth** — per-user preferences, notification settings, activity attribution in UI
+
+Exit criteria:
+- Board has provided post-M32 household feedback
+- At least 3 qualitative observations documented as learnings
+- Direction decision recorded
+- M34 milestone defined and ready for execution
+
+Notes:
+- Track B (broaden household) is largely done — spouse write access shipped in M32.
+- Track C (complete H3) is done — meal planning shipped in earlier milestones.
+- The team should not be idle during feedback collection. Backlog grooming, tech debt, and documentation can fill the gap.
+
+## M34: Reliability & Push — Make Multi-User Actually Work
+Objective: diagnose and fix the reliability issues preventing the household from using multi-user features, get push notifications working end-to-end for real users, and add diagnostic tooling so reliability gaps are visible before the next feedback round.
+
+Status: todo
+
+Context:
+- M32 shipped a major structural change (auth, invitation flow, per-user push, navigation restructure) but M33 board feedback reveals the household cannot actually use these features due to reliability issues.
+- The invitation flow is "blocked" — the spouse has not been able to onboard.
+- Push notifications are not reaching the user despite being "confirmed working" in M30 and rebuilt for per-user in M32.
+- Navigation has a minor bug: settings back arrow doesn't return to the home screen.
+- This is the second time reliability has been the top feedback (M29 → M30 → M31 → M32 → M33). L-035 captures the learning: reliability is not a one-sprint fix.
+- The board wants Track D (automation) and Track F (in-app feedback) once reliability is resolved.
+
+Priority areas (in order):
+
+1. **Reliability diagnosis and fix** — Identify what specific reliability issues are preventing app usage and multi-user feature access.
+   - Investigate the invitation flow blocker — what error or behavior prevents spouse onboarding?
+   - Review error reporting pipeline for recent errors in production.
+   - Reproduce and fix the failure modes the household is encountering.
+   - Expand E2E coverage for invitation flow and multi-user session paths.
+
+2. **Push notification end-to-end fix** — Get notifications actually reaching the user's device.
+   - Diagnose why push notifications are not being received despite passing tests.
+   - Add a "Send Test Notification" button in app settings so the user can verify their push pipeline.
+   - Add visibility into scheduled notifications — when is the next notification supposed to fire?
+   - Validate on the household's actual device, not just dev/test.
+
+3. **Navigation fix** — Settings back arrow should return to the home screen.
+   - Quick fix: back navigation from settings should go to the screen the user came from.
+
+4. **Environment variable simplification** — Board mentioned friction with env vars for task assignment.
+   - Investigate what env var changes the board has to make and simplify the deployment workflow.
+
+Required artifacts:
+- Root cause analysis for reliability blockers
+- Push notification end-to-end validation on household device
+- Test notification feature shipped
+- Navigation fix shipped
+- Updated E2E test coverage
+
+Exit criteria:
+- Household can complete the invitation flow and onboard the spouse
+- Push notifications are confirmed reaching the household's actual device(s)
+- Board can trigger a test notification from within the app
+- Settings back navigation works correctly
+- No new reliability regressions in existing features
+- Household provides positive confirmation that multi-user features are usable
+
+Notes:
+- This milestone must be treated as a blocking prerequisite for Track D/F. We should not build new capabilities on a foundation the household can't reliably access.
+- Unlike M30 (which hardened existing features), M34 is about diagnosing and fixing specific failure modes introduced or exposed by M32's structural changes.
+- Track D (automation) and Track F (in-app feedback) are queued as M35 candidates once reliability is confirmed.
+- The board's env var comment may be about the Paperclip/deployment workflow, not the product — investigate before scoping.
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

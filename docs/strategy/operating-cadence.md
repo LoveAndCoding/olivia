@@ -80,33 +80,33 @@ VP Product maintains a spec pipeline 1 sprint ahead:
 
 Updated by CEO at milestone transitions and when significant signal arrives.
 
-### Current State (as of M30 close, 2026-03-22)
+### Current State (as of M33 close, 2026-03-24)
 
 **Where we are:**
-- M30 (Stability & Feature Depth) complete — 16/16 subtasks shipped
+- M33 (Post-M32 Feedback) complete — board feedback collected, M34 defined
+- M32 (Multi-User Household) shipped v0.7.0 — auth, invitation flow, per-user push, nav restructure
 - Team: 8 agents (CEO, VP Product, Tech Lead, Founding Engineer, Senior Engineer, QA Engineer, Designer, SRE)
 - Budget: ~32% monthly spend
-- Product: H5 Phase 3 complete, household coordination layer mature, stability sprint hardened daily-use paths
-- Release: v0.6.0 live
+- Release: v0.7.0 live
+- Critical signal: multi-user features cannot be validated by household due to reliability issues
 
 **Where we're going:**
-- M31 direction TBD — awaiting board input on post-M30 household signal
-- Candidate tracks from roadmap: Track A (deepen chat), B (broaden household), C (complete H3), D (increase autonomy), E (deepen coordination surface)
-- M30 feedback will inform which track(s) are right
-- Key question for board: did M30 changes reduce daily friction enough to build on, or is more hardening needed?
+- **H1: M34 (Reliability & Push)** — diagnose and fix reliability blockers, get push notifications working end-to-end, add diagnostic tooling. This is a prerequisite for everything else.
+- **H2: M35 (Track D + F)** — automation and in-app feedback, contingent on M34 delivering a stable foundation. Not yet scoped.
+- **H3: Strategic** — deeper automation (rule-based actions, push action buttons), coordination surface expansion (task steps, shared calendar)
 
 **What could change it:**
-- A-002 (advisory-only trust model) — validated but chat needed recalibration; may influence autonomy track timing
-- A-011 (feature breadth vs depth) — M30 addressed this; need board signal on whether depth is now sufficient
-- Board may direct a specific track as they did with M28→chat
-- New household feedback post-M30 could surface unexpected priorities
+- If M34 diagnosis reveals the reliability issue is deployment/infrastructure rather than code, scope may shift to SRE-focused work
+- Board may direct Track D/F to begin in parallel with reliability if issues are minor
+- Push notification root cause may require upstream changes (Capacitor, VAPID, iOS)
+- L-035 learning: reliability is not a one-sprint fix — M34 exit criteria must include household confirmation, not just test suite passing
 
 **Backlog (top deferred items):**
-1. Task steps / sub-tasks (OLI-242, spec drafted) — deferred pending inbox validation
-2. Shared calendar integration (OLI-243, D-063) — Phase 1 enhanced calendar, Phase 2 EventKit
-3. In-app feedback mechanism — identified in M30 scope but deferred to second wave
-4. Rule-based automation (H5 Phase 3+) — requires validated trust in AI advisory
-5. Spouse write access / multi-user roles — Track B, no active demand signal
+1. Track D: Rule-based automation — board's top feature request, queued for M35
+2. Track F: In-app feedback mechanism — board's secondary request, queued for M35
+3. Task steps / sub-tasks (OLI-242, spec drafted) — deferred pending stable daily use
+4. Shared calendar integration (OLI-243, D-063) — deferred
+5. Track G: Multi-user depth (per-user preferences, activity attribution) — unlocked after M34 stabilizes multi-user
 
 ## Decisions
 

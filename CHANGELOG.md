@@ -6,6 +6,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-03-24
+
+### Fixed
+- Invite member button now works correctly — previously it appeared clickable but did nothing, and errors were hidden
+- Push notifications now reach all household members instead of only the primary account holder
+- Settings back arrow returns to the screen you came from instead of always going to the More tab
+- Error reporting now works during invitation and sign-up flows, making issues easier to diagnose
+
+### Added
+- Service worker for web push notifications — the app can now receive and display push notifications in the browser
+- "Send Test Notification" button in Settings — verify push notifications work on your device
+- "Scheduled Notifications" section in Settings — see when your next notifications are expected to fire
+- 39 new end-to-end tests covering invitation flow, auth sessions, push subscriptions, and multi-user data integrity
+
 ## [0.7.0] - 2026-03-23
 
 ### Added

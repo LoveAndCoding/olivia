@@ -19,7 +19,8 @@ const PUBLIC_ROUTES = new Set([
   '/api/auth/verify',
   '/api/auth/setup',
   '/api/auth/status',
-  '/api/household/invite/claim'
+  '/api/household/invite/claim',
+  '/api/errors'
 ]);
 
 const PUBLIC_PREFIXES = [

@@ -6371,3 +6371,30 @@ input[type="date"].rem-form-input {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── TEST NOTIFICATION & SCHEDULED NOTIFICATIONS (OLI-306) ─── */
+
+.test-notification-section {
+  padding-top: 4px;
+}
+
+.test-notification-feedback {
+  animation: fade-in 0.2s ease;
+}
+
+.scheduled-notifications-section {
+  padding-top: 4px;
+}
+
+.scheduled-notifications-list {
+  padding: 0;
+}
+
+.scheduled-notification-item {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-light, #eee);
+}
+
+.scheduled-notification-item:last-child {
+  border-bottom: none;
+}
