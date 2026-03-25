@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DraftReminder, Reminder, ReminderState } from '@olivia/contracts';
 import { computeReminderState } from '@olivia/domain';
 import { Bell, Plus } from '@phosphor-icons/react';
-import { useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import {
   loadReminderView,
   confirmCreateReminderCommand,
@@ -42,7 +42,7 @@ function stateMatchesFilter(state: ReminderState, filter: FilterTab): boolean {
 
 export function RemindersPage() {
   const navigate = useNavigate();
-  const role = useActorRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
 
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
@@ -51,7 +51,7 @@ export function RemindersPage() {
   const [banner, setBanner] = useState<{ message: string; variant: 'mint' | 'sky' } | null>(null);
 
   const reminderQuery = useQuery({
-    queryKey: ['reminder-view', role],
+    queryKey: ['reminder-view', currentUser?.id],
     queryFn: () => loadReminderView(),
   });
 
@@ -121,7 +121,7 @@ export function RemindersPage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not create reminder');
     }
-  }, [role, queryClient]);
+  }, [currentUser?.id, queryClient]);
 
   const handleSnoozeSelect = useCallback(async (isoString: string) => {
     if (!snoozeTarget) return;
@@ -135,7 +135,7 @@ export function RemindersPage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not snooze reminder');
     }
-  }, [snoozeTarget, role, queryClient]);
+  }, [snoozeTarget, currentUser?.id, queryClient]);
 
   const isEmpty = !reminderQuery.isLoading && filteredReminders.length === 0;
   const showAddButton = activeFilter !== 'done';

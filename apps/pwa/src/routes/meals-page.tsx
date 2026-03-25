@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MealPlan } from '@olivia/contracts';
-import { useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { ForkKnife, Plus } from '@phosphor-icons/react';
 import {
   loadActiveMealPlanIndex,
@@ -27,7 +27,7 @@ type MealFilter = 'active' | 'archived';
 
 export function MealsPage() {
   const navigate = useNavigate();
-  const role = useActorRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
 
   const [filter, setFilter] = useState<MealFilter>('active');
@@ -40,13 +40,13 @@ export function MealsPage() {
   const [busy, setBusy] = useState(false);
 
   const activeQuery = useQuery({
-    queryKey: ['meal-plans-active', role],
+    queryKey: ['meal-plans-active', currentUser?.id],
     queryFn: () => loadActiveMealPlanIndex(),
     enabled: filter === 'active',
   });
 
   const archivedQuery = useQuery({
-    queryKey: ['meal-plans-archived', role],
+    queryKey: ['meal-plans-archived', currentUser?.id],
     queryFn: () => loadArchivedMealPlanIndex(),
     enabled: filter === 'archived',
   });
@@ -62,10 +62,10 @@ export function MealsPage() {
   }, []);
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['meal-plans-active', role] });
-    await queryClient.invalidateQueries({ queryKey: ['meal-plans-archived', role] });
+    await queryClient.invalidateQueries({ queryKey: ['meal-plans-active', currentUser?.id] });
+    await queryClient.invalidateQueries({ queryKey: ['meal-plans-archived', currentUser?.id] });
     await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-  }, [queryClient, role]);
+  }, [queryClient, currentUser?.id]);
 
   const handleCreate = useCallback(async (title: string, weekStartDate: string) => {
     setShowCreateSheet(false);
@@ -80,7 +80,7 @@ export function MealsPage() {
     } finally {
       setBusy(false);
     }
-  }, [role, invalidate, showBanner, navigate]);
+  }, [currentUser?.id, invalidate, showBanner, navigate]);
 
   const handleEditTitle = useCallback(async (newTitle: string) => {
     if (!editTitleTarget) return;
@@ -95,7 +95,7 @@ export function MealsPage() {
     } finally {
       setBusy(false);
     }
-  }, [editTitleTarget, role, invalidate, showBanner]);
+  }, [editTitleTarget, currentUser?.id, invalidate, showBanner]);
 
   const handleArchiveConfirm = useCallback(async () => {
     if (!archiveTarget) return;
@@ -110,7 +110,7 @@ export function MealsPage() {
     } finally {
       setBusy(false);
     }
-  }, [archiveTarget, role, invalidate, showBanner]);
+  }, [archiveTarget, currentUser?.id, invalidate, showBanner]);
 
   const handleRestoreConfirm = useCallback(async (plan: MealPlan) => {
     setBusy(true);
@@ -123,7 +123,7 @@ export function MealsPage() {
     } finally {
       setBusy(false);
     }
-  }, [role, invalidate, showBanner]);
+  }, [currentUser?.id, invalidate, showBanner]);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
@@ -137,7 +137,7 @@ export function MealsPage() {
     } finally {
       setBusy(false);
     }
-  }, [deleteTarget, role, invalidate]);
+  }, [deleteTarget, currentUser?.id, invalidate]);
 
   const getOverflowActions = useCallback((plan: MealPlan) => {
     if (filter === 'archived') {

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MealEntry } from '@olivia/contracts';
 import { formatWeekRange } from '@olivia/domain';
-import { useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import {
   loadMealPlanDetail,
   archiveMealPlanCommand,
@@ -29,7 +29,7 @@ const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satu
 export function MealDetailPage() {
   const params = useParams({ from: '/meals/$planId' });
   const navigate = useNavigate();
-  const role = useActorRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const isOffline = !window.navigator.onLine;
 
@@ -45,7 +45,7 @@ export function MealDetailPage() {
   const [generating, setGenerating] = useState(false);
 
   const detailQuery = useQuery({
-    queryKey: ['meal-plan-detail', role, params.planId],
+    queryKey: ['meal-plan-detail', currentUser?.id, params.planId],
     queryFn: () => loadMealPlanDetail(params.planId),
   });
 
@@ -62,11 +62,11 @@ export function MealDetailPage() {
   }, []);
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['meal-plan-detail', role, params.planId] });
-    await queryClient.invalidateQueries({ queryKey: ['meal-plans-active', role] });
-    await queryClient.invalidateQueries({ queryKey: ['meal-plans-archived', role] });
+    await queryClient.invalidateQueries({ queryKey: ['meal-plan-detail', currentUser?.id, params.planId] });
+    await queryClient.invalidateQueries({ queryKey: ['meal-plans-active', currentUser?.id] });
+    await queryClient.invalidateQueries({ queryKey: ['meal-plans-archived', currentUser?.id] });
     await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-  }, [queryClient, role, params.planId]);
+  }, [queryClient, currentUser?.id, params.planId]);
 
   const handleEditTitle = useCallback(async (newTitle: string) => {
     if (!plan) return;
@@ -81,7 +81,7 @@ export function MealDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [plan, role, invalidate, showBanner]);
+  }, [plan, currentUser?.id, invalidate, showBanner]);
 
   const handleArchiveConfirm = useCallback(async () => {
     if (!plan) return;
@@ -96,7 +96,7 @@ export function MealDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [plan, role, invalidate, showBanner]);
+  }, [plan, currentUser?.id, invalidate, showBanner]);
 
   const handleDeletePlanConfirm = useCallback(async () => {
     if (!plan) return;
@@ -111,7 +111,7 @@ export function MealDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [plan, role, invalidate, navigate]);
+  }, [plan, currentUser?.id, invalidate, navigate]);
 
   const handleAddMeal = useCallback(async (dayOfWeek: number) => {
     if (!plan || !newMealName.trim()) return;
@@ -126,7 +126,7 @@ export function MealDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [plan, role, newMealName, invalidate]);
+  }, [plan, currentUser?.id, newMealName, invalidate]);
 
   const handleUpdateItems = useCallback(async (entry: MealEntry, items: string[]) => {
     if (!plan) return;
@@ -139,7 +139,7 @@ export function MealDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [plan, role, invalidate]);
+  }, [plan, currentUser?.id, invalidate]);
 
   const handleDeleteMealConfirm = useCallback(async () => {
     if (!plan || !deleteMealTarget) return;
@@ -153,7 +153,7 @@ export function MealDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [plan, deleteMealTarget, role, invalidate]);
+  }, [plan, deleteMealTarget, currentUser?.id, invalidate]);
 
   const handleGenerateGroceryList = useCallback(async () => {
     if (!plan) return;
@@ -167,7 +167,7 @@ export function MealDetailPage() {
     } finally {
       setGenerating(false);
     }
-  }, [plan, role, invalidate, navigate]);
+  }, [plan, currentUser?.id, invalidate, navigate]);
 
   const listOverflowActions = useMemo(() => {
     if (!plan) return [];

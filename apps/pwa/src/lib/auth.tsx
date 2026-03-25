@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { ActorRole, User } from '@olivia/contracts';
+import type { User } from '@olivia/contracts';
 import { checkAuthStatus, getCurrentUser } from './auth-api';
 
 const SESSION_TOKEN_KEY = 'olivia-session-token';
@@ -110,15 +110,3 @@ export function useAuth() {
   return context;
 }
 
-/**
- * Bridge: derive legacy ActorRole from authenticated user.
- * Temporary until OLI-310 removes actorRole from the API layer.
- */
-export function userRoleToActorRole(userRole: 'admin' | 'member' | undefined): ActorRole {
-  return userRole === 'member' ? 'spouse' : 'stakeholder';
-}
-
-export function useActorRole(): ActorRole {
-  const { user } = useAuth();
-  return userRoleToActorRole(user?.role);
-}

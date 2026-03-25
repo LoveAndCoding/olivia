@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { computeFlags } from '@olivia/domain';
 import type { InboxItem, User } from '@olivia/contracts';
 import { loadInboxView, previewCreateCommand, confirmCreateCommand } from '../lib/sync';
-import { useAuth, useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { resolveUserName } from '../lib/reminder-helpers';
 import { BottomNav } from '../components/bottom-nav';
@@ -13,7 +13,6 @@ import type { AddTaskPreview, CompletedTask, FullTask } from '../types/display';
 
 export function TasksPage() {
   const navigate = useNavigate();
-  const role = useActorRole();
   const queryClient = useQueryClient();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
@@ -42,7 +41,7 @@ export function TasksPage() {
   }
 
   const inboxQuery = useQuery({
-    queryKey: ['inbox-view', role, 'active'],
+    queryKey: ['inbox-view', currentUser?.id, 'active'],
     queryFn: () => loadInboxView('active'),
   });
 
@@ -107,7 +106,6 @@ export function TasksPage() {
         openTasks={openTasks}
         doneTasks={doneTasks}
         summaryLine={summaryLine}
-        role={role}
         isLoading={inboxQuery.isLoading}
         error={inboxQuery.isError ? (inboxQuery.error as Error).message : null}
         onNavigateToItem={(id) => void navigate({ to: '/items/$itemId', params: { itemId: id } })}

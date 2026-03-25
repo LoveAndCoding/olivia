@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { Bell, ArrowsClockwise, CookingPot, CalendarCheck, Plus } from '@phosphor-icons/react';
 import { getWeekBounds } from '@olivia/domain';
 import type { WeeklyReminder, WeeklyRoutineOccurrence, WeeklyMealEntry, Reminder, DraftReminder } from '@olivia/contracts';
-import { useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { loadWeeklyView, loadReminderView, confirmCreateReminderCommand, snoozeReminderCommand } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
 import { ReminderRow } from '../components/reminders/ReminderRow';
@@ -117,7 +117,7 @@ const MAX_COMBINED_ITEMS = 5;
 
 export function DailyPage() {
   const navigate = useNavigate();
-  const role = useActorRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
 
   // Read segment from URL search params
@@ -148,7 +148,7 @@ export function DailyPage() {
 
   // Full reminder data (for segment view with filters)
   const reminderQuery = useQuery({
-    queryKey: ['reminder-view', role],
+    queryKey: ['reminder-view', currentUser?.id],
     queryFn: () => loadReminderView(),
     enabled: activeSegment === 'reminders',
   });
@@ -214,7 +214,7 @@ export function DailyPage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not create reminder');
     }
-  }, [role, queryClient]);
+  }, [currentUser?.id, queryClient]);
 
   const handleSnoozeSelect = useCallback(async (isoString: string) => {
     if (!snoozeTarget) return;
@@ -228,7 +228,7 @@ export function DailyPage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not snooze reminder');
     }
-  }, [snoozeTarget, role, queryClient]);
+  }, [snoozeTarget, currentUser?.id, queryClient]);
 
   // ── Reminders segment: full list with grouping ────────────────────────────
 

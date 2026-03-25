@@ -1119,8 +1119,6 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
   })
 ]);
 
-/** @deprecated ActorRole is removed — user identity comes from session. Will be deleted in next milestone. */
-export type ActorRole = 'stakeholder' | 'spouse';
 export type AssigneeUserId = z.infer<typeof assigneeUserIdSchema>;
 export type ItemStatus = z.infer<typeof itemStatusSchema>;
 export type ParseConfidence = z.infer<typeof parseConfidenceSchema>;

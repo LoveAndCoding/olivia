@@ -5,7 +5,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import type { RoutineDueState, User } from '@olivia/contracts';
 import { computeRoutineDueState as computeDueState, formatRecurrenceLabel as formatRecurrenceLabelDomain } from '@olivia/domain';
 import { Check } from '@phosphor-icons/react';
-import { useAuth, useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { resolveUserName } from '../lib/reminder-helpers';
 import {
@@ -46,7 +46,6 @@ function formatLastDone(lastCompletedAt: string | null | undefined): string {
 export function RoutineDetailPage() {
   const params = useParams({ from: '/routines/$routineId' });
   const navigate = useNavigate();
-  const role = useActorRole();
   const queryClient = useQueryClient();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
@@ -63,7 +62,7 @@ export function RoutineDetailPage() {
   const [busy, setBusy] = useState(false);
 
   const detailQuery = useQuery({
-    queryKey: ['routine-detail', role, params.routineId],
+    queryKey: ['routine-detail', currentUser?.id, params.routineId],
     queryFn: () => loadRoutineDetail(params.routineId),
   });
 
@@ -79,10 +78,10 @@ export function RoutineDetailPage() {
   }, [routine, isAdHoc]);
 
   const invalidateAndRefresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['routine-detail', role, params.routineId] });
-    await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
+    await queryClient.invalidateQueries({ queryKey: ['routine-detail', currentUser?.id, params.routineId] });
+    await queryClient.invalidateQueries({ queryKey: ['routine-index-active', currentUser?.id] });
     await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-  }, [queryClient, role, params.routineId]);
+  }, [queryClient, currentUser?.id, params.routineId]);
 
   const showBanner = useCallback((message: string, variant: 'mint' | 'sky') => {
     setBanner({ message, variant });
@@ -101,7 +100,7 @@ export function RoutineDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [routine, role, busy, invalidateAndRefresh, showBanner, isAdHoc]);
+  }, [routine, currentUser?.id, busy, invalidateAndRefresh, showBanner, isAdHoc]);
 
   const handlePause = useCallback(async () => {
     if (!routine || busy) return;
@@ -116,7 +115,7 @@ export function RoutineDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [routine, role, busy, invalidateAndRefresh, showBanner]);
+  }, [routine, currentUser?.id, busy, invalidateAndRefresh, showBanner]);
 
   const handleResume = useCallback(async () => {
     if (!routine || busy) return;
@@ -130,7 +129,7 @@ export function RoutineDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [routine, role, busy, invalidateAndRefresh, showBanner]);
+  }, [routine, currentUser?.id, busy, invalidateAndRefresh, showBanner]);
 
   const handleArchive = useCallback(async () => {
     if (!routine || busy) return;
@@ -138,8 +137,8 @@ export function RoutineDetailPage() {
     setBusy(true);
     try {
       await archiveRoutineCommand(routine.id, routine.version);
-      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
-      await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', role] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', currentUser?.id] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', currentUser?.id] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner('Routine archived', 'sky');
       void navigate({ to: '/routines' });
@@ -148,15 +147,15 @@ export function RoutineDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [routine, role, busy, queryClient, navigate, showBanner]);
+  }, [routine, currentUser?.id, busy, queryClient, navigate, showBanner]);
 
   const handleRestore = useCallback(async () => {
     if (!routine || busy) return;
     setBusy(true);
     try {
       await restoreRoutineCommand(routine.id, routine.version);
-      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
-      await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', role] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', currentUser?.id] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', currentUser?.id] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner('Routine restored', 'mint');
       void navigate({ to: '/routines' });
@@ -165,7 +164,7 @@ export function RoutineDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [routine, role, busy, queryClient, navigate, showBanner]);
+  }, [routine, currentUser?.id, busy, queryClient, navigate, showBanner]);
 
   const handleDelete = useCallback(async () => {
     if (!routine || busy) return;
@@ -173,8 +172,8 @@ export function RoutineDetailPage() {
     setBusy(true);
     try {
       await deleteRoutineCommand(routine.id);
-      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
-      await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', role] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', currentUser?.id] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', currentUser?.id] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       void navigate({ to: '/routines' });
     } catch (err) {
@@ -182,7 +181,7 @@ export function RoutineDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [routine, role, busy, queryClient, navigate]);
+  }, [routine, currentUser?.id, busy, queryClient, navigate]);
 
   const isReadOnly = currentUser?.role === 'member';
   const isPaused = routine?.status === 'paused';

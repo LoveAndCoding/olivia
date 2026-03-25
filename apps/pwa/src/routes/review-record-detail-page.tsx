@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import type { User } from '@olivia/contracts';
-import { useAuth, useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { resolveUserName } from '../lib/reminder-helpers';
 import { loadReviewRecord } from '../lib/sync';
@@ -53,7 +53,6 @@ export function ReviewRecordDetailPage() {
   const params = useParams({ from: '/review-records/$reviewRecordId' });
   const { reviewRecordId } = params;
   const navigate = useNavigate();
-  const role = useActorRole();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
   useEffect(() => {
@@ -63,7 +62,7 @@ export function ReviewRecordDetailPage() {
   }, [getSessionToken]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['review-record', reviewRecordId, role],
+    queryKey: ['review-record', reviewRecordId, currentUser?.id],
     queryFn: () => loadReviewRecord(reviewRecordId),
     staleTime: 60_000,
   });

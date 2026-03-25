@@ -5,7 +5,7 @@ import { format, isToday, isTomorrow, formatDistanceToNow } from 'date-fns';
 import type { Routine, RoutineDueState, RoutineRecurrenceRule, User } from '@olivia/contracts';
 import { computeRoutineDueState as computeDueState, formatRecurrenceLabel as formatRecurrenceLabelDomain, calculateFirstDueDate } from '@olivia/domain';
 import { ArrowsClockwise, Plus } from '@phosphor-icons/react';
-import { useAuth, useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import {
   loadActiveRoutineIndex,
@@ -212,7 +212,6 @@ function todayIso(): string {
 
 export function RoutinesPage() {
   const navigate = useNavigate();
-  const role = useActorRole();
   const queryClient = useQueryClient();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
@@ -238,13 +237,13 @@ export function RoutinesPage() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const activeQuery = useQuery({
-    queryKey: ['routine-index-active', role],
+    queryKey: ['routine-index-active', currentUser?.id],
     queryFn: () => loadActiveRoutineIndex(),
     enabled: activeTab === 'active',
   });
 
   const archivedQuery = useQuery({
-    queryKey: ['routine-index-archived', role],
+    queryKey: ['routine-index-archived', currentUser?.id],
     queryFn: () => loadArchivedRoutineIndex(),
     enabled: activeTab === 'archived',
   });
@@ -296,7 +295,7 @@ export function RoutinesPage() {
     setBusyId(routine.id);
     try {
       await completeRoutineOccurrenceCommand(routine.id, routine.version);
-      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', currentUser?.id] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner(routine.recurrenceRule === 'ad_hoc' ? 'Marked as done' : 'Marked complete', 'mint');
     } catch (err) {
@@ -304,7 +303,7 @@ export function RoutinesPage() {
     } finally {
       setBusyId(null);
     }
-  }, [busyId, role, queryClient, showBanner]);
+  }, [busyId, currentUser?.id, queryClient, showBanner]);
 
   const handleCreateSubmit = useCallback(async () => {
     if (!form.title.trim()) { setFormError('Title is required.'); return; }
@@ -338,14 +337,14 @@ export function RoutinesPage() {
 
     try {
       await createRoutineCommand(form.title.trim(), form.assigneeUserId, form.recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks);
-      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', currentUser?.id] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setForm({ title: '', assigneeUserId: currentUser?.id ?? null, recurrenceRule: '', intervalDays: '7', intervalWeeks: 2, weekdays: [], firstDueDate: todayIso() });
       showBanner('Routine created', 'mint');
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not create routine');
     }
-  }, [form, role, queryClient, showBanner]);
+  }, [form, currentUser?.id, queryClient, showBanner]);
 
   const isReadOnly = false; // M32: all authenticated users have write access
   const isLoading = currentQuery.isLoading;
@@ -390,7 +389,7 @@ export function RoutinesPage() {
           </div>
 
           {isReadOnly && (
-            <div className="list-spouse-banner" role="status" style={{ marginBottom: 16 }}>
+            <div className="read-only-banner" role="status" style={{ marginBottom: 16 }}>
               Viewing as household member — read-only access.
             </div>
           )}

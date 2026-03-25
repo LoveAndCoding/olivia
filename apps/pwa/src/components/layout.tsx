@@ -7,7 +7,7 @@ import { Keyboard } from '@capacitor/keyboard';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { flushOutbox, saveNativeNotificationSubscription } from '../lib/sync';
 import { abortActiveOperations, resetActiveOperations } from '../lib/app-lifecycle';
-import { useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { checkConnectivityNow } from '../lib/connectivity';
 import { router } from '../router';
 import { OfflineIndicator } from './OfflineIndicator';
@@ -15,7 +15,7 @@ import { ErrorToastContainer } from './ErrorToastContainer';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const role = useActorRole();
+  const { user: currentUser } = useAuth();
 
   useEffect(() => {
     const syncNow = async () => {
@@ -91,7 +91,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       void registrationListener.then((h) => h.remove());
       void errorListener.then((h) => h.remove());
     };
-  }, [role]);
+  }, [currentUser?.id]);
 
   // Configure the native status bar so the web view extends behind it and
   // env(safe-area-inset-top) reports correct values on iOS.

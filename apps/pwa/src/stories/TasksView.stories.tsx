@@ -48,7 +48,6 @@ const meta = {
     openTasks: OPEN_TASKS,
     doneTasks: DONE_TASKS,
     summaryLine: '5 open · 2 completed this week',
-    role: 'stakeholder' as const,
   },
 } satisfies Meta<typeof TasksView>;
 

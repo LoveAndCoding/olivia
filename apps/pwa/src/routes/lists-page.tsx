@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SharedList } from '@olivia/contracts';
-import { useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { Plus } from '@phosphor-icons/react';
 import {
   loadActiveListIndex,
@@ -28,7 +28,7 @@ type ListFilter = 'active' | 'archived';
 
 export function ListsPage() {
   const navigate = useNavigate();
-  const role = useActorRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<ListFilter>('active');
   const [showCreateSheet, setShowCreateSheet] = useState(false);
@@ -40,13 +40,13 @@ export function ListsPage() {
   const [, setBusy] = useState(false);
 
   const activeQuery = useQuery({
-    queryKey: ['lists-active', role],
+    queryKey: ['lists-active', currentUser?.id],
     queryFn: () => loadActiveListIndex(),
     enabled: filter === 'active',
   });
 
   const archivedQuery = useQuery({
-    queryKey: ['lists-archived', role],
+    queryKey: ['lists-archived', currentUser?.id],
     queryFn: () => loadArchivedListIndex(),
     enabled: filter === 'archived',
   });
@@ -77,7 +77,7 @@ export function ListsPage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not create list');
     }
-  }, [role, invalidate, showBanner, navigate]);
+  }, [currentUser?.id, invalidate, showBanner, navigate]);
 
   const handleEditTitle = useCallback(async (newTitle: string) => {
     if (!editTitleTarget) return;
@@ -92,7 +92,7 @@ export function ListsPage() {
     } finally {
       setBusy(false);
     }
-  }, [editTitleTarget, role, invalidate, showBanner]);
+  }, [editTitleTarget, currentUser?.id, invalidate, showBanner]);
 
   const handleArchiveConfirm = useCallback(async () => {
     if (!archiveTarget) return;
@@ -107,7 +107,7 @@ export function ListsPage() {
     } finally {
       setBusy(false);
     }
-  }, [archiveTarget, role, invalidate, showBanner]);
+  }, [archiveTarget, currentUser?.id, invalidate, showBanner]);
 
   const handleRestoreList = useCallback(async (list: SharedList) => {
     setBusy(true);
@@ -120,7 +120,7 @@ export function ListsPage() {
     } finally {
       setBusy(false);
     }
-  }, [role, invalidate, showBanner]);
+  }, [currentUser?.id, invalidate, showBanner]);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
@@ -135,7 +135,7 @@ export function ListsPage() {
     } finally {
       setBusy(false);
     }
-  }, [deleteTarget, role, invalidate, showBanner]);
+  }, [deleteTarget, currentUser?.id, invalidate, showBanner]);
 
   const getOverflowActions = useCallback((list: SharedList) => {
     if (filter === 'archived') {

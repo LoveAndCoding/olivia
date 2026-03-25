@@ -3626,7 +3626,7 @@ input[type="date"].rem-form-input {
 
 /* ── SPOUSE READ-ONLY BANNER ─────────────────────────── */
 
-.list-spouse-banner {
+.read-only-banner {
   background: var(--lavender-soft);
   border-radius: 12px;
   padding: 10px 16px;

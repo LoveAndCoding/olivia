@@ -4,7 +4,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { clientDb } from '../lib/client-db';
-import { useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { effectiveApiBaseUrl, resolveApiUrl } from '../lib/api';
 import { HouseholdSection } from '../components/auth/HouseholdSection';
 import { runDiagnosticProbe, type ConnectivityDiagnostic } from '../lib/connectivity';
@@ -225,17 +225,17 @@ function ScheduledNotifications() {
 }
 
 export function SettingsPage() {
-  const role = useActorRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [activeTheme, setActiveTheme] = useState<ThemeMode>(readSavedTheme);
-  const notificationQuery = useQuery({ queryKey: ['notification-subscriptions', role], queryFn: () => loadNotificationState() });
-  const reminderSettingsQuery = useQuery({ queryKey: ['reminder-settings', role], queryFn: () => loadReminderSettings() });
+  const notificationQuery = useQuery({ queryKey: ['notification-subscriptions', currentUser?.id], queryFn: () => loadNotificationState() });
+  const reminderSettingsQuery = useQuery({ queryKey: ['reminder-settings', currentUser?.id], queryFn: () => loadReminderSettings() });
 
   const diagnostics = useLiveQuery(async () => {
     const pending = await clientDb.outbox.where('state').equals('pending').count();
     const conflicts = await clientDb.outbox.where('state').equals('conflict').count();
     return { pending, conflicts };
-  }, [role]);
+  }, [currentUser?.id]);
 
   const installed = useMemo(() => window.matchMedia('(display-mode: standalone)').matches, []);
   const isIOS = useMemo(() => /iPad|iPhone|iPod/.test(navigator.userAgent), []);
@@ -283,7 +283,7 @@ export function SettingsPage() {
       void registrationListener.then((h) => h.remove());
       void errorListener.then((h) => h.remove());
     };
-  }, [isNative, role]);
+  }, [isNative, currentUser?.id]);
 
   const prefs = reminderSettingsQuery.data?.preferences;
   const masterEnabled = prefs?.enabled ?? false;
@@ -299,11 +299,11 @@ export function SettingsPage() {
     };
     try {
       await saveReminderSettingsCommand(current);
-      await queryClient.invalidateQueries({ queryKey: ['reminder-settings', role] });
+      await queryClient.invalidateQueries({ queryKey: ['reminder-settings', currentUser?.id] });
     } catch {
       // Offline or error — silently fail and let the UI reflect cached state
     }
-  }, [masterEnabled, dueEnabled, summaryEnabled, role, queryClient]);
+  }, [masterEnabled, dueEnabled, summaryEnabled, currentUser?.id, queryClient]);
 
   const oliviaNotifMessage = useMemo(() => {
     if (browserPermission === 'denied') {
@@ -520,7 +520,7 @@ export function SettingsPage() {
                   if (typeof Notification !== 'undefined' && Notification.permission === 'default') await Notification.requestPermission();
                   await saveDemoNotificationSubscription();
                 }
-                await queryClient.invalidateQueries({ queryKey: ['notification-subscriptions', role] });
+                await queryClient.invalidateQueries({ queryKey: ['notification-subscriptions', currentUser?.id] });
               }}
             >
               Save demo notification target

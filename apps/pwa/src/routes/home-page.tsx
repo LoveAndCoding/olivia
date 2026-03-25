@@ -8,7 +8,7 @@ import { rankRemindersForSurfacing } from '@olivia/domain';
 import { getWeekBounds } from '@olivia/domain';
 import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, WeeklyReminder, WeeklyMealEntry, WeeklyInboxItem, User } from '@olivia/contracts';
 import { loadWeeklyView, confirmCreateReminderCommand, snoozeReminderCommand, loadReminderView } from '../lib/sync';
-import { useAuth, useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { BottomNav } from '../components/bottom-nav';
 import { NudgeTray, useNudges } from './nudge-tray';
@@ -399,7 +399,6 @@ function UpcomingPreview({ days, todayStr }: { days: WeeklyDayView[]; todayStr: 
 
 export function HomePage() {
   const navigate = useNavigate();
-  const role = useActorRole();
   const queryClient = useQueryClient();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { user: currentUser, getSessionToken } = useAuth();
@@ -458,7 +457,7 @@ export function HomePage() {
   });
 
   const reminderQuery = useQuery({
-    queryKey: ['reminder-view', role],
+    queryKey: ['reminder-view', currentUser?.id],
     queryFn: () => loadReminderView()
   });
 
@@ -539,7 +538,7 @@ export function HomePage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not create reminder');
     }
-  }, [role, queryClient]);
+  }, [currentUser?.id, queryClient]);
 
   const handleSnoozeSelect = useCallback(async (isoString: string) => {
     if (!snoozeTarget) return;
@@ -553,7 +552,7 @@ export function HomePage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not snooze reminder');
     }
-  }, [snoozeTarget, role, queryClient]);
+  }, [snoozeTarget, currentUser?.id, queryClient]);
 
   // Max items per workflow section in Today
   const MAX_TODAY_ITEMS = 4;

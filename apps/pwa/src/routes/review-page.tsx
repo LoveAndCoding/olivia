@@ -3,13 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useMemo } from 'react';
 import { computeFlags } from '@olivia/domain';
 import type { InboxItem, User } from '@olivia/contracts';
-import { useAuth, useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { resolveUserName } from '../lib/reminder-helpers';
 import { loadInboxView } from '../lib/sync';
 
 export function ReviewPage() {
-  const role = useActorRole();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
   useEffect(() => {
@@ -21,7 +20,7 @@ export function ReviewPage() {
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
 
   const inboxQuery = useQuery({
-    queryKey: ['inbox-view', role, view],
+    queryKey: ['inbox-view', currentUser?.id, view],
     queryFn: () => loadInboxView(view)
   });
 
@@ -56,7 +55,7 @@ export function ReviewPage() {
       { label: 'Suggestions', value: inboxQuery.data.suggestions.length, tone: 'info' },
       { label: 'Viewing as', value: currentUser?.name ?? 'User', tone: 'success' }
     ];
-  }, [groups, inboxQuery.data, role, view]);
+  }, [groups, inboxQuery.data, currentUser?.id, view]);
 
   return (
     <div className="stack-lg">
@@ -66,7 +65,7 @@ export function ReviewPage() {
             <p className="eyebrow">Review</p>
             <h2>Household state at a glance</h2>
             <p className="muted">
-              Grouped active items, calm suggestions, and spouse-safe visibility in a softer mobile-first layout.
+              Grouped active items, calm suggestions, and shared visibility in a softer mobile-first layout.
             </p>
           </div>
           <span className="section-note">{view === 'active' ? 'Focused on active work' : 'Showing the full household record'}</span>

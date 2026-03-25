@@ -225,19 +225,3 @@ export const QUICK_CHIPS = [
   'What should I remember?',
 ];
 
-/** Map internal role to display name. */
-export function getDisplayName(role: 'stakeholder' | 'spouse' | string): string {
-  return role === 'spouse' ? 'Christian' : 'Lexi';
-}
-
-/** Map internal role to avatar initial. */
-export function getAvatarInitial(role: 'stakeholder' | 'spouse' | string): string {
-  return role === 'spouse' ? 'C' : 'L';
-}
-
-/** Map owner enum to display name. */
-export function ownerToDisplay(owner: string): string {
-  if (owner === 'spouse') return 'Christian';
-  if (owner === 'stakeholder') return 'Lexi';
-  return 'Unassigned';
-}

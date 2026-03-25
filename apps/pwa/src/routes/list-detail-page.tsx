@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ListItem } from '@olivia/contracts';
-import { useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import {
   loadListDetail,
   updateListTitleCommand,
@@ -35,7 +35,7 @@ import { showErrorToast } from '../lib/error-toast';
 export function ListDetailPage() {
   const params = useParams({ from: '/lists/$listId' });
   const navigate = useNavigate();
-  const role = useActorRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [showEditTitleSheet, setShowEditTitleSheet] = useState(false);
   const [showArchiveSheet, setShowArchiveSheet] = useState(false);
@@ -52,7 +52,7 @@ export function ListDetailPage() {
   const [showUncheckAllConfirm, setShowUncheckAllConfirm] = useState(false);
 
   const detailQuery = useQuery({
-    queryKey: ['list-detail', role, params.listId],
+    queryKey: ['list-detail', currentUser?.id, params.listId],
     queryFn: () => loadListDetail(params.listId),
   });
 
@@ -75,11 +75,11 @@ export function ListDetailPage() {
   }, []);
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['list-detail', role, params.listId] });
+    await queryClient.invalidateQueries({ queryKey: ['list-detail', currentUser?.id, params.listId] });
     await queryClient.invalidateQueries({ queryKey: ['lists-active'] });
     await queryClient.invalidateQueries({ queryKey: ['lists-archived'] });
     await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-  }, [queryClient, role, params.listId]);
+  }, [queryClient, currentUser?.id, params.listId]);
 
   const handleEditTitle = useCallback(async (newTitle: string) => {
     if (!list) return;
@@ -94,7 +94,7 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, role, invalidate, showBanner]);
+  }, [list, currentUser?.id, invalidate, showBanner]);
 
   const handleArchiveConfirm = useCallback(async () => {
     if (!list) return;
@@ -109,7 +109,7 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, role, invalidate, navigate]);
+  }, [list, currentUser?.id, invalidate, navigate]);
 
   const handleDeleteListConfirm = useCallback(async () => {
     if (!list) return;
@@ -124,7 +124,7 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, role, invalidate, navigate]);
+  }, [list, currentUser?.id, invalidate, navigate]);
 
   const handleAddItem = useCallback(async (body: string) => {
     if (!list) return;
@@ -134,7 +134,7 @@ export function ListDetailPage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not add item');
     }
-  }, [list, role, invalidate]);
+  }, [list, currentUser?.id, invalidate]);
 
   const handleCheckItem = useCallback(async (item: ListItem) => {
     if (!list) return;
@@ -144,7 +144,7 @@ export function ListDetailPage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not check item');
     }
-  }, [list, role, invalidate]);
+  }, [list, currentUser?.id, invalidate]);
 
   const handleUncheckItem = useCallback(async (item: ListItem) => {
     if (!list) return;
@@ -154,7 +154,7 @@ export function ListDetailPage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not uncheck item');
     }
-  }, [list, role, invalidate]);
+  }, [list, currentUser?.id, invalidate]);
 
   const handleEditItemSave = useCallback(async (newBody: string) => {
     if (!list || !editItemTarget) return;
@@ -169,7 +169,7 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, editItemTarget, role, invalidate, showBanner]);
+  }, [list, editItemTarget, currentUser?.id, invalidate, showBanner]);
 
   const handleDeleteItemConfirm = useCallback(async () => {
     if (!list || !deleteItemTarget) return;
@@ -183,7 +183,7 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, deleteItemTarget, role, invalidate]);
+  }, [list, deleteItemTarget, currentUser?.id, invalidate]);
 
   const handleClearCompleted = useCallback(async () => {
     if (!list) return;
@@ -198,7 +198,7 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, role, invalidate, showBanner]);
+  }, [list, currentUser?.id, invalidate, showBanner]);
 
   const handleUncheckAll = useCallback(async () => {
     if (!list) return;
@@ -214,7 +214,7 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, role, invalidate, showBanner]);
+  }, [list, currentUser?.id, invalidate, showBanner]);
 
   const listOverflowActions = useMemo(() => {
     if (!list) return [];

@@ -10,7 +10,6 @@ export type TasksViewProps = {
   openTasks: FullTask[];
   doneTasks: CompletedTask[];
   summaryLine: string;
-  role: 'stakeholder' | 'spouse' | string;
   isLoading?: boolean;
   error?: string | null;
   onNavigateToItem?: (id: string) => void;

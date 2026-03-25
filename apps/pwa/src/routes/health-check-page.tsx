@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CheckCircle } from '@phosphor-icons/react';
-import { useActorRole } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import {
   fetchStaleItems,
   confirmFreshness,
@@ -33,7 +33,7 @@ const TYPE_ORDER = ['routine', 'reminder', 'list', 'inbox', 'mealPlan'];
 export function HealthCheckPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const role = useActorRole();
+  const { user: currentUser } = useAuth();
 
   const [items, setItems] = useState<StaleItem[]>([]);
   const [totalStaleCount, setTotalStaleCount] = useState(0);
@@ -90,7 +90,7 @@ export function HealthCheckPage() {
       collapseAndRemove(item.entityId);
     }, 200);
     void saveHealthCheckProgress(item.entityId);
-  }, [role, collapseAndRemove]);
+  }, [currentUser?.id, collapseAndRemove]);
 
   const handleArchiveConfirm = useCallback(async () => {
     if (!archiveTarget) return;
@@ -102,7 +102,7 @@ export function HealthCheckPage() {
     void saveHealthCheckProgress(archiveTarget.entityId);
     setArchiveTarget(null);
     collapseAndRemove(archiveTarget.entityId);
-  }, [archiveTarget, role, collapseAndRemove]);
+  }, [archiveTarget, currentUser?.id, collapseAndRemove]);
 
   const handleComplete = useCallback(async () => {
     setCompleted(true);
