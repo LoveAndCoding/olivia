@@ -68,6 +68,26 @@ VP Product maintains a spec pipeline 1 sprint ahead:
 - Specs should address the highest-priority items from the backlog or H2 objectives
 - Designer provides visual specs in parallel with product specs where UI changes are involved
 
+## Release Process
+
+### Ownership
+- **Tech Lead owns release readiness.** The Tech Lead is responsible for merging feature branches to main, resolving conflicts, and verifying the app works before any upstream PR.
+- **CEO does not merge PRs or resolve conflicts.** The CEO reviews progress, unblocks, and makes decisions — not engineering work.
+- **Engineers merge their own feature PRs.** The person who wrote the code merges their own PR to origin/main. They know what changed and can verify the merge is clean.
+
+### Pre-Release Verification Gate
+Before opening any upstream release PR, the Tech Lead must:
+1. Build the app locally (`npm run build`) — verify zero errors and zero CSS syntax warnings
+2. Start the app and navigate every major route
+3. Confirm no blank pages, no console errors, no broken navigation
+4. Verify the household section, settings, and all new features render correctly
+5. Only then open the upstream PR
+
+This gate is mandatory. "All tests pass" is necessary but not sufficient. The app must visibly work.
+
+### Why This Exists
+M36 shipped a broken app because: (1) the CEO resolved merge conflicts instead of delegating to an engineer, (2) nobody built and ran the app before opening the release PR, (3) there was no designated release owner. See L-036.
+
 ## Momentum Rules
 
 1. No agent idle >1 heartbeat when sprint has remaining tasks — CEO creates or reassigns

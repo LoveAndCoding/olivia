@@ -402,6 +402,7 @@ Before moving to the next milestone, ask:
 - Is there evidence, not optimism, that the project is ready to advance?
 - Does the next capability extend the existing product model coherently rather than becoming a disconnected tool?
 - Is any shared infrastructure reusable across workflow types, or are we hiding product ambiguity inside engineering work?
+- **Has the Tech Lead built the app and verified all major routes work?** (See Release Process in `docs/strategy/operating-cadence.md`)
 
 ## Decisions
 - Milestones are defined by readiness and evidence, not by volume of output.
