@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { clientDb } from '../lib/client-db';
@@ -224,9 +225,35 @@ function ScheduledNotifications() {
   );
 }
 
+function FeedbackToast() {
+  const [visible, setVisible] = useState(false);
+  const [dismissing, setDismissing] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem('olivia-feedback-toast')) {
+      sessionStorage.removeItem('olivia-feedback-toast');
+      setVisible(true);
+      const timer = setTimeout(() => {
+        setDismissing(true);
+        setTimeout(() => setVisible(false), 200);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  if (!visible) return null;
+  return (
+    <div className={`feedback-toast${dismissing ? ' dismissing' : ''}`}>
+      <span className="feedback-toast__icon">✓</span>
+      <span className="feedback-toast__text">Thanks — your feedback helps us improve Olivia.</span>
+    </div>
+  );
+}
+
 export function SettingsPage() {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [activeTheme, setActiveTheme] = useState<ThemeMode>(readSavedTheme);
   const notificationQuery = useQuery({ queryKey: ['notification-subscriptions', currentUser?.id], queryFn: () => loadNotificationState() });
   const reminderSettingsQuery = useQuery({ queryKey: ['reminder-settings', currentUser?.id], queryFn: () => loadReminderSettings() });
@@ -500,6 +527,17 @@ export function SettingsPage() {
             )}
           </div>
 
+          {/* Send Feedback row */}
+          <button
+            type="button"
+            className="feedback-row"
+            onClick={() => void navigate({ to: '/more/settings/feedback' })}
+          >
+            <span className="feedback-row__icon">💬</span>
+            <span className="feedback-row__label">Send Feedback</span>
+            <span className="feedback-row__chevron">›</span>
+          </button>
+
           <div className="card stack-md">
             <div className="section-header">
               <h3 className="card-title">Installability</h3>
@@ -544,6 +582,7 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
+      <FeedbackToast />
     </div>
   );
 }
