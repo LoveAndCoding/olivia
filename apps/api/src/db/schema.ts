@@ -233,6 +233,30 @@ export const feedbackTable = sqliteTable('feedback', {
   updatedAt: text('updated_at').notNull()
 });
 
+export const automationRulesTable = sqliteTable('automation_rules', {
+  id: text('id').primaryKey(),
+  householdId: text('household_id').notNull(),
+  userId: text('user_id').notNull(),
+  triggerType: text('trigger_type').notNull(),
+  triggerThreshold: integer('trigger_threshold').notNull().default(3),
+  actionType: text('action_type').notNull(),
+  scopeType: text('scope_type').notNull().default('all'),
+  scopeEntityId: text('scope_entity_id'),
+  enabled: integer('enabled').notNull().default(1),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+});
+
+export const automationLogTable = sqliteTable('automation_log', {
+  id: text('id').primaryKey(),
+  ruleId: text('rule_id').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  actionType: text('action_type').notNull(),
+  executedAt: text('executed_at').notNull(),
+  userId: text('user_id').notNull()
+});
+
 export const conversationMessagesTable = sqliteTable('conversation_messages', {
   id: text('id').primaryKey(),
   conversationId: text('conversation_id').notNull(),

@@ -40,7 +40,12 @@ import {
   type HealthCheckState,
   feedbackItemSchema,
   type FeedbackItem,
-  type FeedbackStatus
+  type FeedbackStatus,
+  automationRuleSchema,
+  automationLogEntrySchema,
+  type AutomationRule,
+  type AutomationLogEntry,
+  AUTOMATION_LOG_RETENTION_DAYS
 } from '@olivia/contracts';
 
 const DEFAULT_REMINDER_PREFERENCES_UPDATED_AT = new Date(0).toISOString();
@@ -2209,6 +2214,141 @@ export class InboxRepository {
     this.db.prepare('UPDATE feedback SET status = ?, updated_at = ? WHERE id = ?').run(status, now, id);
     return this.getFeedback(id);
   }
+
+  // ── Automation Rules ──────────────────────────────────────────────
+
+  createAutomationRule(rule: AutomationRule): void {
+    this.db.prepare(`
+      INSERT INTO automation_rules (id, household_id, user_id, trigger_type, trigger_threshold, action_type, scope_type, scope_entity_id, enabled, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      rule.id,
+      rule.householdId,
+      rule.userId,
+      rule.triggerType,
+      rule.triggerThreshold,
+      rule.actionType,
+      rule.scopeType,
+      rule.scopeEntityId,
+      rule.enabled ? 1 : 0,
+      rule.createdAt,
+      rule.updatedAt
+    );
+  }
+
+  getAutomationRule(id: string): AutomationRule | null {
+    const row = this.db.prepare('SELECT * FROM automation_rules WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    return row ? mapAutomationRuleRow(row) : null;
+  }
+
+  listAutomationRules(householdId?: string): AutomationRule[] {
+    let sql = 'SELECT * FROM automation_rules';
+    const params: unknown[] = [];
+    if (householdId) {
+      sql += ' WHERE household_id = ?';
+      params.push(householdId);
+    }
+    sql += ' ORDER BY created_at DESC';
+    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    return rows.map(mapAutomationRuleRow);
+  }
+
+  listEnabledAutomationRules(householdId?: string): AutomationRule[] {
+    let sql = 'SELECT * FROM automation_rules WHERE enabled = 1';
+    const params: unknown[] = [];
+    if (householdId) {
+      sql += ' AND household_id = ?';
+      params.push(householdId);
+    }
+    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    return rows.map(mapAutomationRuleRow);
+  }
+
+  updateAutomationRule(id: string, updates: Partial<Pick<AutomationRule, 'enabled' | 'triggerThreshold' | 'scopeType' | 'scopeEntityId'>>): AutomationRule | null {
+    const now = new Date().toISOString();
+    const sets: string[] = ['updated_at = ?'];
+    const params: unknown[] = [now];
+
+    if (updates.enabled !== undefined) {
+      sets.push('enabled = ?');
+      params.push(updates.enabled ? 1 : 0);
+    }
+    if (updates.triggerThreshold !== undefined) {
+      sets.push('trigger_threshold = ?');
+      params.push(updates.triggerThreshold);
+    }
+    if (updates.scopeType !== undefined) {
+      sets.push('scope_type = ?');
+      params.push(updates.scopeType);
+    }
+    if (updates.scopeEntityId !== undefined) {
+      sets.push('scope_entity_id = ?');
+      params.push(updates.scopeEntityId);
+    }
+
+    params.push(id);
+    this.db.prepare(`UPDATE automation_rules SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+    return this.getAutomationRule(id);
+  }
+
+  deleteAutomationRule(id: string): boolean {
+    const result = this.db.prepare('DELETE FROM automation_rules WHERE id = ?').run(id);
+    return result.changes > 0;
+  }
+
+  countAutomationRules(householdId: string): number {
+    const row = this.db.prepare('SELECT COUNT(*) as count FROM automation_rules WHERE household_id = ?').get(householdId) as { count: number };
+    return row.count;
+  }
+
+  // ── Automation Log ────────────────────────────────────────────────
+
+  createAutomationLogEntry(entry: AutomationLogEntry): void {
+    this.db.prepare(`
+      INSERT INTO automation_log (id, rule_id, entity_type, entity_id, action_type, executed_at, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      entry.id,
+      entry.ruleId,
+      entry.entityType,
+      entry.entityId,
+      entry.actionType,
+      entry.executedAt,
+      entry.userId
+    );
+  }
+
+  listAutomationLog(ruleId?: string): AutomationLogEntry[] {
+    let sql = 'SELECT * FROM automation_log';
+    const params: unknown[] = [];
+    if (ruleId) {
+      sql += ' WHERE rule_id = ?';
+      params.push(ruleId);
+    }
+    sql += ' ORDER BY executed_at DESC';
+    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    return rows.map(mapAutomationLogRow);
+  }
+
+  hasRecentAutomationExecution(ruleId: string, entityId: string, since: string): boolean {
+    const row = this.db.prepare(
+      'SELECT 1 FROM automation_log WHERE rule_id = ? AND entity_id = ? AND executed_at >= ? LIMIT 1'
+    ).get(ruleId, entityId, since) as Record<string, unknown> | undefined;
+    return !!row;
+  }
+
+  getReminderSnoozeCount(reminderId: string): number {
+    const row = this.db.prepare(
+      "SELECT COUNT(*) as count FROM reminder_timeline WHERE reminder_id = ? AND event_type = 'snoozed'"
+    ).get(reminderId) as { count: number };
+    return row.count;
+  }
+
+  purgeOldAutomationLog(): number {
+    const cutoff = new Date(Date.now() - AUTOMATION_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const result = this.db.prepare('DELETE FROM automation_log WHERE executed_at < ?').run(cutoff);
+    return result.changes;
+  }
 }
 
 export type OnboardingSessionRow = {
@@ -2252,6 +2392,32 @@ const mapFeedbackRow = (row: Record<string, unknown>): FeedbackItem =>
     status: String(row.status),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at)
+  });
+
+const mapAutomationRuleRow = (row: Record<string, unknown>): AutomationRule =>
+  automationRuleSchema.parse({
+    id: String(row.id),
+    householdId: String(row.household_id),
+    userId: String(row.user_id),
+    triggerType: String(row.trigger_type),
+    triggerThreshold: Number(row.trigger_threshold),
+    actionType: String(row.action_type),
+    scopeType: String(row.scope_type),
+    scopeEntityId: row.scope_entity_id ? String(row.scope_entity_id) : null,
+    enabled: Number(row.enabled) === 1,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at)
+  });
+
+const mapAutomationLogRow = (row: Record<string, unknown>): AutomationLogEntry =>
+  automationLogEntrySchema.parse({
+    id: String(row.id),
+    ruleId: String(row.rule_id),
+    entityType: String(row.entity_type),
+    entityId: String(row.entity_id),
+    actionType: String(row.action_type),
+    executedAt: String(row.executed_at),
+    userId: String(row.user_id)
   });
 
 const mapOnboardingSessionRow = (row: Record<string, unknown>): OnboardingSessionRow => ({

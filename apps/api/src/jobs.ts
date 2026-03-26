@@ -1,7 +1,8 @@
 import type { FastifyBaseLogger } from 'fastify';
-import { buildSuggestions, computeCompletionWindow, getCurrentLocalHour, groupReminders, rankRemindersForSurfacing, sortNudgesByPriority } from '@olivia/domain';
-import { COMPLETION_WINDOW_MAX_HOLD_DAYS, COMPLETION_WINDOW_SAMPLE_SIZE } from '@olivia/contracts';
-import type { Nudge, Reminder } from '@olivia/contracts';
+import { buildSuggestions, computeCompletionWindow, getCurrentLocalHour, groupReminders, rankRemindersForSurfacing, skipRoutineOccurrence, completeReminderOccurrence, snoozeReminder, sortNudgesByPriority } from '@olivia/domain';
+import { COMPLETION_WINDOW_MAX_HOLD_DAYS, COMPLETION_WINDOW_SAMPLE_SIZE, NUDGE_SNOOZE_INTERVAL_HOURS } from '@olivia/contracts';
+import type { Nudge, Reminder, AutomationRule } from '@olivia/contracts';
+import { randomUUID } from 'node:crypto';
 import type { AppConfig } from './config';
 import type { PushProvider, ApnsPushProvider, NotificationPayload, PushSubscriptionPayload } from './push';
 import { isApnsSubscriptionPayload } from './push';
@@ -390,6 +391,141 @@ export function shouldHoldNudge(
   return false;
 }
 
+/**
+ * Evaluates enabled automation rules against the current nudge set.
+ * For each matching rule, executes the configured action and logs the result.
+ * Called on the same 30-minute cycle as nudge push evaluation.
+ */
+export function evaluateAutomationRules(
+  repository: InboxRepository,
+  logger: FastifyBaseLogger,
+  now: Date = new Date()
+): void {
+  const rules = repository.listEnabledAutomationRules();
+  if (rules.length === 0) return;
+
+  const nudges = repository.getNudgePayloads(now);
+  if (nudges.length === 0) return;
+
+  // Use the start of the current evaluation cycle as the dedup boundary
+  const cycleStart = now.toISOString();
+
+  for (const nudge of nudges) {
+    const matchingRules = rules.filter((rule) => ruleMatchesNudge(rule, nudge, repository, now));
+
+    for (const rule of matchingRules) {
+      // Dedup: skip if this rule already fired for this entity in the current cycle window (30 min)
+      const dedupSince = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
+      if (repository.hasRecentAutomationExecution(rule.id, nudge.entityId, dedupSince)) {
+        continue;
+      }
+
+      try {
+        executeAutomationAction(rule, nudge, repository, logger, now);
+        repository.createAutomationLogEntry({
+          id: randomUUID(),
+          ruleId: rule.id,
+          entityType: nudge.entityType,
+          entityId: nudge.entityId,
+          actionType: rule.actionType,
+          executedAt: cycleStart,
+          userId: rule.userId
+        });
+        logger.info(
+          { ruleId: rule.id, entityId: nudge.entityId, action: rule.actionType },
+          'automation rule executed'
+        );
+      } catch (error) {
+        logger.warn(
+          { ruleId: rule.id, entityId: nudge.entityId, error },
+          'automation rule execution failed (non-fatal)'
+        );
+      }
+    }
+  }
+
+  // Purge old log entries
+  const purged = repository.purgeOldAutomationLog();
+  if (purged > 0) {
+    logger.info({ purged }, 'purged old automation log entries');
+  }
+}
+
+function ruleMatchesNudge(
+  rule: AutomationRule,
+  nudge: Nudge,
+  repository: InboxRepository,
+  now: Date
+): boolean {
+  // Scope check: if rule is scoped to a specific entity, it must match
+  if (rule.scopeType === 'specific' && rule.scopeEntityId !== nudge.entityId) {
+    return false;
+  }
+
+  switch (rule.triggerType) {
+    case 'routine_overdue_days': {
+      if (nudge.entityType !== 'routine') return false;
+      if (!nudge.overdueSince) return false;
+      const overdueDate = new Date(nudge.overdueSince);
+      const daysOverdue = Math.floor((now.getTime() - overdueDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysOverdue >= rule.triggerThreshold;
+    }
+    case 'reminder_snooze_count': {
+      if (nudge.entityType !== 'reminder') return false;
+      const snoozeCount = repository.getReminderSnoozeCount(nudge.entityId);
+      return snoozeCount >= rule.triggerThreshold;
+    }
+    case 'reminder_overdue_days': {
+      if (nudge.entityType !== 'reminder') return false;
+      if (!nudge.overdueSince) return false;
+      const overdueDate = new Date(nudge.overdueSince);
+      const daysOverdue = Math.floor((now.getTime() - overdueDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysOverdue >= rule.triggerThreshold;
+    }
+    default:
+      return false;
+  }
+}
+
+function executeAutomationAction(
+  rule: AutomationRule,
+  nudge: Nudge,
+  repository: InboxRepository,
+  _logger: FastifyBaseLogger,
+  now: Date
+): void {
+  switch (rule.actionType) {
+    case 'skip_routine_occurrence': {
+      const routine = repository.getRoutine(nudge.entityId);
+      if (!routine) throw new Error(`Routine ${nudge.entityId} not found`);
+      const { updatedRoutine, occurrence } = skipRoutineOccurrence(routine, rule.userId, now);
+      repository.completeRoutineOccurrence(updatedRoutine, occurrence, routine.version);
+      break;
+    }
+    case 'resolve_reminder': {
+      const reminder = repository.getReminder(nudge.entityId, now);
+      if (!reminder) throw new Error(`Reminder ${nudge.entityId} not found`);
+      const timeline = repository.listReminderTimeline(nudge.entityId);
+      const mutation = completeReminderOccurrence(reminder, now, timeline);
+      const attributedTimeline = mutation.timelineEntries.map((e) => ({ ...e, userId: rule.userId }));
+      repository.updateReminder(mutation.reminder, attributedTimeline, reminder.version);
+      break;
+    }
+    case 'snooze_reminder': {
+      const reminder = repository.getReminder(nudge.entityId, now);
+      if (!reminder) throw new Error(`Reminder ${nudge.entityId} not found`);
+      const snoozedUntil = new Date(now.getTime() + NUDGE_SNOOZE_INTERVAL_HOURS * 60 * 60 * 1000).toISOString();
+      const timeline = repository.listReminderTimeline(nudge.entityId);
+      const mutation = snoozeReminder(reminder, snoozedUntil, now, timeline);
+      const attributedTimeline = mutation.timelineEntries.map((e) => ({ ...e, userId: rule.userId }));
+      repository.updateReminder(mutation.reminder, attributedTimeline, reminder.version);
+      break;
+    }
+    default:
+      throw new Error(`Unknown action type: ${rule.actionType}`);
+  }
+}
+
 export async function evaluateNudgePushRule(
   repository: InboxRepository,
   push: PushProvider,
@@ -507,6 +643,7 @@ export function startBackgroundJobs(
   const nudgeIntervalId = setInterval(() => {
     void (async () => {
       try {
+        evaluateAutomationRules(repository, logger);
         await evaluateNudgePushRule(repository, push, apns, config, logger);
       } catch (error) {
         logger.error({ error }, 'nudge push scheduler run failed');

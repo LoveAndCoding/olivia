@@ -99,6 +99,13 @@ import {
   updateFeedbackRequestSchema,
   updateFeedbackResponseSchema,
   feedbackStatusSchema,
+  createAutomationRuleRequestSchema,
+  createAutomationRuleResponseSchema,
+  listAutomationRulesResponseSchema,
+  updateAutomationRuleRequestSchema,
+  updateAutomationRuleResponseSchema,
+  listAutomationLogResponseSchema,
+  AUTOMATION_RULES_MAX_PER_HOUSEHOLD,
   ONBOARDING_ENTITY_THRESHOLD,
   type DraftItem,
   type DraftReminder,
@@ -2798,6 +2805,79 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
     const updated = repository.updateFeedbackStatus(id, body.status);
     const response = updateFeedbackResponseSchema.parse({ feedback: updated });
+    return reply.send(response);
+  });
+
+  // ── Automation Rules ──────────────────────────────────────────────
+
+  app.post('/api/automation-rules', async (request, reply) => {
+    const body = createAutomationRuleRequestSchema.parse(request.body);
+    const userId = resolveUserId(request)!;
+    const householdId = request.user?.householdId ?? 'default';
+
+    const count = repository.countAutomationRules(householdId);
+    if (count >= AUTOMATION_RULES_MAX_PER_HOUSEHOLD) {
+      return reply.status(422).send({
+        code: 'RULE_LIMIT_REACHED',
+        message: `Maximum ${AUTOMATION_RULES_MAX_PER_HOUSEHOLD} automation rules per household.`
+      });
+    }
+
+    const now = new Date().toISOString();
+    const rule = {
+      id: randomUUID(),
+      householdId,
+      userId,
+      triggerType: body.triggerType,
+      triggerThreshold: body.triggerThreshold,
+      actionType: body.actionType,
+      scopeType: body.scopeType,
+      scopeEntityId: body.scopeEntityId ?? null,
+      enabled: true,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    repository.createAutomationRule(rule);
+    request.log.info({ ruleId: rule.id }, 'automation rule created');
+
+    const response = createAutomationRuleResponseSchema.parse({ rule });
+    return reply.status(201).send(response);
+  });
+
+  app.get('/api/automation-rules', async (_request, reply) => {
+    const rules = repository.listAutomationRules();
+    const response = listAutomationRulesResponseSchema.parse({ rules });
+    return reply.send(response);
+  });
+
+  app.patch('/api/automation-rules/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = updateAutomationRuleRequestSchema.parse(request.body);
+
+    const existing = repository.getAutomationRule(id);
+    if (!existing) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Automation rule not found.' });
+    }
+
+    const updated = repository.updateAutomationRule(id, body);
+    const response = updateAutomationRuleResponseSchema.parse({ rule: updated });
+    return reply.send(response);
+  });
+
+  app.delete('/api/automation-rules/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const deleted = repository.deleteAutomationRule(id);
+    if (!deleted) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Automation rule not found.' });
+    }
+    return reply.status(204).send();
+  });
+
+  app.get('/api/automation-log', async (request, reply) => {
+    const query = request.query as Record<string, string | undefined>;
+    const entries = repository.listAutomationLog(query.ruleId);
+    const response = listAutomationLogResponseSchema.parse({ entries });
     return reply.send(response);
   });
 
