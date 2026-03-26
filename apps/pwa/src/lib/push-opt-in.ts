@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getStoredSessionToken } from './auth';
+import { resolveApiUrl } from './api';
 
 const DISMISSED_KEY = 'olivia-push-opt-in-dismissed';
 
@@ -35,6 +36,44 @@ async function storeAuthTokenForSW(token: string): Promise<void> {
   });
 }
 
+/**
+ * Creates a real Web Push subscription via the browser's Push API and registers
+ * it with the server. This is the only correct way to enable push delivery on web.
+ * Returns true if the subscription was successfully created and registered.
+ */
+export async function registerWebPushSubscription(): Promise<boolean> {
+  if (!('serviceWorker' in navigator)) return false;
+  try {
+    const vapidRes = await fetch(resolveApiUrl('/api/push-subscriptions/vapid-public-key'));
+    const { vapidPublicKey } = await vapidRes.json() as { vapidPublicKey: string | null };
+    if (!vapidPublicKey) return false;
+
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey).buffer as ArrayBuffer,
+    });
+    const subJson = subscription.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
+    await fetch(resolveApiUrl('/api/push-subscriptions'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
+    });
+
+    // Store auth token in SW's IndexedDB for push action button requests
+    const sessionToken = getStoredSessionToken();
+    if (sessionToken) {
+      await storeAuthTokenForSW(sessionToken).catch((err) =>
+        console.warn('failed to store auth token for SW', err)
+      );
+    }
+    return true;
+  } catch (err) {
+    console.warn('push subscription failed', err);
+    return false;
+  }
+}
+
 export type PushOptInState = 'prompt' | 'granted' | 'denied' | 'unsupported' | 'dismissed';
 
 export function usePushOptIn() {
@@ -60,33 +99,7 @@ export function usePushOptIn() {
       return;
     }
     setState('granted');
-    try {
-      const vapidRes = await fetch('/api/push-subscriptions/vapid-public-key');
-      const { vapidPublicKey } = await vapidRes.json() as { vapidPublicKey: string | null };
-      if (!vapidPublicKey) return;
-
-      const reg = await navigator.serviceWorker.ready;
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey).buffer as ArrayBuffer,
-      });
-      const subJson = subscription.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
-      await fetch('/api/push-subscriptions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
-      });
-
-      // Store auth token in SW's IndexedDB for push action button requests
-      const sessionToken = getStoredSessionToken();
-      if (sessionToken) {
-        await storeAuthTokenForSW(sessionToken).catch((err) =>
-          console.warn('failed to store auth token for SW', err)
-        );
-      }
-    } catch (err) {
-      console.warn('push subscription failed', err);
-    }
+    await registerWebPushSubscription();
   }, []);
 
   const dismiss = useCallback(() => {

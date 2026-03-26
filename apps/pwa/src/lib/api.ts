@@ -227,13 +227,14 @@ export async function confirmUpdate(itemId: string, expectedVersion: number, pro
 }
 
 export async function saveNotificationSubscription() {
-  return request<{ subscription: unknown }>('/api/notifications/subscriptions', {
-    method: 'POST',
-    body: JSON.stringify({
-      endpoint: `${window.location.origin}/notifications`,
-      payload: { permission: Notification.permission, userAgent: navigator.userAgent, storedAt: new Date().toISOString() }
-    })
-  });
+  // Create a real Web Push subscription via the Push API and register it.
+  // This replaces the old implementation that sent fake payload data the server rejected.
+  const { registerWebPushSubscription } = await import(/* @vite-ignore */ './push-opt-in');
+  const success = await registerWebPushSubscription();
+  if (!success) {
+    throw new Error('Failed to register Web Push subscription.');
+  }
+  return { subscription: {} };
 }
 
 export async function saveNativeNotificationSubscriptionApi(apnsToken: string) {
