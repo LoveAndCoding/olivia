@@ -50,7 +50,7 @@ This wedge has been implemented and expanded across five horizons:
 - **H4 (Memory & Planning):** unified weekly view, activity history, planning ritual support — temporal layer complete
 - **H5 (Selective Trusted Agency):** AI-assisted planning ritual summaries, proactive nudges, push notifications, completion-window timing, conversational chat — three phases of trusted agency shipped
 
-The current active milestone is M35 (Identity Refactor & Automation Foundation), which eliminates the legacy role-based identity model and builds the first automation capabilities on a clean userId-based foundation.
+The current active milestone is M36 (Automation & Feedback Build), which implements the automation foundation (push action buttons + lightweight automation rules) and in-app feedback mechanism on the clean userId-based identity model delivered in M35.
 
 ## What Olivia Is
 - A local-first household coordination system with AI-assisted support where useful.
