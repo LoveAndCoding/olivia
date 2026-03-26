@@ -288,7 +288,7 @@ describe('reminder migrations and api', () => {
       .all() as Array<{ name: string }>;
 
     expect(repository.listItems()).toHaveLength(1);
-    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql', '0010_data_freshness.sql', '0011_routines_flexible_scheduling.sql', '0012_auth_identity.sql', '0013_user_attribution.sql', '0014_backfill_user_attribution.sql', '0015_dynamic_user_assignment.sql', '0016_remove_actor_role.sql', '0017_push_unification.sql', '0018_feedback.sql']);
+    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql', '0010_data_freshness.sql', '0011_routines_flexible_scheduling.sql', '0012_auth_identity.sql', '0013_user_attribution.sql', '0014_backfill_user_attribution.sql', '0015_dynamic_user_assignment.sql', '0016_remove_actor_role.sql', '0017_push_unification.sql', '0018_feedback.sql', '0019_automation_rules.sql']);
     expect(reminderTables.map((row) => row.name).sort()).toEqual([
       'notification_delivery_log',
       'reminder_notification_preferences',

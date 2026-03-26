@@ -1808,3 +1808,89 @@ export type SubmitFeedbackResponse = z.infer<typeof submitFeedbackResponseSchema
 export type ListFeedbackResponse = z.infer<typeof listFeedbackResponseSchema>;
 export type UpdateFeedbackRequest = z.infer<typeof updateFeedbackRequestSchema>;
 export type UpdateFeedbackResponse = z.infer<typeof updateFeedbackResponseSchema>;
+
+// ── Automation Rules ──────────────────────────────────────────────────
+
+export const automationTriggerTypeSchema = z.enum([
+  'routine_overdue_days',
+  'reminder_snooze_count',
+  'reminder_overdue_days'
+]);
+
+export const automationActionTypeSchema = z.enum([
+  'skip_routine_occurrence',
+  'resolve_reminder',
+  'snooze_reminder'
+]);
+
+export const automationScopeTypeSchema = z.enum(['all', 'specific']);
+
+export const automationRuleSchema = z.object({
+  id: z.string(),
+  householdId: z.string(),
+  userId: z.string(),
+  triggerType: automationTriggerTypeSchema,
+  triggerThreshold: z.number().int().min(1),
+  actionType: automationActionTypeSchema,
+  scopeType: automationScopeTypeSchema,
+  scopeEntityId: z.string().nullable(),
+  enabled: z.boolean(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
+export const automationLogEntrySchema = z.object({
+  id: z.string(),
+  ruleId: z.string(),
+  entityType: z.string(),
+  entityId: z.string(),
+  actionType: automationActionTypeSchema,
+  executedAt: z.string().datetime(),
+  userId: z.string()
+});
+
+export const createAutomationRuleRequestSchema = z.object({
+  triggerType: automationTriggerTypeSchema,
+  triggerThreshold: z.number().int().min(1),
+  actionType: automationActionTypeSchema,
+  scopeType: automationScopeTypeSchema.default('all'),
+  scopeEntityId: z.string().nullable().optional()
+});
+
+export const createAutomationRuleResponseSchema = z.object({
+  rule: automationRuleSchema
+});
+
+export const listAutomationRulesResponseSchema = z.object({
+  rules: z.array(automationRuleSchema)
+});
+
+export const updateAutomationRuleRequestSchema = z.object({
+  enabled: z.boolean().optional(),
+  triggerThreshold: z.number().int().min(1).optional(),
+  scopeType: automationScopeTypeSchema.optional(),
+  scopeEntityId: z.string().nullable().optional()
+});
+
+export const updateAutomationRuleResponseSchema = z.object({
+  rule: automationRuleSchema
+});
+
+export const listAutomationLogResponseSchema = z.object({
+  entries: z.array(automationLogEntrySchema)
+});
+
+export const AUTOMATION_RULES_MAX_PER_HOUSEHOLD = 20;
+export const AUTOMATION_LOG_RETENTION_DAYS = 30;
+
+export type AutomationTriggerType = z.infer<typeof automationTriggerTypeSchema>;
+export type AutomationActionType = z.infer<typeof automationActionTypeSchema>;
+export type AutomationScopeType = z.infer<typeof automationScopeTypeSchema>;
+export type AutomationRule = z.infer<typeof automationRuleSchema>;
+export type AutomationLogEntry = z.infer<typeof automationLogEntrySchema>;
+export type CreateAutomationRuleRequest = z.infer<typeof createAutomationRuleRequestSchema>;
+export type CreateAutomationRuleResponse = z.infer<typeof createAutomationRuleResponseSchema>;
+export type ListAutomationRulesResponse = z.infer<typeof listAutomationRulesResponseSchema>;
+export type UpdateAutomationRuleRequest = z.infer<typeof updateAutomationRuleRequestSchema>;
+export type UpdateAutomationRuleResponse = z.infer<typeof updateAutomationRuleResponseSchema>;
+export type ListAutomationLogResponse = z.infer<typeof listAutomationLogResponseSchema>;

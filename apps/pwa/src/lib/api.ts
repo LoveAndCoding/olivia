@@ -10,6 +10,10 @@ import {
   submitFeedbackResponseSchema,
   listFeedbackResponseSchema,
   updateFeedbackResponseSchema,
+  createAutomationRuleResponseSchema,
+  listAutomationRulesResponseSchema,
+  updateAutomationRuleResponseSchema,
+  listAutomationLogResponseSchema,
   type ActivityHistoryResponse,
   type ChatConversationResponse,
   type NudgesResponse,
@@ -23,6 +27,12 @@ import {
   type ListFeedbackResponse,
   type UpdateFeedbackResponse,
   type FeedbackStatus,
+  type CreateAutomationRuleRequest,
+  type CreateAutomationRuleResponse,
+  type ListAutomationRulesResponse,
+  type UpdateAutomationRuleRequest,
+  type UpdateAutomationRuleResponse,
+  type ListAutomationLogResponse,
   bulkListActionResponseSchema,
   activeListIndexResponseSchema,
   activeRoutineIndexResponseSchema,
@@ -991,5 +1001,42 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus): 
       method: 'PATCH',
       body: JSON.stringify({ status })
     })
+  );
+}
+
+// ── Automation Rules ──────────────────────────────────────────────────
+
+export async function createAutomationRule(body: CreateAutomationRuleRequest): Promise<CreateAutomationRuleResponse> {
+  return createAutomationRuleResponseSchema.parse(
+    await request<CreateAutomationRuleResponse>('/api/automation-rules', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    })
+  );
+}
+
+export async function fetchAutomationRules(): Promise<ListAutomationRulesResponse> {
+  return listAutomationRulesResponseSchema.parse(
+    await request<ListAutomationRulesResponse>('/api/automation-rules')
+  );
+}
+
+export async function updateAutomationRule(id: string, body: UpdateAutomationRuleRequest): Promise<UpdateAutomationRuleResponse> {
+  return updateAutomationRuleResponseSchema.parse(
+    await request<UpdateAutomationRuleResponse>(`/api/automation-rules/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    })
+  );
+}
+
+export async function deleteAutomationRule(id: string): Promise<void> {
+  await request<void>(`/api/automation-rules/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchAutomationLog(ruleId?: string): Promise<ListAutomationLogResponse> {
+  const qs = ruleId ? `?ruleId=${ruleId}` : '';
+  return listAutomationLogResponseSchema.parse(
+    await request<ListAutomationLogResponse>(`/api/automation-log${qs}`)
   );
 }
