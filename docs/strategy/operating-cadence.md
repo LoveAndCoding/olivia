@@ -80,32 +80,32 @@ VP Product maintains a spec pipeline 1 sprint ahead:
 
 Updated by CEO at milestone transitions and when significant signal arrives.
 
-### Current State (as of M33 close, 2026-03-24)
+### Current State (as of M35 close, 2026-03-25)
 
 **Where we are:**
-- M33 (Post-M32 Feedback) complete — board feedback collected, M34 defined
-- M32 (Multi-User Household) shipped v0.7.0 — auth, invitation flow, per-user push, nav restructure
+- M35 (Identity Refactor) complete — actorRole eliminated from the entire stack, userId-based identity everywhere
+- Push pipeline unified (one subscription table, polymorphic dispatch)
+- Track D (automation) and Track F (feedback) specs approved (D-071, D-072), ready for implementation
 - Team: 8 agents (CEO, VP Product, Tech Lead, Founding Engineer, Senior Engineer, QA Engineer, Designer, SRE)
-- Budget: ~32% monthly spend
-- Release: v0.7.0 live
-- Critical signal: multi-user features cannot be validated by household due to reliability issues
+- Note: Tech Lead, SRE, QA experienced persistent error states during M35. Founding Engineer and Senior Engineer delivered the engineering work.
+- Budget: ~35% monthly spend
+- Release: v0.7.2 live upstream. M35 refactor changes need a version bump and release.
 
 **Where we're going:**
-- **H1: M34 (Reliability & Push)** — diagnose and fix reliability blockers, get push notifications working end-to-end, add diagnostic tooling. This is a prerequisite for everything else.
-- **H2: M35 (Track D + F)** — automation and in-app feedback, contingent on M34 delivering a stable foundation. Not yet scoped.
-- **H3: Strategic** — deeper automation (rule-based actions, push action buttons), coordination surface expansion (task steps, shared calendar)
+- **H1: M36 (Automation & Feedback Build)** — implement Track F (in-app feedback, lower-risk) then Track D (automation foundation, higher-impact). Both specs approved.
+- **H2: M37 (Post-M36 Household Feedback)** — validate both features with household usage. Standard feedback gate.
+- **H3: Strategic** — multi-tenancy (identity refactor complete, next barrier is household isolation), deeper automation (AI-suggested rules, Layer 2 LLM timing), coordination surface expansion (task steps, shared calendar)
 
 **What could change it:**
-- If M34 diagnosis reveals the reliability issue is deployment/infrastructure rather than code, scope may shift to SRE-focused work
-- Board may direct Track D/F to begin in parallel with reliability if issues are minor
-- Push notification root cause may require upstream changes (Capacitor, VAPID, iOS)
-- L-035 learning: reliability is not a one-sprint fix — M34 exit criteria must include household confirmation, not just test suite passing
+- iOS/Capacitor push action button API support may affect Track D scope (open question in spec)
+- Agent health issues may require continued reassignment of engineering work
+- Board may direct a different priority before M36 activates
 
 **Backlog (top deferred items):**
-1. Track D: Rule-based automation — board's top feature request, queued for M35
-2. Track F: In-app feedback mechanism — board's secondary request, queued for M35
-3. Task steps / sub-tasks (OLI-242, spec drafted) — deferred pending stable daily use
-4. Shared calendar integration (OLI-243, D-063) — deferred
+1. Task steps / sub-tasks (OLI-242, spec drafted) — deferred pending stable daily use
+2. Shared calendar integration (OLI-243, D-063) — deferred
+3. AI-suggested automation rules — Phase 2 after household validates manual rules
+4. Multi-tenancy — identity barrier removed, next is household isolation
 5. Track G: Multi-user depth (per-user preferences, activity attribution) — unlocked after M34 stabilizes multi-user
 
 ## Decisions

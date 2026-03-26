@@ -50,7 +50,7 @@ This wedge has been implemented and expanded across five horizons:
 - **H4 (Memory & Planning):** unified weekly view, activity history, planning ritual support — temporal layer complete
 - **H5 (Selective Trusted Agency):** AI-assisted planning ritual summaries, proactive nudges, push notifications, completion-window timing, conversational chat — three phases of trusted agency shipped
 
-The current active milestone is M29 (Post-Chat Household Validation), which focuses on observing real household usage before deciding the next build direction.
+The current active milestone is M36 (Automation & Feedback Build), which implements the automation foundation (push action buttons + lightweight automation rules) and in-app feedback mechanism on the clean userId-based identity model delivered in M35.
 
 ## What Olivia Is
 - A local-first household coordination system with AI-assisted support where useful.
@@ -92,6 +92,6 @@ Early product success should look like:
 
 ## Deferred Decisions
 - Android or other platform support.
-- Spouse write access and multi-user roles.
-- Rule-based automation and increased autonomy beyond advisory.
+- ~~Spouse write access and multi-user roles.~~ — Shipped in M32 (v0.7.0). Full spouse write access, auth, and invitation flow.
+- ~~Rule-based automation and increased autonomy beyond advisory.~~ — Spec approved (D-071, 2026-03-25). Bounded user-delegated execution, not full autonomy.
 - Deployment model beyond single-household local-first.

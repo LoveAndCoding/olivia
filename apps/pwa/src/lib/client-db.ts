@@ -4,7 +4,6 @@ import { buildSuggestions, groupItems, groupReminders, getRoutineOccurrenceDates
 import type {
   ActiveListIndexResponse,
   ActiveRoutineIndexResponse,
-  ActorRole,
   ArchivedListIndexResponse,
   ArchivedRoutineIndexResponse,
   HistoryEntry,
@@ -64,7 +63,7 @@ class OliviaClientDb extends Dexie {
   historyCache!: Table<{ itemId: string; history: HistoryEntry[] }, string>;
   reminders!: Table<Reminder, string>;
   reminderTimelineCache!: Table<{ reminderId: string; timeline: ReminderTimelineEntry[] }, string>;
-  reminderSettingsCache!: Table<{ actorRole: ActorRole; preferences: ReminderNotificationPreferences }, ActorRole>;
+  reminderSettingsCache!: Table<{ userId: string; preferences: ReminderNotificationPreferences }, string>;
   sharedLists!: Table<SharedList, string>;
   listItems!: Table<ListItem, string>;
   routines!: Table<Routine, string>;
@@ -173,6 +172,26 @@ class OliviaClientDb extends Dexie {
       reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',
       reminderTimelineCache: 'reminderId',
       reminderSettingsCache: 'actorRole',
+      sharedLists: 'id, status, updatedAt, pendingSync',
+      listItems: 'id, listId, position, pendingSync',
+      routines: 'id, status, owner, currentDueDate, updatedAt, pendingSync',
+      routineOccurrences: 'id, routineId, dueDate',
+      mealPlans: 'id, status, weekStartDate, updatedAt, pendingSync',
+      mealEntries: 'id, planId, dayOfWeek, position',
+      reviewRecords: 'id, ritualOccurrenceId, reviewDate, completedAt, pendingSync',
+      nudgeDismissals: 'entityId, dismissedAt',
+      freshnessThrottle: 'date',
+      healthCheckProgress: 'id',
+      outbox: 'commandId, kind, state, createdAt',
+      meta: 'key'
+    });
+    // OLI-310: change reminderSettingsCache key from actorRole to userId
+    this.version(9).stores({
+      items: 'id, status, owner, updatedAt, pendingSync',
+      historyCache: 'itemId',
+      reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',
+      reminderTimelineCache: 'reminderId',
+      reminderSettingsCache: 'userId',
       sharedLists: 'id, status, updatedAt, pendingSync',
       listItems: 'id, listId, position, pendingSync',
       routines: 'id, status, owner, currentDueDate, updatedAt, pendingSync',
@@ -325,13 +344,18 @@ export async function appendCachedReminderTimelineEntries(reminderId: string, en
 
 export async function cacheReminderSettings(response: ReminderSettingsResponse) {
   await clientDb.reminderSettingsCache.put({
-    actorRole: response.preferences.actorRole,
+    userId: response.preferences.userId,
     preferences: response.preferences
   });
 }
 
-export async function getCachedReminderSettings(actorRole: ActorRole): Promise<ReminderNotificationPreferences | null> {
-  return (await clientDb.reminderSettingsCache.get(actorRole))?.preferences ?? null;
+export async function getCachedReminderSettings(userId: string): Promise<ReminderNotificationPreferences | null> {
+  return (await clientDb.reminderSettingsCache.get(userId))?.preferences ?? null;
+}
+
+export async function getFirstCachedReminderSettings(): Promise<ReminderNotificationPreferences | null> {
+  const first = await clientDb.reminderSettingsCache.toCollection().first();
+  return first?.preferences ?? null;
 }
 
 export async function enqueueCommand(command: OutboxCommand, state: 'pending' | 'conflict' = 'pending', lastError?: string) {

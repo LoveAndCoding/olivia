@@ -1,7 +1,7 @@
 import type { Reminder } from '@olivia/contracts';
 import { computeReminderState } from '@olivia/domain';
 import { getReminderDueDisplay, formatReminderMeta, formatRecurrenceLabel } from '../../lib/reminder-helpers';
-import { useRole } from '../../lib/role';
+import { useAuth } from '../../lib/auth';
 
 type ReminderRowProps = {
   reminder: Reminder;
@@ -9,10 +9,10 @@ type ReminderRowProps = {
 };
 
 export function ReminderRow({ reminder, onClick }: ReminderRowProps) {
-  const { role } = useRole();
+  const { user } = useAuth();
   const state = computeReminderState(reminder, new Date());
   const display = getReminderDueDisplay(reminder);
-  const meta = formatReminderMeta(reminder, role);
+  const meta = formatReminderMeta(reminder, user?.id ?? null);
   const isRecurring = reminder.recurrenceCadence !== 'none';
   const isLinked = !!reminder.linkedInboxItemId;
   const isDone = state === 'completed' || state === 'cancelled';

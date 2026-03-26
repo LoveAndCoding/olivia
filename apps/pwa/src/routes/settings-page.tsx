@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { clientDb } from '../lib/client-db';
-import { useRole } from '../lib/role';
-import { effectiveApiBaseUrl, resolveApiUrl } from '../lib/api';
+import { useAuth } from '../lib/auth';
+import { effectiveApiBaseUrl, resolveApiUrl, fetchAutomationRules } from '../lib/api';
 import { HouseholdSection } from '../components/auth/HouseholdSection';
 import { runDiagnosticProbe, type ConnectivityDiagnostic } from '../lib/connectivity';
 import { loadNotificationState, saveDemoNotificationSubscription, saveNativeNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
@@ -224,18 +225,45 @@ function ScheduledNotifications() {
   );
 }
 
+function FeedbackToast() {
+  const [visible, setVisible] = useState(false);
+  const [dismissing, setDismissing] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem('olivia-feedback-toast')) {
+      sessionStorage.removeItem('olivia-feedback-toast');
+      setVisible(true);
+      const timer = setTimeout(() => {
+        setDismissing(true);
+        setTimeout(() => setVisible(false), 200);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  if (!visible) return null;
+  return (
+    <div className={`feedback-toast${dismissing ? ' dismissing' : ''}`}>
+      <span className="feedback-toast__icon">✓</span>
+      <span className="feedback-toast__text">Thanks — your feedback helps us improve Olivia.</span>
+    </div>
+  );
+}
+
 export function SettingsPage() {
-  const { role } = useRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [activeTheme, setActiveTheme] = useState<ThemeMode>(readSavedTheme);
-  const notificationQuery = useQuery({ queryKey: ['notification-subscriptions', role], queryFn: () => loadNotificationState(role) });
-  const reminderSettingsQuery = useQuery({ queryKey: ['reminder-settings', role], queryFn: () => loadReminderSettings(role) });
+  const autoRulesQuery = useQuery({ queryKey: ['automation-rules'], queryFn: fetchAutomationRules });
+  const notificationQuery = useQuery({ queryKey: ['notification-subscriptions', currentUser?.id], queryFn: () => loadNotificationState() });
+  const reminderSettingsQuery = useQuery({ queryKey: ['reminder-settings', currentUser?.id], queryFn: () => loadReminderSettings() });
 
   const diagnostics = useLiveQuery(async () => {
     const pending = await clientDb.outbox.where('state').equals('pending').count();
     const conflicts = await clientDb.outbox.where('state').equals('conflict').count();
     return { pending, conflicts };
-  }, [role]);
+  }, [currentUser?.id]);
 
   const installed = useMemo(() => window.matchMedia('(display-mode: standalone)').matches, []);
   const isIOS = useMemo(() => /iPad|iPhone|iPod/.test(navigator.userAgent), []);
@@ -274,7 +302,7 @@ export function SettingsPage() {
   useEffect(() => {
     if (!isNative) return;
     const registrationListener = PushNotifications.addListener('registration', (token) => {
-      void saveNativeNotificationSubscription(role, token.value);
+      void saveNativeNotificationSubscription(token.value);
     });
     const errorListener = PushNotifications.addListener('registrationError', (error) => {
       console.error('Push registration error:', error);
@@ -283,7 +311,7 @@ export function SettingsPage() {
       void registrationListener.then((h) => h.remove());
       void errorListener.then((h) => h.remove());
     };
-  }, [isNative, role]);
+  }, [isNative, currentUser?.id]);
 
   const prefs = reminderSettingsQuery.data?.preferences;
   const masterEnabled = prefs?.enabled ?? false;
@@ -298,12 +326,12 @@ export function SettingsPage() {
       ...update,
     };
     try {
-      await saveReminderSettingsCommand(role, current);
-      await queryClient.invalidateQueries({ queryKey: ['reminder-settings', role] });
+      await saveReminderSettingsCommand(current);
+      await queryClient.invalidateQueries({ queryKey: ['reminder-settings', currentUser?.id] });
     } catch {
       // Offline or error — silently fail and let the UI reflect cached state
     }
-  }, [masterEnabled, dueEnabled, summaryEnabled, role, queryClient]);
+  }, [masterEnabled, dueEnabled, summaryEnabled, currentUser?.id, queryClient]);
 
   const oliviaNotifMessage = useMemo(() => {
     if (browserPermission === 'denied') {
@@ -500,6 +528,37 @@ export function SettingsPage() {
             )}
           </div>
 
+          {/* Send Feedback row */}
+          <button
+            type="button"
+            className="feedback-row"
+            onClick={() => void navigate({ to: '/more/settings/feedback' })}
+          >
+            <span className="feedback-row__icon">💬</span>
+            <span className="feedback-row__label">Send Feedback</span>
+            <span className="feedback-row__chevron">›</span>
+          </button>
+
+          {/* Automation Rules row */}
+          <button
+            type="button"
+            className="auto-row"
+            onClick={() => void navigate({ to: '/more/settings/automation' })}
+          >
+            <div className="auto-row__icon">⚡</div>
+            <div className="auto-row__content">
+              <div className="auto-row__label">Automation Rules</div>
+              <div className="auto-row__count">
+                {autoRulesQuery.data
+                  ? autoRulesQuery.data.rules.length === 0
+                    ? 'No rules yet'
+                    : `${autoRulesQuery.data.rules.filter((r) => r.enabled).length} active`
+                  : ''}
+              </div>
+            </div>
+            <div className="auto-row__chevron">›</div>
+          </button>
+
           <div className="card stack-md">
             <div className="section-header">
               <h3 className="card-title">Installability</h3>
@@ -518,9 +577,9 @@ export function SettingsPage() {
                   }
                 } else {
                   if (typeof Notification !== 'undefined' && Notification.permission === 'default') await Notification.requestPermission();
-                  await saveDemoNotificationSubscription(role);
+                  await saveDemoNotificationSubscription();
                 }
-                await queryClient.invalidateQueries({ queryKey: ['notification-subscriptions', role] });
+                await queryClient.invalidateQueries({ queryKey: ['notification-subscriptions', currentUser?.id] });
               }}
             >
               Save demo notification target
@@ -544,6 +603,7 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
+      <FeedbackToast />
     </div>
   );
 }

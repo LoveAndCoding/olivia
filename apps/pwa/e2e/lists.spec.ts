@@ -1,12 +1,6 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('List lifecycle', () => {
-  test.beforeEach(async ({ page }) => {
-    // Ensure stakeholder role via localStorage
-    await page.goto('/');
-    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
-  });
-
   test('stakeholder can create a list', async ({ page }) => {
     const listName = `Weekend errands ${Date.now()}`;
     await page.goto('/lists');
@@ -107,16 +101,4 @@ test.describe('List lifecycle', () => {
     await expect(page.locator('.list-card-title', { hasText: listName })).toBeVisible({ timeout: 10_000 });
   });
 
-  test('spouse can access lists page with write access (OLI-283)', async ({ page }) => {
-    // Switch to spouse via localStorage — OLI-283 granted spouse write access
-    await page.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
-    await page.goto('/lists');
-    await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
-
-    // Spouse now has write access — "New list" button should be visible
-    await expect(page.locator('.list-new-btn-label')).toBeVisible();
-
-    // Restore stakeholder role
-    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
-  });
 });

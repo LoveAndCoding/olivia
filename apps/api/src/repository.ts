@@ -17,7 +17,6 @@ import {
   routineSchema,
   sharedListSchema,
   NUDGE_APPROACHING_THRESHOLD_HOURS,
-  type ActorRole,
   type GeneratedListRef,
   type HistoryEntry,
   type InboxItem,
@@ -38,7 +37,15 @@ import {
   type StaleItem,
   type StaleItemEntityType,
   type ArchivableEntityType,
-  type HealthCheckState
+  type HealthCheckState,
+  feedbackItemSchema,
+  type FeedbackItem,
+  type FeedbackStatus,
+  automationRuleSchema,
+  automationLogEntrySchema,
+  type AutomationRule,
+  type AutomationLogEntry,
+  AUTOMATION_LOG_RETENTION_DAYS
 } from '@olivia/contracts';
 
 const DEFAULT_REMINDER_PREFERENCES_UPDATED_AT = new Date(0).toISOString();
@@ -58,22 +65,12 @@ const REMINDER_SELECT = `
 export type NotificationDeliveryRecord = {
   id: string;
   notificationType: 'due_reminder' | 'daily_summary';
-  actorRole: ActorRole;
+  userId: string;
   reminderId: string | null;
   deliveryBucket: string;
   deliveredAt: string;
 };
 
-export type PushSubscriptionRecord = {
-  id: string;
-  household_id: string;
-  endpoint: string;
-  p256dh_key: string;
-  auth_key: string;
-  user_id: string | null;
-  created_at: string;
-  updated_at: string;
-};
 
 const parseJsonColumn = (value: unknown): unknown => (value ? JSON.parse(String(value)) : null);
 
@@ -100,7 +97,6 @@ const mapHistoryRow = (row: Record<string, unknown>): HistoryEntry =>
   historyEntrySchema.parse({
     id: row.id,
     itemId: row.item_id,
-    actorRole: row.actor_role,
     userId: row.user_id ?? null,
     eventType: row.event_type,
     fromValue: parseJsonColumn(row.from_value),
@@ -147,7 +143,6 @@ const mapReminderTimelineRow = (row: Record<string, unknown>): ReminderTimelineE
   reminderTimelineEntrySchema.parse({
     id: row.id,
     reminderId: row.reminder_id,
-    actorRole: row.actor_role,
     userId: row.user_id ?? null,
     eventType: row.event_type,
     fromValue: parseJsonColumn(row.from_value),
@@ -157,11 +152,11 @@ const mapReminderTimelineRow = (row: Record<string, unknown>): ReminderTimelineE
   });
 
 const mapReminderPreferencesRow = (
-  actorRole: ReminderNotificationPreferences['actorRole'],
+  userId: string,
   row?: Record<string, unknown>
 ): ReminderNotificationPreferences =>
   reminderNotificationPreferencesSchema.parse({
-    actorRole,
+    userId,
     enabled: row ? Boolean(row.enabled) : false,
     dueRemindersEnabled: row ? Boolean(row.due_reminders_enabled) : false,
     dailySummaryEnabled: row ? Boolean(row.daily_summary_enabled) : false,
@@ -204,7 +199,6 @@ const mapListItemHistoryRow = (row: Record<string, unknown>): ListItemHistoryEnt
     id: row.id,
     listId: row.list_id,
     itemId: row.item_id ?? null,
-    actorRole: row.actor_role,
     userId: row.user_id ?? null,
     eventType: row.event_type,
     fromValue: parseJsonColumn(row.from_value),
@@ -239,8 +233,8 @@ export class InboxRepository {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO inbox_item_history (id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO inbox_item_history (id, item_id, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
     const transaction = this.db.transaction(() => {
@@ -263,7 +257,6 @@ export class InboxRepository {
       insertHistory.run(
         historyEntry.id,
         historyEntry.itemId,
-        historyEntry.actorRole,
         historyEntry.userId ?? null,
         historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
@@ -282,8 +275,8 @@ export class InboxRepository {
       WHERE id = ? AND version = ?
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO inbox_item_history (id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO inbox_item_history (id, item_id, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
     const transaction = this.db.transaction(() => {
@@ -308,7 +301,6 @@ export class InboxRepository {
       insertHistory.run(
         historyEntry.id,
         historyEntry.itemId,
-        historyEntry.actorRole,
         historyEntry.userId ?? null,
         historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
@@ -350,8 +342,8 @@ export class InboxRepository {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertTimeline = this.db.prepare(`
-      INSERT INTO reminder_timeline (id, reminder_id, actor_role, user_id, event_type, from_value, to_value, metadata, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO reminder_timeline (id, reminder_id, user_id, event_type, from_value, to_value, metadata, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.db.transaction(() => {
@@ -376,7 +368,6 @@ export class InboxRepository {
         insertTimeline.run(
           timelineEntry.id,
           timelineEntry.reminderId,
-          timelineEntry.actorRole,
           timelineEntry.userId ?? null,
           timelineEntry.eventType,
           timelineEntry.fromValue ? JSON.stringify(timelineEntry.fromValue) : null,
@@ -394,8 +385,8 @@ export class InboxRepository {
     }
 
     const insertTimeline = this.db.prepare(`
-      INSERT OR IGNORE INTO reminder_timeline (id, reminder_id, actor_role, user_id, event_type, from_value, to_value, metadata, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO reminder_timeline (id, reminder_id, user_id, event_type, from_value, to_value, metadata, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.db.transaction(() => {
@@ -403,7 +394,6 @@ export class InboxRepository {
         insertTimeline.run(
           timelineEntry.id,
           timelineEntry.reminderId,
-          timelineEntry.actorRole,
           timelineEntry.userId ?? null,
           timelineEntry.eventType,
           timelineEntry.fromValue ? JSON.stringify(timelineEntry.fromValue) : null,
@@ -423,8 +413,8 @@ export class InboxRepository {
       WHERE id = ? AND version = ?
     `);
     const insertTimeline = this.db.prepare(`
-      INSERT INTO reminder_timeline (id, reminder_id, actor_role, user_id, event_type, from_value, to_value, metadata, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO reminder_timeline (id, reminder_id, user_id, event_type, from_value, to_value, metadata, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     return this.db.transaction(() => {
@@ -452,7 +442,6 @@ export class InboxRepository {
         insertTimeline.run(
           timelineEntry.id,
           timelineEntry.reminderId,
-          timelineEntry.actorRole,
           timelineEntry.userId ?? null,
           timelineEntry.eventType,
           timelineEntry.fromValue ? JSON.stringify(timelineEntry.fromValue) : null,
@@ -467,21 +456,21 @@ export class InboxRepository {
   }
 
   getReminderNotificationPreferences(
-    actorRole: ReminderNotificationPreferences['actorRole']
+    userId: string
   ): ReminderNotificationPreferences {
     const row = this.db
-      .prepare('SELECT * FROM reminder_notification_preferences WHERE actor_role = ?')
-      .get(actorRole) as Record<string, unknown> | undefined;
+      .prepare('SELECT * FROM reminder_notification_preferences WHERE user_id = ?')
+      .get(userId) as Record<string, unknown> | undefined;
 
-    return mapReminderPreferencesRow(actorRole, row);
+    return mapReminderPreferencesRow(userId, row);
   }
 
   saveReminderNotificationPreferences(
-    actorRole: ReminderNotificationPreferences['actorRole'],
-    preferences: Omit<ReminderNotificationPreferences, 'actorRole' | 'updatedAt'>
+    userId: string,
+    preferences: Omit<ReminderNotificationPreferences, 'userId' | 'updatedAt'>
   ): ReminderNotificationPreferences {
     const saved = reminderNotificationPreferencesSchema.parse({
-      actorRole,
+      userId,
       ...preferences,
       updatedAt: new Date().toISOString()
     });
@@ -489,16 +478,16 @@ export class InboxRepository {
     this.db
       .prepare(`
         INSERT INTO reminder_notification_preferences (
-          actor_role, enabled, due_reminders_enabled, daily_summary_enabled, updated_at
+          user_id, enabled, due_reminders_enabled, daily_summary_enabled, updated_at
         ) VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(actor_role) DO UPDATE SET
+        ON CONFLICT(user_id) DO UPDATE SET
           enabled = excluded.enabled,
           due_reminders_enabled = excluded.due_reminders_enabled,
           daily_summary_enabled = excluded.daily_summary_enabled,
           updated_at = excluded.updated_at
       `)
       .run(
-        saved.actorRole,
+        saved.userId,
         saved.enabled ? 1 : 0,
         saved.dueRemindersEnabled ? 1 : 0,
         saved.dailySummaryEnabled ? 1 : 0,
@@ -508,10 +497,10 @@ export class InboxRepository {
     return saved;
   }
 
-  saveNotificationSubscription(actorRole: NotificationSubscription['actorRole'], endpoint: string, payload: Record<string, unknown>): NotificationSubscription {
+  saveNotificationSubscription(userId: string, endpoint: string, payload: Record<string, unknown>): NotificationSubscription {
     const subscription = notificationSubscriptionSchema.parse({
       id: randomUUID(),
-      actorRole,
+      userId,
       endpoint,
       payload,
       createdAt: new Date().toISOString()
@@ -519,33 +508,41 @@ export class InboxRepository {
 
     this.db
       .prepare(`
-        INSERT INTO notification_subscriptions (id, actor_role, endpoint, payload, created_at)
+        INSERT INTO notification_subscriptions (id, user_id, endpoint, payload, created_at)
         VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(endpoint) DO UPDATE SET
           id = excluded.id,
-          actor_role = excluded.actor_role,
+          user_id = excluded.user_id,
           payload = excluded.payload,
           created_at = excluded.created_at
       `)
-      .run(subscription.id, subscription.actorRole, subscription.endpoint, JSON.stringify(subscription.payload), subscription.createdAt);
+      .run(subscription.id, subscription.userId, subscription.endpoint, JSON.stringify(subscription.payload), subscription.createdAt);
 
     return subscription;
   }
 
-  listNotificationSubscriptions(actorRole: NotificationSubscription['actorRole']): NotificationSubscription[] {
+  listNotificationSubscriptions(userId: string): NotificationSubscription[] {
     const rows = this.db
-      .prepare('SELECT * FROM notification_subscriptions WHERE actor_role = ? ORDER BY created_at DESC')
-      .all(actorRole) as Record<string, unknown>[];
+      .prepare('SELECT * FROM notification_subscriptions WHERE user_id = ? ORDER BY created_at DESC')
+      .all(userId) as Record<string, unknown>[];
 
     return rows.map((row) =>
       notificationSubscriptionSchema.parse({
         id: row.id,
-        actorRole: row.actor_role,
+        userId: row.user_id,
         endpoint: row.endpoint,
         payload: parseJsonColumn(row.payload),
         createdAt: row.created_at
       })
     );
+  }
+
+  listAllReminderNotificationPreferences(): ReminderNotificationPreferences[] {
+    const rows = this.db
+      .prepare('SELECT * FROM reminder_notification_preferences ORDER BY user_id ASC')
+      .all() as Record<string, unknown>[];
+
+    return rows.map((row) => mapReminderPreferencesRow(String(row.user_id), row));
   }
 
   listAllNotificationSubscriptions(): NotificationSubscription[] {
@@ -556,7 +553,7 @@ export class InboxRepository {
     return rows.map((row) =>
       notificationSubscriptionSchema.parse({
         id: row.id,
-        actorRole: row.actor_role,
+        userId: row.user_id,
         endpoint: row.endpoint,
         payload: parseJsonColumn(row.payload),
         createdAt: row.created_at
@@ -566,21 +563,21 @@ export class InboxRepository {
 
   hasNotificationDelivery(
     notificationType: NotificationDeliveryRecord['notificationType'],
-    actorRole: ActorRole,
+    userId: string,
     deliveryBucket: string
   ): boolean {
     const row = this.db
       .prepare(
-        'SELECT 1 FROM notification_delivery_log WHERE notification_type = ? AND actor_role = ? AND delivery_bucket = ? LIMIT 1'
+        'SELECT 1 FROM notification_delivery_log WHERE notification_type = ? AND user_id = ? AND delivery_bucket = ? LIMIT 1'
       )
-      .get(notificationType, actorRole, deliveryBucket) as { 1: number } | undefined;
+      .get(notificationType, userId, deliveryBucket) as { 1: number } | undefined;
 
     return Boolean(row);
   }
 
   recordNotificationDelivery(
     notificationType: NotificationDeliveryRecord['notificationType'],
-    actorRole: ActorRole,
+    userId: string,
     reminderId: string | null,
     deliveryBucket: string,
     deliveredAt: string = new Date().toISOString()
@@ -588,7 +585,7 @@ export class InboxRepository {
     const record: NotificationDeliveryRecord = {
       id: randomUUID(),
       notificationType,
-      actorRole,
+      userId,
       reminderId,
       deliveryBucket,
       deliveredAt
@@ -597,13 +594,13 @@ export class InboxRepository {
     this.db
       .prepare(`
         INSERT INTO notification_delivery_log (
-          id, notification_type, actor_role, reminder_id, delivery_bucket, delivered_at
+          id, notification_type, user_id, reminder_id, delivery_bucket, delivered_at
         ) VALUES (?, ?, ?, ?, ?, ?)
       `)
       .run(
         record.id,
         record.notificationType,
-        record.actorRole,
+        record.userId,
         record.reminderId,
         record.deliveryBucket,
         record.deliveredAt
@@ -613,23 +610,23 @@ export class InboxRepository {
   }
 
   listNotificationDeliveries(
-    actorRole: ActorRole,
+    userId: string,
     notificationType?: NotificationDeliveryRecord['notificationType']
   ): NotificationDeliveryRecord[] {
     const rows = notificationType
       ? (this.db
           .prepare(
-            'SELECT * FROM notification_delivery_log WHERE actor_role = ? AND notification_type = ? ORDER BY delivered_at DESC'
+            'SELECT * FROM notification_delivery_log WHERE user_id = ? AND notification_type = ? ORDER BY delivered_at DESC'
           )
-          .all(actorRole, notificationType) as Record<string, unknown>[])
+          .all(userId, notificationType) as Record<string, unknown>[])
       : (this.db
-          .prepare('SELECT * FROM notification_delivery_log WHERE actor_role = ? ORDER BY delivered_at DESC')
-          .all(actorRole) as Record<string, unknown>[]);
+          .prepare('SELECT * FROM notification_delivery_log WHERE user_id = ? ORDER BY delivered_at DESC')
+          .all(userId) as Record<string, unknown>[]);
 
     return rows.map((row) => ({
       id: String(row.id),
       notificationType: row.notification_type as NotificationDeliveryRecord['notificationType'],
-      actorRole: row.actor_role as ActorRole,
+      userId: String(row.user_id),
       reminderId: row.reminder_id ? String(row.reminder_id) : null,
       deliveryBucket: String(row.delivery_bucket),
       deliveredAt: String(row.delivered_at)
@@ -672,8 +669,8 @@ export class InboxRepository {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.db.transaction(() => {
@@ -683,7 +680,7 @@ export class InboxRepository {
       );
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
+        historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -698,8 +695,8 @@ export class InboxRepository {
       WHERE id = ? AND version = ?
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     return this.db.transaction(() => {
@@ -712,7 +709,7 @@ export class InboxRepository {
       }
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
+        historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -732,8 +729,8 @@ export class InboxRepository {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.db.transaction(() => {
@@ -743,7 +740,7 @@ export class InboxRepository {
       );
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
+        historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -758,8 +755,8 @@ export class InboxRepository {
       WHERE id = ? AND version = ?
     `);
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     return this.db.transaction(() => {
@@ -772,7 +769,7 @@ export class InboxRepository {
       }
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
+        historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -784,15 +781,15 @@ export class InboxRepository {
   removeListItem(itemId: string, listId: string, historyEntry: ListItemHistoryEntry): void {
     const deleteItem = this.db.prepare('DELETE FROM list_items WHERE id = ? AND list_id = ?');
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.db.transaction(() => {
       deleteItem.run(itemId, listId);
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
+        historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -803,15 +800,15 @@ export class InboxRepository {
   clearCompletedItems(listId: string, historyEntry: ListItemHistoryEntry): number {
     const deleteChecked = this.db.prepare('DELETE FROM list_items WHERE list_id = ? AND checked = 1');
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     return this.db.transaction(() => {
       const result = deleteChecked.run(listId);
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
+        historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -826,15 +823,15 @@ export class InboxRepository {
       'UPDATE list_items SET checked = 0, checked_at = NULL, updated_at = ?, version = version + 1 WHERE list_id = ? AND checked = 1'
     );
     const insertHistory = this.db.prepare(`
-      INSERT INTO list_item_history (id, list_id, item_id, actor_role, user_id, event_type, from_value, to_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO list_item_history (id, list_id, item_id, user_id, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     return this.db.transaction(() => {
       const result = uncheckAll.run(now, listId);
       insertHistory.run(
         historyEntry.id, historyEntry.listId, historyEntry.itemId,
-        historyEntry.actorRole, historyEntry.userId ?? null, historyEntry.eventType,
+        historyEntry.userId ?? null, historyEntry.eventType,
         historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
         historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
         historyEntry.createdAt
@@ -1421,7 +1418,7 @@ export class InboxRepository {
       .prepare('SELECT * FROM reminder_timeline ORDER BY created_at DESC, id DESC')
       .all() as Record<string, unknown>[];
     const reminderPreferenceRows = this.db
-      .prepare('SELECT * FROM reminder_notification_preferences ORDER BY actor_role ASC')
+      .prepare('SELECT * FROM reminder_notification_preferences ORDER BY user_id ASC')
       .all() as Record<string, unknown>[];
     return {
       items: this.listItems(),
@@ -1429,9 +1426,9 @@ export class InboxRepository {
       reminders: this.listReminders(),
       reminderTimeline: reminderTimelineRows.map(mapReminderTimelineRow),
       reminderPreferences: reminderPreferenceRows.map((row) =>
-        mapReminderPreferencesRow(row.actor_role as ReminderNotificationPreferences['actorRole'], row)
+        mapReminderPreferencesRow(String(row.user_id), row)
       ),
-      notificationDeliveries: this.listNotificationDeliveries('stakeholder')
+      notificationDeliveries: []
     };
   }
 
@@ -1673,38 +1670,8 @@ export class InboxRepository {
     return rows.map((r) => r.completed_at);
   }
 
-  // ─── Push Subscriptions (H5 nudge push) ──────────────────────────────────────
-
-  savePushSubscription(endpoint: string, p256dh: string, auth: string, userId?: string): PushSubscriptionRecord {
-    const now = new Date().toISOString();
-    const existing = this.db.prepare('SELECT id FROM push_subscriptions WHERE endpoint = ?').get(endpoint) as { id: string } | undefined;
-    const id = existing?.id ?? randomUUID();
-
-    this.db.prepare(`
-      INSERT INTO push_subscriptions (id, household_id, endpoint, p256dh_key, auth_key, user_id, created_at, updated_at)
-      VALUES (?, 'household', ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(endpoint) DO UPDATE SET
-        p256dh_key = excluded.p256dh_key,
-        auth_key = excluded.auth_key,
-        user_id = excluded.user_id,
-        updated_at = excluded.updated_at
-    `).run(id, endpoint, p256dh, auth, userId ?? null, now, now);
-
-    return this.db.prepare('SELECT * FROM push_subscriptions WHERE id = ?').get(id) as PushSubscriptionRecord;
-  }
-
-  deletePushSubscription(endpoint: string): void {
-    this.db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').run(endpoint);
-  }
-
-  listPushSubscriptions(): PushSubscriptionRecord[] {
-    return this.db.prepare("SELECT * FROM push_subscriptions WHERE household_id = 'household'").all() as PushSubscriptionRecord[];
-  }
-
-  listPushSubscriptionsForUser(userId: string): PushSubscriptionRecord[] {
-    return this.db.prepare(
-      "SELECT * FROM push_subscriptions WHERE household_id = 'household' AND user_id = ?"
-    ).all(userId) as PushSubscriptionRecord[];
+  deleteNotificationSubscriptionByEndpoint(endpoint: string): void {
+    this.db.prepare('DELETE FROM notification_subscriptions WHERE endpoint = ?').run(endpoint);
   }
 
   getReminderCreatorUserId(reminderId: string): string | null {
@@ -2204,6 +2171,184 @@ export class InboxRepository {
       ON CONFLICT(id) DO UPDATE SET last_health_check_dismissed_at = ?, updated_at = ?
     `).run(timestamp, timestamp, timestamp, timestamp, timestamp);
   }
+
+  // ── Feedback ──────────────────────────────────────────────────────
+
+  createFeedback(feedback: FeedbackItem): void {
+    this.db.prepare(`
+      INSERT INTO feedback (id, household_id, user_id, category, description, context_json, screenshot_base64, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      feedback.id,
+      feedback.householdId,
+      feedback.userId,
+      feedback.category,
+      feedback.description,
+      JSON.stringify(feedback.contextJson),
+      feedback.screenshotBase64,
+      feedback.status,
+      feedback.createdAt,
+      feedback.updatedAt
+    );
+  }
+
+  listFeedback(filters?: { status?: FeedbackStatus }): FeedbackItem[] {
+    let sql = 'SELECT * FROM feedback';
+    const params: unknown[] = [];
+    if (filters?.status) {
+      sql += ' WHERE status = ?';
+      params.push(filters.status);
+    }
+    sql += ' ORDER BY created_at DESC';
+    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    return rows.map(mapFeedbackRow);
+  }
+
+  getFeedback(id: string): FeedbackItem | null {
+    const row = this.db.prepare('SELECT * FROM feedback WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    return row ? mapFeedbackRow(row) : null;
+  }
+
+  updateFeedbackStatus(id: string, status: FeedbackStatus): FeedbackItem | null {
+    const now = new Date().toISOString();
+    this.db.prepare('UPDATE feedback SET status = ?, updated_at = ? WHERE id = ?').run(status, now, id);
+    return this.getFeedback(id);
+  }
+
+  // ── Automation Rules ──────────────────────────────────────────────
+
+  createAutomationRule(rule: AutomationRule): void {
+    this.db.prepare(`
+      INSERT INTO automation_rules (id, household_id, user_id, trigger_type, trigger_threshold, action_type, scope_type, scope_entity_id, enabled, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      rule.id,
+      rule.householdId,
+      rule.userId,
+      rule.triggerType,
+      rule.triggerThreshold,
+      rule.actionType,
+      rule.scopeType,
+      rule.scopeEntityId,
+      rule.enabled ? 1 : 0,
+      rule.createdAt,
+      rule.updatedAt
+    );
+  }
+
+  getAutomationRule(id: string): AutomationRule | null {
+    const row = this.db.prepare('SELECT * FROM automation_rules WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    return row ? mapAutomationRuleRow(row) : null;
+  }
+
+  listAutomationRules(householdId?: string): AutomationRule[] {
+    let sql = 'SELECT * FROM automation_rules';
+    const params: unknown[] = [];
+    if (householdId) {
+      sql += ' WHERE household_id = ?';
+      params.push(householdId);
+    }
+    sql += ' ORDER BY created_at DESC';
+    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    return rows.map(mapAutomationRuleRow);
+  }
+
+  listEnabledAutomationRules(householdId?: string): AutomationRule[] {
+    let sql = 'SELECT * FROM automation_rules WHERE enabled = 1';
+    const params: unknown[] = [];
+    if (householdId) {
+      sql += ' AND household_id = ?';
+      params.push(householdId);
+    }
+    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    return rows.map(mapAutomationRuleRow);
+  }
+
+  updateAutomationRule(id: string, updates: Partial<Pick<AutomationRule, 'enabled' | 'triggerThreshold' | 'scopeType' | 'scopeEntityId'>>): AutomationRule | null {
+    const now = new Date().toISOString();
+    const sets: string[] = ['updated_at = ?'];
+    const params: unknown[] = [now];
+
+    if (updates.enabled !== undefined) {
+      sets.push('enabled = ?');
+      params.push(updates.enabled ? 1 : 0);
+    }
+    if (updates.triggerThreshold !== undefined) {
+      sets.push('trigger_threshold = ?');
+      params.push(updates.triggerThreshold);
+    }
+    if (updates.scopeType !== undefined) {
+      sets.push('scope_type = ?');
+      params.push(updates.scopeType);
+    }
+    if (updates.scopeEntityId !== undefined) {
+      sets.push('scope_entity_id = ?');
+      params.push(updates.scopeEntityId);
+    }
+
+    params.push(id);
+    this.db.prepare(`UPDATE automation_rules SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+    return this.getAutomationRule(id);
+  }
+
+  deleteAutomationRule(id: string): boolean {
+    const result = this.db.prepare('DELETE FROM automation_rules WHERE id = ?').run(id);
+    return result.changes > 0;
+  }
+
+  countAutomationRules(householdId: string): number {
+    const row = this.db.prepare('SELECT COUNT(*) as count FROM automation_rules WHERE household_id = ?').get(householdId) as { count: number };
+    return row.count;
+  }
+
+  // ── Automation Log ────────────────────────────────────────────────
+
+  createAutomationLogEntry(entry: AutomationLogEntry): void {
+    this.db.prepare(`
+      INSERT INTO automation_log (id, rule_id, entity_type, entity_id, action_type, executed_at, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      entry.id,
+      entry.ruleId,
+      entry.entityType,
+      entry.entityId,
+      entry.actionType,
+      entry.executedAt,
+      entry.userId
+    );
+  }
+
+  listAutomationLog(ruleId?: string): AutomationLogEntry[] {
+    let sql = 'SELECT * FROM automation_log';
+    const params: unknown[] = [];
+    if (ruleId) {
+      sql += ' WHERE rule_id = ?';
+      params.push(ruleId);
+    }
+    sql += ' ORDER BY executed_at DESC';
+    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    return rows.map(mapAutomationLogRow);
+  }
+
+  hasRecentAutomationExecution(ruleId: string, entityId: string, since: string): boolean {
+    const row = this.db.prepare(
+      'SELECT 1 FROM automation_log WHERE rule_id = ? AND entity_id = ? AND executed_at >= ? LIMIT 1'
+    ).get(ruleId, entityId, since) as Record<string, unknown> | undefined;
+    return !!row;
+  }
+
+  getReminderSnoozeCount(reminderId: string): number {
+    const row = this.db.prepare(
+      "SELECT COUNT(*) as count FROM reminder_timeline WHERE reminder_id = ? AND event_type = 'snoozed'"
+    ).get(reminderId) as { count: number };
+    return row.count;
+  }
+
+  purgeOldAutomationLog(): number {
+    const cutoff = new Date(Date.now() - AUTOMATION_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const result = this.db.prepare('DELETE FROM automation_log WHERE executed_at < ?').run(cutoff);
+    return result.changes;
+  }
 }
 
 export type OnboardingSessionRow = {
@@ -2234,6 +2379,46 @@ const mapChatMessageRow = (row: Record<string, unknown>): ChatMessageRow => ({
   toolCalls: row.tool_calls ? JSON.parse(String(row.tool_calls)) : null,
   createdAt: String(row.created_at)
 });
+
+const mapFeedbackRow = (row: Record<string, unknown>): FeedbackItem =>
+  feedbackItemSchema.parse({
+    id: String(row.id),
+    householdId: String(row.household_id),
+    userId: String(row.user_id),
+    category: String(row.category),
+    description: String(row.description),
+    contextJson: JSON.parse(String(row.context_json)),
+    screenshotBase64: row.screenshot_base64 ? String(row.screenshot_base64) : null,
+    status: String(row.status),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at)
+  });
+
+const mapAutomationRuleRow = (row: Record<string, unknown>): AutomationRule =>
+  automationRuleSchema.parse({
+    id: String(row.id),
+    householdId: String(row.household_id),
+    userId: String(row.user_id),
+    triggerType: String(row.trigger_type),
+    triggerThreshold: Number(row.trigger_threshold),
+    actionType: String(row.action_type),
+    scopeType: String(row.scope_type),
+    scopeEntityId: row.scope_entity_id ? String(row.scope_entity_id) : null,
+    enabled: Number(row.enabled) === 1,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at)
+  });
+
+const mapAutomationLogRow = (row: Record<string, unknown>): AutomationLogEntry =>
+  automationLogEntrySchema.parse({
+    id: String(row.id),
+    ruleId: String(row.rule_id),
+    entityType: String(row.entity_type),
+    entityId: String(row.entity_id),
+    actionType: String(row.action_type),
+    executedAt: String(row.executed_at),
+    userId: String(row.user_id)
+  });
 
 const mapOnboardingSessionRow = (row: Record<string, unknown>): OnboardingSessionRow => ({
   id: String(row.id),

@@ -10,7 +10,6 @@ export type TasksViewProps = {
   openTasks: FullTask[];
   doneTasks: CompletedTask[];
   summaryLine: string;
-  role: 'stakeholder' | 'spouse' | string;
   isLoading?: boolean;
   error?: string | null;
   onNavigateToItem?: (id: string) => void;
@@ -24,7 +23,6 @@ export function TasksView({
   openTasks,
   doneTasks,
   summaryLine,
-  role,
   isLoading,
   error,
   onNavigateToItem,
@@ -100,8 +98,8 @@ export function TasksView({
         ))}
       </div>
 
-      {/* Add task — stakeholder only */}
-      {role === 'stakeholder' && !showAddForm && (
+      {/* Add task */}
+      {!showAddForm && (
         <button
           type="button"
           className="add-task-btn"
@@ -114,7 +112,7 @@ export function TasksView({
       )}
 
       {/* Add task form */}
-      {role === 'stakeholder' && showAddForm && (
+      {showAddForm && (
         <div className="add-task-form">
           <div>
             <div className="form-field-label">What needs doing?</div>
@@ -177,13 +175,6 @@ export function TasksView({
             </div>
           )}
           {addError && <p style={{ color: 'var(--rose)', fontSize: 12 }}>{addError}</p>}
-        </div>
-      )}
-
-      {/* Member notice */}
-      {role === 'spouse' && (
-        <div style={{ padding: '4px 16px 12px', fontSize: 12, color: 'var(--ink-3)' }}>
-          You're viewing as a household member. Tasks are read-only.
         </div>
       )}
 

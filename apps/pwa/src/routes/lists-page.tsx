@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SharedList } from '@olivia/contracts';
-import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
 import { Plus } from '@phosphor-icons/react';
 import {
   loadActiveListIndex,
@@ -28,7 +28,7 @@ type ListFilter = 'active' | 'archived';
 
 export function ListsPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<ListFilter>('active');
   const [showCreateSheet, setShowCreateSheet] = useState(false);
@@ -40,14 +40,14 @@ export function ListsPage() {
   const [, setBusy] = useState(false);
 
   const activeQuery = useQuery({
-    queryKey: ['lists-active', role],
-    queryFn: () => loadActiveListIndex(role),
+    queryKey: ['lists-active', currentUser?.id],
+    queryFn: () => loadActiveListIndex(),
     enabled: filter === 'active',
   });
 
   const archivedQuery = useQuery({
-    queryKey: ['lists-archived', role],
-    queryFn: () => loadArchivedListIndex(role),
+    queryKey: ['lists-archived', currentUser?.id],
+    queryFn: () => loadArchivedListIndex(),
     enabled: filter === 'archived',
   });
 
@@ -70,21 +70,21 @@ export function ListsPage() {
   const handleCreate = useCallback(async (title: string) => {
     setShowCreateSheet(false);
     try {
-      const newList = await createListCommand(role, title);
+      const newList = await createListCommand(title);
       await invalidate();
       showBanner('List created', 'mint');
       void navigate({ to: '/lists/$listId', params: { listId: newList.id } });
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not create list');
     }
-  }, [role, invalidate, showBanner, navigate]);
+  }, [currentUser?.id, invalidate, showBanner, navigate]);
 
   const handleEditTitle = useCallback(async (newTitle: string) => {
     if (!editTitleTarget) return;
     setEditTitleTarget(null);
     setBusy(true);
     try {
-      await updateListTitleCommand(role, editTitleTarget.id, editTitleTarget.version, newTitle);
+      await updateListTitleCommand(editTitleTarget.id, editTitleTarget.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
     } catch (err) {
@@ -92,14 +92,14 @@ export function ListsPage() {
     } finally {
       setBusy(false);
     }
-  }, [editTitleTarget, role, invalidate, showBanner]);
+  }, [editTitleTarget, currentUser?.id, invalidate, showBanner]);
 
   const handleArchiveConfirm = useCallback(async () => {
     if (!archiveTarget) return;
     setArchiveTarget(null);
     setBusy(true);
     try {
-      await archiveListCommand(role, archiveTarget.id, archiveTarget.version);
+      await archiveListCommand(archiveTarget.id, archiveTarget.version);
       await invalidate();
       showBanner('Archived', 'sky');
     } catch (err) {
@@ -107,12 +107,12 @@ export function ListsPage() {
     } finally {
       setBusy(false);
     }
-  }, [archiveTarget, role, invalidate, showBanner]);
+  }, [archiveTarget, currentUser?.id, invalidate, showBanner]);
 
   const handleRestoreList = useCallback(async (list: SharedList) => {
     setBusy(true);
     try {
-      await restoreListCommand(role, list.id, list.version);
+      await restoreListCommand(list.id, list.version);
       await invalidate();
       showBanner('Restored to active lists', 'mint');
     } catch (err) {
@@ -120,14 +120,14 @@ export function ListsPage() {
     } finally {
       setBusy(false);
     }
-  }, [role, invalidate, showBanner]);
+  }, [currentUser?.id, invalidate, showBanner]);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
     setDeleteTarget(null);
     setBusy(true);
     try {
-      await deleteListCommand(role, deleteTarget.id);
+      await deleteListCommand(deleteTarget.id);
       await invalidate();
       showBanner('List deleted', 'sky');
     } catch (err) {
@@ -135,7 +135,7 @@ export function ListsPage() {
     } finally {
       setBusy(false);
     }
-  }, [deleteTarget, role, invalidate, showBanner]);
+  }, [deleteTarget, currentUser?.id, invalidate, showBanner]);
 
   const getOverflowActions = useCallback((list: SharedList) => {
     if (filter === 'archived') {

@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-03-26
+
+### Added
+- In-app feedback form — report bugs, request features, or share general feedback without leaving the app (Settings > Send Feedback)
+- Push notification action buttons — tap "Mark done" or "Skip" directly from routine notifications, or "Done" and "Snooze" from reminder notifications, without opening the app
+- Automation rules — create simple if-then rules to automate routine household actions (Settings > Automation Rules). For example: automatically skip a routine if it's been overdue for 3+ days, or auto-complete reminders that have been snoozed too many times
+
 ## [0.7.2] - 2026-03-25
 
 ### Fixed

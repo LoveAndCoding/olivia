@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import type { User } from '@olivia/contracts';
-import { useRole } from '../lib/role';
 import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { resolveUserName } from '../lib/reminder-helpers';
@@ -54,7 +53,6 @@ export function ReviewRecordDetailPage() {
   const params = useParams({ from: '/review-records/$reviewRecordId' });
   const { reviewRecordId } = params;
   const navigate = useNavigate();
-  const { role } = useRole();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
   useEffect(() => {
@@ -64,8 +62,8 @@ export function ReviewRecordDetailPage() {
   }, [getSessionToken]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['review-record', reviewRecordId, role],
-    queryFn: () => loadReviewRecord(reviewRecordId, role),
+    queryKey: ['review-record', reviewRecordId, currentUser?.id],
+    queryFn: () => loadReviewRecord(reviewRecordId),
     staleTime: 60_000,
   });
 
@@ -91,12 +89,6 @@ export function ReviewRecordDetailPage() {
             </div>
           )}
         </div>
-
-        {role === 'spouse' && (
-          <div className="list-spouse-banner" role="status" style={{ marginTop: 12 }}>
-            You have read-only access to household reviews.
-          </div>
-        )}
 
         {isLoading && (
           <div style={{ padding: '24px 22px', color: 'var(--ink-3)', fontSize: 13 }}>

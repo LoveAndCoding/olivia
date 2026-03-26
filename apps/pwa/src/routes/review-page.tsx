@@ -3,14 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useMemo } from 'react';
 import { computeFlags } from '@olivia/domain';
 import type { InboxItem, User } from '@olivia/contracts';
-import { useRole } from '../lib/role';
 import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { resolveUserName } from '../lib/reminder-helpers';
 import { loadInboxView } from '../lib/sync';
 
 export function ReviewPage() {
-  const { role } = useRole();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
   useEffect(() => {
@@ -22,8 +20,8 @@ export function ReviewPage() {
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
 
   const inboxQuery = useQuery({
-    queryKey: ['inbox-view', role, view],
-    queryFn: () => loadInboxView(role, view)
+    queryKey: ['inbox-view', currentUser?.id, view],
+    queryFn: () => loadInboxView(view)
   });
 
   const groups = useMemo(() => {
@@ -55,9 +53,9 @@ export function ReviewPage() {
       { label: 'Active items', value: groups.open.length + groups.inProgress.length, tone: 'neutral' },
       { label: 'Need attention', value: attentionCount, tone: 'warning' },
       { label: 'Suggestions', value: inboxQuery.data.suggestions.length, tone: 'info' },
-      { label: 'Viewing as', value: currentUser?.name ?? role, tone: 'success' }
+      { label: 'Viewing as', value: currentUser?.name ?? 'User', tone: 'success' }
     ];
-  }, [groups, inboxQuery.data, role, view]);
+  }, [groups, inboxQuery.data, currentUser?.id, view]);
 
   return (
     <div className="stack-lg">
@@ -67,7 +65,7 @@ export function ReviewPage() {
             <p className="eyebrow">Review</p>
             <h2>Household state at a glance</h2>
             <p className="muted">
-              Grouped active items, calm suggestions, and spouse-safe visibility in a softer mobile-first layout.
+              Grouped active items, calm suggestions, and shared visibility in a softer mobile-first layout.
             </p>
           </div>
           <span className="section-note">{view === 'active' ? 'Focused on active work' : 'Showing the full household record'}</span>
@@ -85,7 +83,7 @@ export function ReviewPage() {
         ) : null}
 
         <div className="quick-actions">
-          {role === 'stakeholder' ? <Link to="/add" className="primary-button quick-action-primary">Quick capture</Link> : null}
+          <Link to="/add" className="primary-button quick-action-primary">Quick capture</Link>
           <button type="button" className="secondary-button quick-action-secondary" onClick={() => setView((current) => current === 'active' ? 'all' : 'active')}>
             {view === 'active' ? 'Show all items' : 'Return to active'}
           </button>

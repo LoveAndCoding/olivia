@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { addHours } from 'date-fns';
 import { ArrowsClockwise, ClockCountdown } from '@phosphor-icons/react';
-import type { Nudge, ActorRole } from '@olivia/contracts';
+import type { Nudge } from '@olivia/contracts';
 import { NUDGE_MAX_DISPLAY_COUNT, NUDGE_SNOOZE_INTERVAL_HOURS, FRESHNESS_NUDGE_MAX_PER_DAY } from '@olivia/contracts';
 import {
   loadNudges,
@@ -22,14 +22,14 @@ const POLL_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
 // ─── useNudges hook ────────────────────────────────────────────────────────────
 
-export function useNudges(role: ActorRole) {
+export function useNudges() {
   const [nudges, setNudges] = useState<Nudge[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(async () => {
     try {
       await pruneStaleNudgeDismissals();
-      const raw = await loadNudges(role);
+      const raw = await loadNudges();
       const filtered = await filterDismissed(raw);
       // Apply 2/day throttle to freshness nudges
       const nonFreshness = filtered.filter((n) => n.entityType !== 'freshness');
@@ -39,7 +39,7 @@ export function useNudges(role: ActorRole) {
     } catch (err) {
       reportError({ message: errorMessage(err), stack: errorStack(err), context: 'nudge-poll' });
     }
-  }, [role]);
+  }, []);
 
   useEffect(() => {
     void poll();
@@ -92,7 +92,6 @@ export function useNudges(role: ActorRole) {
 
 interface NudgeCardProps {
   nudge: Nudge;
-  role: ActorRole;
   isSpouse: boolean;
   onDismiss: (entityId: string) => void;
   onDone: (entityId: string) => void;
@@ -317,16 +316,15 @@ function PushOptInPrompt() {
 // ─── NudgeTray ─────────────────────────────────────────────────────────────────
 
 interface NudgeTrayProps {
-  role: ActorRole;
   nudges: Nudge[];
   onDismiss: (entityId: string) => Promise<void>;
   onRemove: (entityId: string) => void;
 }
 
-export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps) {
+export function NudgeTray({ nudges, onDismiss, onRemove }: NudgeTrayProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const isSpouse = role === 'spouse';
+  const isSpouse = false;
 
   const displayed = nudges.slice(0, NUDGE_MAX_DISPLAY_COUNT);
   const overflowCount = nudges.length - NUDGE_MAX_DISPLAY_COUNT;
@@ -342,7 +340,7 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       // Need to get version from cached routine
       const routine = await clientDb.routines.get(entityId);
       if (!routine) { onRemove(entityId); return; }
-      await completeRoutineOccurrenceCommand(role, entityId, routine.version);
+      await completeRoutineOccurrenceCommand(entityId, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routines'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
@@ -350,13 +348,13 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       showErrorToast((err as Error).message || 'Could not complete routine');
       onRemove(entityId);
     }
-  }, [nudges, role, queryClient, onRemove]);
+  }, [nudges, queryClient, onRemove]);
 
   const handleRoutineSkip = useCallback(async (entityId: string) => {
     try {
       const routine = await clientDb.routines.get(entityId);
       if (!routine) { onRemove(entityId); return; }
-      await submitRoutineSkip(role, entityId, routine.version);
+      await submitRoutineSkip(entityId, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routines'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
@@ -364,13 +362,13 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       showErrorToast((err as Error).message || 'Could not skip routine');
       onRemove(entityId);
     }
-  }, [role, queryClient, onRemove]);
+  }, [queryClient, onRemove]);
 
   const handleReminderDone = useCallback(async (entityId: string) => {
     try {
       const reminder = await clientDb.reminders.get(entityId);
       if (!reminder) { onRemove(entityId); return; }
-      await completeReminderCommand(role, entityId, reminder.version);
+      await completeReminderCommand(entityId, reminder.version);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
@@ -378,14 +376,14 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       showErrorToast((err as Error).message || 'Could not complete reminder');
       onRemove(entityId);
     }
-  }, [role, queryClient, onRemove]);
+  }, [queryClient, onRemove]);
 
   const handleReminderSnooze = useCallback(async (entityId: string) => {
     try {
       const reminder = await clientDb.reminders.get(entityId);
       if (!reminder) { onRemove(entityId); return; }
       const snoozedUntil = addHours(new Date(), NUDGE_SNOOZE_INTERVAL_HOURS).toISOString();
-      await snoozeReminderCommand(role, entityId, reminder.version, snoozedUntil);
+      await snoozeReminderCommand(entityId, reminder.version, snoozedUntil);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
@@ -393,7 +391,7 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       showErrorToast((err as Error).message || 'Could not snooze reminder');
       onRemove(entityId);
     }
-  }, [role, queryClient, onRemove]);
+  }, [queryClient, onRemove]);
 
   const handleStartReview = useCallback(async (entityId: string) => {
     const occurrenceId = crypto.randomUUID();
@@ -419,13 +417,13 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
         const list = await clientDb.sharedLists.get(entityId);
         version = list?.version ?? 1;
       }
-      await confirmFreshness(nudge.entitySubType, entityId, role, version);
+      await confirmFreshness(nudge.entitySubType, entityId, version);
       onRemove(entityId);
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not confirm freshness');
       onRemove(entityId);
     }
-  }, [nudges, role, onRemove]);
+  }, [nudges, onRemove]);
 
   const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
 
@@ -452,14 +450,14 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
         const list = await clientDb.sharedLists.get(archiveTarget);
         version = list?.version ?? 1;
       }
-      await archiveFreshnessEntity(nudge.entitySubType, archiveTarget, role, version);
+      await archiveFreshnessEntity(nudge.entitySubType, archiveTarget, version);
       onRemove(archiveTarget);
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not archive');
       onRemove(archiveTarget);
     }
     setArchiveTarget(null);
-  }, [archiveTarget, nudges, role, onRemove]);
+  }, [archiveTarget, nudges, onRemove]);
 
   if (nudges.length === 0) return null;
 
@@ -470,7 +468,6 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
         <NudgeCard
           key={nudge.entityId}
           nudge={nudge}
-          role={role}
           isSpouse={isSpouse}
           onDismiss={(id) => void handleDismiss(id)}
           onDone={nudge.entityType === 'routine' ? (id) => void handleRoutineDone(id) : (id) => void handleReminderDone(id)}

@@ -87,7 +87,6 @@ describe('list contracts', () => {
   describe('command schemas', () => {
     it('parses create list request', () => {
       const result = createListRequestSchema.parse({
-        actorRole: 'stakeholder',
         title: 'Grocery Run'
       });
       expect(result.title).toBe('Grocery Run');
@@ -95,7 +94,6 @@ describe('list contracts', () => {
 
     it('parses update list title request', () => {
       const result = updateListTitleRequestSchema.parse({
-        actorRole: 'stakeholder',
         listId,
         expectedVersion: 1,
         title: 'Weekly Groceries'
@@ -105,7 +103,6 @@ describe('list contracts', () => {
 
     it('parses archive list request — requires confirmed: true', () => {
       const result = archiveListRequestSchema.parse({
-        actorRole: 'stakeholder',
         listId,
         expectedVersion: 1,
         confirmed: true
@@ -116,7 +113,6 @@ describe('list contracts', () => {
     it('rejects archive list request without confirmed field', () => {
       expect(() =>
         archiveListRequestSchema.parse({
-          actorRole: 'stakeholder',
           listId,
           expectedVersion: 1
         })
@@ -125,7 +121,6 @@ describe('list contracts', () => {
 
     it('parses restore list request', () => {
       const result = restoreListRequestSchema.parse({
-        actorRole: 'stakeholder',
         listId,
         expectedVersion: 2
       });
@@ -134,7 +129,6 @@ describe('list contracts', () => {
 
     it('parses delete list request — requires confirmed: true', () => {
       const result = deleteListRequestSchema.parse({
-        actorRole: 'stakeholder',
         listId,
         confirmed: true
       });
@@ -144,7 +138,6 @@ describe('list contracts', () => {
     it('rejects delete list request without confirmed field', () => {
       expect(() =>
         deleteListRequestSchema.parse({
-          actorRole: 'stakeholder',
           listId
         })
       ).toThrow();
@@ -152,7 +145,6 @@ describe('list contracts', () => {
 
     it('parses add item request', () => {
       const result = addListItemRequestSchema.parse({
-        actorRole: 'stakeholder',
         listId,
         body: 'Bread'
       });
@@ -161,7 +153,6 @@ describe('list contracts', () => {
 
     it('parses update item body request', () => {
       const result = updateListItemBodyRequestSchema.parse({
-        actorRole: 'stakeholder',
         listId,
         itemId,
         expectedVersion: 1,
@@ -172,7 +163,6 @@ describe('list contracts', () => {
 
     it('parses check item request as a direct-action command (no confirmed field)', () => {
       const result = checkListItemRequestSchema.parse({
-        actorRole: 'stakeholder',
         listId,
         itemId,
         expectedVersion: 1
@@ -183,7 +173,6 @@ describe('list contracts', () => {
 
     it('parses uncheck item request as a direct-action command (no confirmed field)', () => {
       const result = uncheckListItemRequestSchema.parse({
-        actorRole: 'stakeholder',
         listId,
         itemId,
         expectedVersion: 1
@@ -194,7 +183,6 @@ describe('list contracts', () => {
 
     it('parses remove item request — requires confirmed: true', () => {
       const result = removeListItemRequestSchema.parse({
-        actorRole: 'stakeholder',
         listId,
         itemId,
         confirmed: true
@@ -208,7 +196,6 @@ describe('list contracts', () => {
       const result = outboxCommandSchema.parse({
         kind: 'list_create',
         commandId: '550e8400-e29b-41d4-a716-446655440001',
-        actorRole: 'stakeholder',
         title: 'Grocery Run'
       });
       expect(result.kind).toBe('list_create');
@@ -218,7 +205,6 @@ describe('list contracts', () => {
       const result = outboxCommandSchema.parse({
         kind: 'item_check',
         commandId: '550e8400-e29b-41d4-a716-446655440001',
-        actorRole: 'stakeholder',
         listId,
         itemId,
         expectedVersion: 1
@@ -230,7 +216,6 @@ describe('list contracts', () => {
       const result = outboxCommandSchema.parse({
         kind: 'item_uncheck',
         commandId: '550e8400-e29b-41d4-a716-446655440001',
-        actorRole: 'stakeholder',
         listId,
         itemId,
         expectedVersion: 1
@@ -242,7 +227,6 @@ describe('list contracts', () => {
       const result = outboxCommandSchema.parse({
         kind: 'list_archive',
         commandId: '550e8400-e29b-41d4-a716-446655440001',
-        actorRole: 'stakeholder',
         listId,
         expectedVersion: 1,
         confirmed: true
@@ -254,7 +238,6 @@ describe('list contracts', () => {
       const result = outboxCommandSchema.parse({
         kind: 'list_delete',
         commandId: '550e8400-e29b-41d4-a716-446655440001',
-        actorRole: 'stakeholder',
         listId,
         confirmed: true
       });
@@ -265,7 +248,6 @@ describe('list contracts', () => {
       const result = outboxCommandSchema.parse({
         kind: 'item_remove',
         commandId: '550e8400-e29b-41d4-a716-446655440001',
-        actorRole: 'stakeholder',
         listId,
         itemId,
         confirmed: true
@@ -277,7 +259,6 @@ describe('list contracts', () => {
       const result = outboxCommandSchema.parse({
         kind: 'items_clear_completed',
         commandId: '550e8400-e29b-41d4-a716-446655440001',
-        actorRole: 'stakeholder',
         listId,
         confirmed: true
       });
@@ -288,7 +269,6 @@ describe('list contracts', () => {
       const result = outboxCommandSchema.parse({
         kind: 'items_uncheck_all',
         commandId: '550e8400-e29b-41d4-a716-446655440001',
-        actorRole: 'stakeholder',
         listId,
         confirmed: true
       });
@@ -299,7 +279,6 @@ describe('list contracts', () => {
   describe('completed-item management schemas', () => {
     it('parses clear completed items request — requires confirmed: true', () => {
       const result = clearCompletedItemsRequestSchema.parse({
-        actorRole: 'stakeholder',
         listId,
         confirmed: true
       });
@@ -310,7 +289,6 @@ describe('list contracts', () => {
     it('rejects clear completed items request without confirmed field', () => {
       expect(() =>
         clearCompletedItemsRequestSchema.parse({
-          actorRole: 'stakeholder',
           listId
         })
       ).toThrow();
@@ -319,7 +297,6 @@ describe('list contracts', () => {
     it('rejects clear completed items request with confirmed: false', () => {
       expect(() =>
         clearCompletedItemsRequestSchema.parse({
-          actorRole: 'stakeholder',
           listId,
           confirmed: false
         })
@@ -328,7 +305,6 @@ describe('list contracts', () => {
 
     it('parses uncheck all items request — requires confirmed: true', () => {
       const result = uncheckAllItemsRequestSchema.parse({
-        actorRole: 'stakeholder',
         listId,
         confirmed: true
       });
@@ -339,7 +315,6 @@ describe('list contracts', () => {
     it('rejects uncheck all items request without confirmed field', () => {
       expect(() =>
         uncheckAllItemsRequestSchema.parse({
-          actorRole: 'stakeholder',
           listId
         })
       ).toThrow();
@@ -348,7 +323,6 @@ describe('list contracts', () => {
     it('rejects uncheck all items request with confirmed: false', () => {
       expect(() =>
         uncheckAllItemsRequestSchema.parse({
-          actorRole: 'stakeholder',
           listId,
           confirmed: false
         })
@@ -377,13 +351,12 @@ describe('list contracts', () => {
       expect(result.affectedCount).toBe(0);
     });
 
-    it('accepts clear completed items with spouse role (both roles have write access)', () => {
+    it('accepts clear completed items without any role (userId resolved from session)', () => {
       const result = clearCompletedItemsRequestSchema.parse({
-        actorRole: 'spouse',
         listId,
         confirmed: true
       });
-      expect(result.actorRole).toBe('spouse');
+      expect(result.confirmed).toBe(true);
     });
   });
 });

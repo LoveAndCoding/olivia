@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DraftReminder, Reminder, ReminderState } from '@olivia/contracts';
 import { computeReminderState } from '@olivia/domain';
 import { Bell, Plus } from '@phosphor-icons/react';
-import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
 import {
   loadReminderView,
   confirmCreateReminderCommand,
@@ -42,7 +42,7 @@ function stateMatchesFilter(state: ReminderState, filter: FilterTab): boolean {
 
 export function RemindersPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
 
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
@@ -51,8 +51,8 @@ export function RemindersPage() {
   const [banner, setBanner] = useState<{ message: string; variant: 'mint' | 'sky' } | null>(null);
 
   const reminderQuery = useQuery({
-    queryKey: ['reminder-view', role],
-    queryFn: () => loadReminderView(role),
+    queryKey: ['reminder-view', currentUser?.id],
+    queryFn: () => loadReminderView(),
   });
 
   const { filteredReminders, counts } = useMemo(() => {
@@ -113,7 +113,7 @@ export function RemindersPage() {
   const handleCreateSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateSheet(false);
     try {
-      await confirmCreateReminderCommand(role, draft);
+      await confirmCreateReminderCommand(draft);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setBanner({ message: 'Reminder created', variant: 'mint' });
@@ -121,13 +121,13 @@ export function RemindersPage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not create reminder');
     }
-  }, [role, queryClient]);
+  }, [currentUser?.id, queryClient]);
 
   const handleSnoozeSelect = useCallback(async (isoString: string) => {
     if (!snoozeTarget) return;
     setSnoozeTarget(null);
     try {
-      await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
+      await snoozeReminderCommand(snoozeTarget.id, snoozeTarget.version, isoString);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setBanner({ message: `😴 Snoozed until ${formatSnoozeUntil(isoString)}`, variant: 'sky' });
@@ -135,11 +135,10 @@ export function RemindersPage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not snooze reminder');
     }
-  }, [snoozeTarget, role, queryClient]);
+  }, [snoozeTarget, currentUser?.id, queryClient]);
 
   const isEmpty = !reminderQuery.isLoading && filteredReminders.length === 0;
-  const isSpouse = role === 'spouse';
-  const showAddButton = activeFilter !== 'done' && !isSpouse;
+  const showAddButton = activeFilter !== 'done';
 
   return (
     <div className="screen">
@@ -208,15 +207,13 @@ export function RemindersPage() {
               <OliviaMessage
                 text="No reminders yet. You can say something like 'Remind me next Thursday to call the vet' and I'll take care of it."
               />
-              {!isSpouse && (
-                <div style={{ marginTop: 16, width: '100%' }}>
-                  <AddReminderButton
-                    label="Add a reminder…"
-                    icon={<Plus size={20} />}
-                    onClick={() => setShowCreateSheet(true)}
-                  />
-                </div>
-              )}
+              <div style={{ marginTop: 16, width: '100%' }}>
+                <AddReminderButton
+                  label="Add a reminder…"
+                  icon={<Plus size={20} />}
+                  onClick={() => setShowCreateSheet(true)}
+                />
+              </div>
             </div>
           )}
 

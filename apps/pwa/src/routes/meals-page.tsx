@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MealPlan } from '@olivia/contracts';
-import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
 import { ForkKnife, Plus } from '@phosphor-icons/react';
 import {
   loadActiveMealPlanIndex,
@@ -27,9 +27,8 @@ type MealFilter = 'active' | 'archived';
 
 export function MealsPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
-  const isSpouse = role === 'spouse';
 
   const [filter, setFilter] = useState<MealFilter>('active');
   const [showCreateSheet, setShowCreateSheet] = useState(false);
@@ -41,14 +40,14 @@ export function MealsPage() {
   const [busy, setBusy] = useState(false);
 
   const activeQuery = useQuery({
-    queryKey: ['meal-plans-active', role],
-    queryFn: () => loadActiveMealPlanIndex(role),
+    queryKey: ['meal-plans-active', currentUser?.id],
+    queryFn: () => loadActiveMealPlanIndex(),
     enabled: filter === 'active',
   });
 
   const archivedQuery = useQuery({
-    queryKey: ['meal-plans-archived', role],
-    queryFn: () => loadArchivedMealPlanIndex(role),
+    queryKey: ['meal-plans-archived', currentUser?.id],
+    queryFn: () => loadArchivedMealPlanIndex(),
     enabled: filter === 'archived',
   });
 
@@ -63,16 +62,16 @@ export function MealsPage() {
   }, []);
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['meal-plans-active', role] });
-    await queryClient.invalidateQueries({ queryKey: ['meal-plans-archived', role] });
+    await queryClient.invalidateQueries({ queryKey: ['meal-plans-active', currentUser?.id] });
+    await queryClient.invalidateQueries({ queryKey: ['meal-plans-archived', currentUser?.id] });
     await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-  }, [queryClient, role]);
+  }, [queryClient, currentUser?.id]);
 
   const handleCreate = useCallback(async (title: string, weekStartDate: string) => {
     setShowCreateSheet(false);
     setBusy(true);
     try {
-      const plan = await createMealPlanCommand(role, title, weekStartDate);
+      const plan = await createMealPlanCommand(title, weekStartDate);
       await invalidate();
       showBanner('Plan created', 'mint');
       void navigate({ to: '/meals/$planId', params: { planId: plan.id } });
@@ -81,14 +80,14 @@ export function MealsPage() {
     } finally {
       setBusy(false);
     }
-  }, [role, invalidate, showBanner, navigate]);
+  }, [currentUser?.id, invalidate, showBanner, navigate]);
 
   const handleEditTitle = useCallback(async (newTitle: string) => {
     if (!editTitleTarget) return;
     setEditTitleTarget(null);
     setBusy(true);
     try {
-      await updateMealPlanTitleCommand(role, editTitleTarget.id, editTitleTarget.version, newTitle);
+      await updateMealPlanTitleCommand(editTitleTarget.id, editTitleTarget.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
     } catch (err) {
@@ -96,14 +95,14 @@ export function MealsPage() {
     } finally {
       setBusy(false);
     }
-  }, [editTitleTarget, role, invalidate, showBanner]);
+  }, [editTitleTarget, currentUser?.id, invalidate, showBanner]);
 
   const handleArchiveConfirm = useCallback(async () => {
     if (!archiveTarget) return;
     setArchiveTarget(null);
     setBusy(true);
     try {
-      await archiveMealPlanCommand(role, archiveTarget.id, archiveTarget.version);
+      await archiveMealPlanCommand(archiveTarget.id, archiveTarget.version);
       await invalidate();
       showBanner('Archived', 'sky');
     } catch (err) {
@@ -111,12 +110,12 @@ export function MealsPage() {
     } finally {
       setBusy(false);
     }
-  }, [archiveTarget, role, invalidate, showBanner]);
+  }, [archiveTarget, currentUser?.id, invalidate, showBanner]);
 
   const handleRestoreConfirm = useCallback(async (plan: MealPlan) => {
     setBusy(true);
     try {
-      await restoreMealPlanCommand(role, plan.id, plan.version);
+      await restoreMealPlanCommand(plan.id, plan.version);
       await invalidate();
       showBanner('Restored', 'mint');
     } catch (err) {
@@ -124,21 +123,21 @@ export function MealsPage() {
     } finally {
       setBusy(false);
     }
-  }, [role, invalidate, showBanner]);
+  }, [currentUser?.id, invalidate, showBanner]);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
     setDeleteTarget(null);
     setBusy(true);
     try {
-      await deleteMealPlanCommand(role, deleteTarget.id);
+      await deleteMealPlanCommand(deleteTarget.id);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not delete meal plan');
     } finally {
       setBusy(false);
     }
-  }, [deleteTarget, role, invalidate]);
+  }, [deleteTarget, currentUser?.id, invalidate]);
 
   const getOverflowActions = useCallback((plan: MealPlan) => {
     if (filter === 'archived') {
@@ -178,12 +177,6 @@ export function MealsPage() {
             }
           </div>
 
-          {isSpouse && (
-            <div className="list-spouse-banner" role="status" style={{ marginBottom: 16 }}>
-              Viewing as household member — Lexi manages meal plans.
-            </div>
-          )}
-
           <div className="rem-filters">
             <button
               type="button"
@@ -201,7 +194,7 @@ export function MealsPage() {
             </button>
           </div>
 
-          {!isSpouse && filter === 'active' && (
+          {filter === 'active' && (
             <div style={{ marginBottom: 20 }}>
               <button
                 type="button"
@@ -235,19 +228,17 @@ export function MealsPage() {
               <div className="rem-empty-icon"><ForkKnife size={48} weight="bold" /></div>
               <div className="rem-empty-title">No meal plans yet</div>
               <div className="rem-empty-sub">Plan your meals for the week and generate grocery lists automatically.</div>
-              {!isSpouse && (
-                <div style={{ marginTop: 16, width: '100%' }}>
-                  <button
-                    type="button"
-                    className="add-rem-btn add-rem-btn-prominent"
-                    onClick={() => setShowCreateSheet(true)}
-                    style={{ width: '100%' }}
-                  >
-                    <span className="add-icon"><Plus size={20} /></span>
-                    <span className="add-label">New meal plan…</span>
-                  </button>
-                </div>
-              )}
+              <div style={{ marginTop: 16, width: '100%' }}>
+                <button
+                  type="button"
+                  className="add-rem-btn add-rem-btn-prominent"
+                  onClick={() => setShowCreateSheet(true)}
+                  style={{ width: '100%' }}
+                >
+                  <span className="add-icon"><Plus size={20} /></span>
+                  <span className="add-label">New meal plan…</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -265,7 +256,7 @@ export function MealsPage() {
                   plan={plan}
                   onClick={() => void navigate({ to: '/meals/$planId', params: { planId: plan.id } })}
                   onOverflow={(e) => { e.stopPropagation(); setOverflowTarget(plan); }}
-                  showOverflow={!isSpouse}
+                  showOverflow
                 />
               ))}
             </div>

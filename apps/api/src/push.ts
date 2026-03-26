@@ -20,11 +20,19 @@ export type ApnsSubscriptionPayload = {
   [key: string]: unknown;
 };
 
+export type NotificationAction = {
+  action: string;
+  title: string;
+};
+
 export type NotificationPayload = {
   title: string;
   body: string;
   url: string;
   tag: string;
+  actions?: NotificationAction[];
+  entityId?: string;
+  entityType?: string;
 };
 
 export interface PushProvider {

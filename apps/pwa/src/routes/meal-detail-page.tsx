@@ -3,7 +3,7 @@ import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MealEntry } from '@olivia/contracts';
 import { formatWeekRange } from '@olivia/domain';
-import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
 import {
   loadMealPlanDetail,
   archiveMealPlanCommand,
@@ -29,9 +29,8 @@ const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satu
 export function MealDetailPage() {
   const params = useParams({ from: '/meals/$planId' });
   const navigate = useNavigate();
-  const { role } = useRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
-  const isSpouse = role === 'spouse';
   const isOffline = !window.navigator.onLine;
 
   const [showEditTitleSheet, setShowEditTitleSheet] = useState(false);
@@ -46,14 +45,14 @@ export function MealDetailPage() {
   const [generating, setGenerating] = useState(false);
 
   const detailQuery = useQuery({
-    queryKey: ['meal-plan-detail', role, params.planId],
-    queryFn: () => loadMealPlanDetail(role, params.planId),
+    queryKey: ['meal-plan-detail', currentUser?.id, params.planId],
+    queryFn: () => loadMealPlanDetail(params.planId),
   });
 
   const plan = detailQuery.data?.plan;
   const entries: MealEntry[] = detailQuery.data?.entries ?? [];
   const isArchived = plan?.status === 'archived';
-  const readOnly = isSpouse || isArchived;
+  const readOnly = isArchived;
 
   const hasShoppingItems = entries.some((e) => e.shoppingItems.length > 0);
 
@@ -63,18 +62,18 @@ export function MealDetailPage() {
   }, []);
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['meal-plan-detail', role, params.planId] });
-    await queryClient.invalidateQueries({ queryKey: ['meal-plans-active', role] });
-    await queryClient.invalidateQueries({ queryKey: ['meal-plans-archived', role] });
+    await queryClient.invalidateQueries({ queryKey: ['meal-plan-detail', currentUser?.id, params.planId] });
+    await queryClient.invalidateQueries({ queryKey: ['meal-plans-active', currentUser?.id] });
+    await queryClient.invalidateQueries({ queryKey: ['meal-plans-archived', currentUser?.id] });
     await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-  }, [queryClient, role, params.planId]);
+  }, [queryClient, currentUser?.id, params.planId]);
 
   const handleEditTitle = useCallback(async (newTitle: string) => {
     if (!plan) return;
     setShowEditTitleSheet(false);
     setBusy(true);
     try {
-      await updateMealPlanTitleCommand(role, plan.id, plan.version, newTitle);
+      await updateMealPlanTitleCommand(plan.id, plan.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
     } catch (err) {
@@ -82,14 +81,14 @@ export function MealDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [plan, role, invalidate, showBanner]);
+  }, [plan, currentUser?.id, invalidate, showBanner]);
 
   const handleArchiveConfirm = useCallback(async () => {
     if (!plan) return;
     setShowArchiveSheet(false);
     setBusy(true);
     try {
-      await archiveMealPlanCommand(role, plan.id, plan.version);
+      await archiveMealPlanCommand(plan.id, plan.version);
       await invalidate();
       showBanner('Archived', 'sky');
     } catch (err) {
@@ -97,14 +96,14 @@ export function MealDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [plan, role, invalidate, showBanner]);
+  }, [plan, currentUser?.id, invalidate, showBanner]);
 
   const handleDeletePlanConfirm = useCallback(async () => {
     if (!plan) return;
     setShowDeletePlanSheet(false);
     setBusy(true);
     try {
-      await deleteMealPlanCommand(role, plan.id);
+      await deleteMealPlanCommand(plan.id);
       await invalidate();
       void navigate({ to: '/meals' });
     } catch (err) {
@@ -112,13 +111,13 @@ export function MealDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [plan, role, invalidate, navigate]);
+  }, [plan, currentUser?.id, invalidate, navigate]);
 
   const handleAddMeal = useCallback(async (dayOfWeek: number) => {
     if (!plan || !newMealName.trim()) return;
     setBusy(true);
     try {
-      await addMealEntryCommand(role, plan.id, dayOfWeek, newMealName.trim());
+      await addMealEntryCommand(plan.id, dayOfWeek, newMealName.trim());
       await invalidate();
       setNewMealDay(null);
       setNewMealName('');
@@ -127,40 +126,40 @@ export function MealDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [plan, role, newMealName, invalidate]);
+  }, [plan, currentUser?.id, newMealName, invalidate]);
 
   const handleUpdateItems = useCallback(async (entry: MealEntry, items: string[]) => {
     if (!plan) return;
     setBusy(true);
     try {
-      await updateMealEntryItemsCommand(role, plan.id, entry.id, entry.version, items);
+      await updateMealEntryItemsCommand(plan.id, entry.id, entry.version, items);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not update meal items');
     } finally {
       setBusy(false);
     }
-  }, [plan, role, invalidate]);
+  }, [plan, currentUser?.id, invalidate]);
 
   const handleDeleteMealConfirm = useCallback(async () => {
     if (!plan || !deleteMealTarget) return;
     setDeleteMealTarget(null);
     setBusy(true);
     try {
-      await deleteMealEntryCommand(role, plan.id, deleteMealTarget.id);
+      await deleteMealEntryCommand(plan.id, deleteMealTarget.id);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not delete meal');
     } finally {
       setBusy(false);
     }
-  }, [plan, deleteMealTarget, role, invalidate]);
+  }, [plan, deleteMealTarget, currentUser?.id, invalidate]);
 
   const handleGenerateGroceryList = useCallback(async () => {
     if (!plan) return;
     setGenerating(true);
     try {
-      const result = await generateGroceryListCommand(role, plan.id);
+      const result = await generateGroceryListCommand(plan.id);
       await invalidate();
       void navigate({ to: '/lists/$listId', params: { listId: result.list.id } });
     } catch (err) {
@@ -168,7 +167,7 @@ export function MealDetailPage() {
     } finally {
       setGenerating(false);
     }
-  }, [plan, role, invalidate, navigate]);
+  }, [plan, currentUser?.id, invalidate, navigate]);
 
   const listOverflowActions = useMemo(() => {
     if (!plan) return [];
@@ -215,27 +214,19 @@ export function MealDetailPage() {
               </div>
               <div className="screen-sub" style={{ marginBottom: 16 }}>{weekRange}</div>
             </div>
-            {!isSpouse && (
-              <button
-                type="button"
-                className="list-card-overflow"
-                aria-label="Plan options"
-                style={{ marginTop: 4 }}
-                onClick={() => setShowListOverflow(true)}
-              >
-                ···
-              </button>
-            )}
+            <button
+              type="button"
+              className="list-card-overflow"
+              aria-label="Plan options"
+              style={{ marginTop: 4 }}
+              onClick={() => setShowListOverflow(true)}
+            >
+              ···
+            </button>
           </div>
         </div>
 
         <div style={{ padding: '0 16px' }}>
-          {isSpouse && (
-            <div className="list-spouse-banner" role="status" style={{ marginBottom: 16 }}>
-              Viewing as household member — Lexi manages meal plans.
-            </div>
-          )}
-
           {isArchived && (
             <div className="list-offline-banner" style={{ marginBottom: 16 }}>
               This plan is archived. Restore it to make changes.
@@ -287,7 +278,7 @@ export function MealDetailPage() {
                         entry={entry}
                         onUpdateItems={(items) => void handleUpdateItems(entry, items)}
                         onDelete={() => setDeleteMealTarget(entry)}
-                        isSpouse={isSpouse}
+                        isSpouse={false}
                         isArchived={isArchived}
                       />
                     ))}

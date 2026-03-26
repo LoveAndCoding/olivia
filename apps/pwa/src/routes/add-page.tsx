@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@olivia/contracts';
-import { useRole } from '../lib/role';
 import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { confirmCreateCommand, previewCreateCommand } from '../lib/sync';
@@ -10,7 +9,6 @@ import { confirmCreateCommand, previewCreateCommand } from '../lib/sync';
 export function AddPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { role } = useRole();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
   useEffect(() => {
@@ -28,15 +26,11 @@ export function AddPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (role === 'spouse') {
-    return <section className="card">The spouse role is read-only in this slice, so add-item capture stays with the stakeholder.</section>;
-  }
-
   const handlePreview = async () => {
     setBusy(true);
     setError(null);
     try {
-      const response = await previewCreateCommand(role, inputText);
+      const response = await previewCreateCommand(inputText);
       setPreview(response);
     } catch (caughtError) {
       setError((caughtError as Error).message);
@@ -50,7 +44,7 @@ export function AddPage() {
     setBusy(true);
     setError(null);
     try {
-      const savedItem = await confirmCreateCommand(role, preview.parsedItem, preview.draftId);
+      const savedItem = await confirmCreateCommand(preview.parsedItem, preview.draftId);
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       navigate({ to: '/items/$itemId', params: { itemId: savedItem.id } });
@@ -66,7 +60,7 @@ export function AddPage() {
     setError(null);
     try {
       const id = crypto.randomUUID();
-      const savedItem = await confirmCreateCommand(role, {
+      const savedItem = await confirmCreateCommand({
         id,
         title: structuredTitle,
         assigneeUserId: structuredAssigneeUserId,
@@ -103,7 +97,7 @@ export function AddPage() {
         {!structuredMode ? (
           <label className="stack-sm">
             <span className="field-label">Freeform input</span>
-            <textarea value={inputText} onChange={(event) => setInputText(event.target.value)} rows={5} placeholder="Add: schedule HVAC service, due end of March, owner spouse" />
+            <textarea value={inputText} onChange={(event) => setInputText(event.target.value)} rows={5} placeholder="Add: schedule HVAC service, due end of March, assign to Christian" />
             <span className="field-hint">Use natural language for the fastest capture path.</span>
           </label>
         ) : (

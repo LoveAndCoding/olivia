@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UpdateChange, DraftReminder, Reminder, ReminderUpdateChange, User } from '@olivia/contracts';
-import { useRole } from '../lib/role';
 import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import { resolveUserName } from '../lib/reminder-helpers';
@@ -30,7 +29,6 @@ import { showErrorToast } from '../lib/error-toast';
 export function ItemDetailPage() {
   const params = useParams({ from: '/items/$itemId' });
   const navigate = useNavigate();
-  const { role } = useRole();
   const queryClient = useQueryClient();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
@@ -50,13 +48,13 @@ export function ItemDetailPage() {
   const [banner, setBanner] = useState<{ message: string; variant: 'mint' | 'sky' } | null>(null);
 
   const itemQuery = useQuery({
-    queryKey: ['item-detail', role, params.itemId],
-    queryFn: () => loadItemDetail(role, params.itemId),
+    queryKey: ['item-detail', currentUser?.id, params.itemId],
+    queryFn: () => loadItemDetail(params.itemId),
   });
 
   const reminderQuery = useQuery({
-    queryKey: ['reminder-view', role],
-    queryFn: () => loadReminderView(role),
+    queryKey: ['reminder-view', currentUser?.id],
+    queryFn: () => loadReminderView(),
   });
 
   const linkedReminders = useMemo(() => {
@@ -87,8 +85,8 @@ export function ItemDetailPage() {
     setBusy(true);
     setError(null);
     try {
-      await confirmUpdateCommand(role, itemQuery.data.item.id, itemQuery.data.item.version, change);
-      await queryClient.invalidateQueries({ queryKey: ['item-detail', role, params.itemId] });
+      await confirmUpdateCommand(itemQuery.data.item.id, itemQuery.data.item.version, change);
+      await queryClient.invalidateQueries({ queryKey: ['item-detail', currentUser?.id, params.itemId] });
       await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner('Updated', 'mint');
@@ -98,66 +96,66 @@ export function ItemDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [itemQuery.data, role, params.itemId, queryClient, showBanner]);
+  }, [itemQuery.data, currentUser?.id, params.itemId, queryClient, showBanner]);
 
   const handleCreateReminderSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateReminder(false);
     try {
-      await confirmCreateReminderCommand(role, draft);
+      await confirmCreateReminderCommand(draft);
       await invalidateReminders();
       showBanner('Reminder created', 'mint');
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not create reminder');
     }
-  }, [role, invalidateReminders, showBanner]);
+  }, [currentUser?.id, invalidateReminders, showBanner]);
 
   const handleCompleteReminder = useCallback(async (reminder: Reminder) => {
     try {
-      await completeReminderCommand(role, reminder.id, reminder.version);
+      await completeReminderCommand(reminder.id, reminder.version);
       await invalidateReminders();
       showBanner('Done', 'mint');
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not complete reminder');
     }
-  }, [role, invalidateReminders, showBanner]);
+  }, [currentUser?.id, invalidateReminders, showBanner]);
 
   const handleSnoozeSelect = useCallback(async (isoString: string) => {
     if (!snoozeReminder) return;
     const target = snoozeReminder;
     setSnoozeReminder(null);
     try {
-      await snoozeReminderCommand(role, target.id, target.version, isoString);
+      await snoozeReminderCommand(target.id, target.version, isoString);
       await invalidateReminders();
       showBanner(`Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not snooze reminder');
     }
-  }, [snoozeReminder, role, invalidateReminders, showBanner]);
+  }, [snoozeReminder, currentUser?.id, invalidateReminders, showBanner]);
 
   const handleCancelReminder = useCallback(async () => {
     if (!cancelReminder) return;
     const target = cancelReminder;
     setCancelReminder(null);
     try {
-      await cancelReminderCommand(role, target.id, target.version);
+      await cancelReminderCommand(target.id, target.version);
       await invalidateReminders();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not cancel reminder');
     }
-  }, [cancelReminder, role, invalidateReminders]);
+  }, [cancelReminder, currentUser?.id, invalidateReminders]);
 
   const handleEditReminderSave = useCallback(async (change: ReminderUpdateChange) => {
     if (!editReminder) return;
     const target = editReminder;
     setEditReminder(null);
     try {
-      await confirmUpdateReminderCommand(role, target.id, target.version, change);
+      await confirmUpdateReminderCommand(target.id, target.version, change);
       await invalidateReminders();
       showBanner('Updated', 'mint');
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not update reminder');
     }
-  }, [editReminder, role, invalidateReminders, showBanner]);
+  }, [editReminder, currentUser?.id, invalidateReminders, showBanner]);
 
   return (
     <div className="screen">

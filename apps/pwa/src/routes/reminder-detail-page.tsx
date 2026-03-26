@@ -5,7 +5,6 @@ import type { ReminderUpdateChange, User } from '@olivia/contracts';
 import { computeReminderState, scheduleNextOccurrence } from '@olivia/domain';
 import { format } from 'date-fns';
 import { Check, Moon, PencilSimple, X, ArrowCounterClockwise, ArrowsClockwise, LinkSimple } from '@phosphor-icons/react';
-import { useRole } from '../lib/role';
 import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
 import {
@@ -32,7 +31,6 @@ import { showErrorToast } from '../lib/error-toast';
 export function ReminderDetailPage() {
   const params = useParams({ from: '/reminders/$reminderId' });
   const navigate = useNavigate();
-  const { role } = useRole();
   const queryClient = useQueryClient();
   const { user: currentUser, getSessionToken } = useAuth();
   const [members, setMembers] = useState<User[]>(currentUser ? [currentUser] : []);
@@ -49,8 +47,8 @@ export function ReminderDetailPage() {
   const [busy, setBusy] = useState(false);
 
   const detailQuery = useQuery({
-    queryKey: ['reminder-detail', role, params.reminderId],
-    queryFn: () => loadReminderDetail(role, params.reminderId),
+    queryKey: ['reminder-detail', currentUser?.id, params.reminderId],
+    queryFn: () => loadReminderDetail(params.reminderId),
   });
 
   const reminder = detailQuery.data?.reminder;
@@ -67,10 +65,10 @@ export function ReminderDetailPage() {
   }, [reminder]);
 
   const invalidateAndRefresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['reminder-detail', role, params.reminderId] });
+    await queryClient.invalidateQueries({ queryKey: ['reminder-detail', currentUser?.id, params.reminderId] });
     await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
     await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-  }, [queryClient, role, params.reminderId]);
+  }, [queryClient, currentUser?.id, params.reminderId]);
 
   const showBanner = useCallback((message: string, variant: 'mint' | 'sky') => {
     setBanner({ message, variant });
@@ -81,7 +79,7 @@ export function ReminderDetailPage() {
     if (!reminder || busy) return;
     setBusy(true);
     try {
-      await completeReminderCommand(role, reminder.id, reminder.version);
+      await completeReminderCommand(reminder.id, reminder.version);
       await invalidateAndRefresh();
       showBanner('Done', 'mint');
     } catch (err) {
@@ -89,14 +87,14 @@ export function ReminderDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [reminder, role, busy, invalidateAndRefresh, showBanner]);
+  }, [reminder, currentUser?.id, busy, invalidateAndRefresh, showBanner]);
 
   const handleSnoozeSelect = useCallback(async (isoString: string) => {
     if (!reminder) return;
     setShowSnoozeSheet(false);
     setBusy(true);
     try {
-      await snoozeReminderCommand(role, reminder.id, reminder.version, isoString);
+      await snoozeReminderCommand(reminder.id, reminder.version, isoString);
       await invalidateAndRefresh();
       showBanner(`Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
     } catch (err) {
@@ -104,28 +102,28 @@ export function ReminderDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [reminder, role, invalidateAndRefresh, showBanner]);
+  }, [reminder, currentUser?.id, invalidateAndRefresh, showBanner]);
 
   const handleCancel = useCallback(async () => {
     if (!reminder || busy) return;
     setShowCancelSheet(false);
     setBusy(true);
     try {
-      await cancelReminderCommand(role, reminder.id, reminder.version);
+      await cancelReminderCommand(reminder.id, reminder.version);
       await invalidateAndRefresh();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not cancel reminder');
     } finally {
       setBusy(false);
     }
-  }, [reminder, role, busy, invalidateAndRefresh]);
+  }, [reminder, currentUser?.id, busy, invalidateAndRefresh]);
 
   const handleEditSave = useCallback(async (change: ReminderUpdateChange) => {
     if (!reminder) return;
     setShowEditSheet(false);
     setBusy(true);
     try {
-      await confirmUpdateReminderCommand(role, reminder.id, reminder.version, change);
+      await confirmUpdateReminderCommand(reminder.id, reminder.version, change);
       await invalidateAndRefresh();
       showBanner('Updated', 'mint');
     } catch (err) {
@@ -133,7 +131,7 @@ export function ReminderDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [reminder, role, invalidateAndRefresh, showBanner]);
+  }, [reminder, currentUser?.id, invalidateAndRefresh, showBanner]);
 
   const isReadOnly = currentUser?.role === 'member';
   const isCompleted = state === 'completed';

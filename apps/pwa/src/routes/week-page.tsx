@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { CaretLeft } from '@phosphor-icons/react';
 import { getWeekBounds, formatWeekLabel } from '@olivia/domain';
-import { useRole } from '../lib/role';
 import { loadWeeklyView } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
 import { useNudges } from './nudge-tray';
@@ -11,8 +10,7 @@ import { DaySection } from './home-page';
 
 export function WeekPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
-  const { nudges } = useNudges(role);
+  const { nudges } = useNudges();
 
   const { weekStart, weekEnd } = useMemo(() => getWeekBounds(new Date()), []);
   const weekStartString = useMemo(() => weekStart.toISOString().split('T')[0], [weekStart]);

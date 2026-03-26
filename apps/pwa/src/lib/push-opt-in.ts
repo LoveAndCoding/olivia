@@ -1,6 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getStoredSessionToken } from './auth';
 
 const DISMISSED_KEY = 'olivia-push-opt-in-dismissed';
+
+// ─── SW auth token storage ───────────────────────────────────────────────────
+// Store the session token in the Service Worker's IndexedDB so it can
+// authenticate push action requests without an app foreground.
+
+const SW_DB_NAME = 'olivia-sw';
+const SW_DB_VERSION = 1;
+const AUTH_STORE = 'authToken';
+
+async function storeAuthTokenForSW(token: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(SW_DB_NAME, SW_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(AUTH_STORE)) {
+        db.createObjectStore(AUTH_STORE);
+      }
+      if (!db.objectStoreNames.contains('actionOutbox')) {
+        db.createObjectStore('actionOutbox', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction(AUTH_STORE, 'readwrite');
+      const store = tx.objectStore(AUTH_STORE);
+      store.put(token, 'token');
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
 
 export type PushOptInState = 'prompt' | 'granted' | 'denied' | 'unsupported' | 'dismissed';
 
@@ -43,6 +76,14 @@ export function usePushOptIn() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
       });
+
+      // Store auth token in SW's IndexedDB for push action button requests
+      const sessionToken = getStoredSessionToken();
+      if (sessionToken) {
+        await storeAuthTokenForSW(sessionToken).catch((err) =>
+          console.warn('failed to store auth token for SW', err)
+        );
+      }
     } catch (err) {
       console.warn('push subscription failed', err);
     }

@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { CheckSquare, ClockCounterClockwise, CalendarBlank, GearSix, CaretRight } from '@phosphor-icons/react';
-import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
 import { loadInboxView } from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
 
@@ -38,12 +38,12 @@ function MoreRow({ to, icon, iconBg, iconColor, title, subtitle, badge }: MoreRo
 }
 
 export function MorePage() {
-  const { role } = useRole();
+  const { user: currentUser } = useAuth();
 
   // Get open item count for badge
   const itemQuery = useQuery({
-    queryKey: ['inbox-view', role, 'active'],
-    queryFn: () => loadInboxView(role, 'active'),
+    queryKey: ['inbox-view', currentUser?.id, 'active'],
+    queryFn: () => loadInboxView('active'),
   });
   const pendingCount = (itemQuery.data?.itemsByStatus.open.length ?? 0) + (itemQuery.data?.itemsByStatus.in_progress.length ?? 0);
 

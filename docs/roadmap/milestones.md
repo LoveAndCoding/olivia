@@ -255,13 +255,13 @@ Notes:
 ## M34: Reliability & Push — Make Multi-User Actually Work
 Objective: diagnose and fix the reliability issues preventing the household from using multi-user features, get push notifications working end-to-end for real users, and add diagnostic tooling so reliability gaps are visible before the next feedback round.
 
-Status: in_progress (code complete, awaiting household validation)
+Status: complete (partial — rolled into M35)
 
-Progress (2026-03-25):
-- iOS push registration fix shipped (PR #29) — `PushNotifications.register()` now called when permission already granted
-- Dynamic user assignment migration shipped (PR #18, OLI-297) — 45 files, +797/-494
-- Test failures from migration fixed (OLI-307) — 484 tests passing, 0 failing
-- v0.7.2 release PR #90 open, awaiting board merge
+Outcome (2026-03-25):
+- Shipped: reliability fixes, service worker, test notification button, back-arrow fix, iOS push fix, dynamic user assignment migration, E2E test expansion, agent instruction consolidation
+- Released: v0.7.1 and v0.7.2 to upstream
+- **Not resolved**: push notifications still failing, household section empty in production. Root cause identified: dual identity system (auth vs localStorage role) creates competing code paths. Every fix addresses one path but breaks the other.
+- Board escalation (2026-03-25): directed immediate full refactor. M34 reliability work rolled into M35 which addresses the root architectural cause.
 - Agent instruction consolidation completed (OLI-308) — reduced instruction surface ~50%
 - **Blocked on**: board merging PR #90, deploying to household, and confirming exit criteria
 
@@ -313,6 +313,85 @@ Notes:
 - Unlike M30 (which hardened existing features), M34 is about diagnosing and fixing specific failure modes introduced or exposed by M32's structural changes.
 - Track D (automation) and Track F (in-app feedback) are queued as M35 candidates once reliability is confirmed.
 - The board's env var comment may be about the Paperclip/deployment workflow, not the product — investigate before scoping.
+
+## M35: Identity Refactor & Automation Foundation
+Objective: eliminate the legacy role-based identity model (`actorRole`/`stakeholder`/`spouse`) in favor of userId-based identity across every layer, then build the first automation capabilities on the clean foundation.
+
+Status: complete (2026-03-25)
+
+Context:
+- M34 shipped reliability fixes and dynamic user assignment (PR #18), but the refactor was partial — only the database assignment column and UI pickers were changed.
+- The `actorRole` concept was deeply embedded: ~90 contract schema fields, 129 API occurrences, 30+ frontend role checks, 50+ test references.
+- Board directive (2026-03-25): "Let's do it as a next iteration. Eventually we will want multi-tenancy and this will be a barrier."
+
+Delivered:
+- **actorRole elimination** — userId-based identity across the entire stack:
+  - DB migrations (0016, 0017): dropped `actor_role` from 6 tables, unified push subscriptions into single table
+  - Contracts: removed `actorRoleSchema`, all `actorRole` fields, deprecated `ActorRole` type
+  - API: removed `resolveActorRole()`, role-based access checks; user resolved from session token
+  - Frontend: deleted `RoleProvider`, `useRole()`, `SpouseBanner`, `demo-data` hardcoded names; all routes use `useAuth()`
+  - Push pipeline: unified `push_subscriptions` into `notification_subscriptions` with polymorphic dispatch
+  - Tests: all contract/E2E tests updated to auth-based identity
+- **Track D spec approved** (D-071): push action buttons + lightweight automation rules
+- **Track F spec approved** (D-072): in-app feedback mechanism
+
+Exit criteria met:
+- `grep` returns zero hits in non-test, non-migration source files (8 Dexie migration history references are structural)
+- All tests pass with userId-based identity (241 domain, 177 API, typecheck clean)
+- Both automation and feedback specs approved and ready for implementation
+- Automation and feedback implementation deferred to M36
+
+Notes:
+- The actorRole refactor required reassigning work from erroring agents (Tech Lead, SRE, QA) to healthy agents (Founding Engineer, Senior Engineer).
+- Three PRs (#92, #93, #94) were opened against upstream/main instead of origin/main — corrected each time.
+- Multi-tenancy is the long-term goal. This refactor removes the first barrier.
+
+## M36: Automation & Feedback Build
+Objective: implement the automation foundation (Track D) and in-app feedback (Track F) on the clean userId-based identity model.
+
+Status: in_progress
+
+Context:
+- M35 delivered a clean identity model and approved specs for both features.
+- Track D spec (D-071, `docs/specs/automation-foundation.md`): push notification action buttons + lightweight automation rules.
+- Track F spec (D-072, `docs/specs/in-app-feedback.md`): in-app feedback form in Settings.
+- Board requested both features from M33 feedback — "trust and automation is maybe a better immediate fix" and friction reporting was a repeated gap.
+
+Priority areas (in order):
+
+1. **Track F: In-app feedback** — lower-risk, standalone feature. Ship first to close the feedback loop.
+   - Full-screen feedback form at `/settings/feedback`
+   - Auto-filled context (route, version, device, recent errors)
+   - `POST /api/feedback` endpoint with `feedback` table
+   - 14 acceptance criteria in spec
+
+2. **Track D: Automation foundation** — higher-impact, more complex. Ship second.
+   - Push notification action buttons (mark done/skip from notification drawer)
+   - Automation rules engine (3 trigger types, 3 action types, 20-rule cap)
+   - `automation_rules` and `automation_log` tables
+   - Service Worker action handling with offline queue
+   - 18 acceptance criteria in spec
+   - 1 open question: iOS/Capacitor push action button API surface (Tech Lead to confirm)
+
+3. **Household validation** — deploy both features, confirm household can use them.
+
+Required artifacts:
+- In-app feedback feature shipped and accessible from Settings
+- At least one automation rule type functional end-to-end
+- Push action buttons working on supported platforms
+- Version bump and release to household
+
+Exit criteria:
+- Household can submit feedback from within the app
+- Household can create and use at least one automation rule
+- Push action buttons render and function on the household's device
+- All tests pass
+- Board confirms both features work in daily use
+
+Notes:
+- Track F is lower-risk and can ship independently. Track D depends on confirming iOS push action button support.
+- Both specs are approved — implementation planning can begin immediately.
+- Per operating cadence (D-068), the next feedback round should follow deployment.
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

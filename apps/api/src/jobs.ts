@@ -1,7 +1,8 @@
 import type { FastifyBaseLogger } from 'fastify';
-import { buildSuggestions, computeCompletionWindow, getCurrentLocalHour, groupReminders, rankRemindersForSurfacing, sortNudgesByPriority } from '@olivia/domain';
-import { COMPLETION_WINDOW_MAX_HOLD_DAYS, COMPLETION_WINDOW_SAMPLE_SIZE } from '@olivia/contracts';
-import type { Nudge, Reminder } from '@olivia/contracts';
+import { buildSuggestions, computeCompletionWindow, getCurrentLocalHour, groupReminders, rankRemindersForSurfacing, skipRoutineOccurrence, completeReminderOccurrence, snoozeReminder, sortNudgesByPriority } from '@olivia/domain';
+import { COMPLETION_WINDOW_MAX_HOLD_DAYS, COMPLETION_WINDOW_SAMPLE_SIZE, NUDGE_SNOOZE_INTERVAL_HOURS } from '@olivia/contracts';
+import type { Nudge, Reminder, AutomationRule } from '@olivia/contracts';
+import { randomUUID } from 'node:crypto';
 import type { AppConfig } from './config';
 import type { PushProvider, ApnsPushProvider, NotificationPayload, PushSubscriptionPayload } from './push';
 import { isApnsSubscriptionPayload } from './push';
@@ -17,6 +18,8 @@ type NotificationRecord = {
 };
 
 const DAILY_SUMMARY_SEND_WINDOW_UTC_HOUR = 8;
+/** Placeholder userId for household-level notification delivery deduplication. */
+const HOUSEHOLD_DELIVERY_USER_ID = 'household';
 
 function isPushSubscriptionPayload(payload: Record<string, unknown>): payload is PushSubscriptionPayload {
   return (
@@ -77,9 +80,8 @@ function hasEnabledReminderNotificationPreference(
   repository: InboxRepository,
   notificationType: NotificationDeliveryRecord['notificationType']
 ): boolean {
-  // Check preferences for all roles — if any household member has enabled, deliver
-  for (const role of ['stakeholder', 'spouse'] as const) {
-    const preferences = repository.getReminderNotificationPreferences(role);
+  // Check preferences for all users — if any household member has enabled, deliver
+  for (const preferences of repository.listAllReminderNotificationPreferences()) {
     if (!preferences.enabled) continue;
     const enabled = notificationType === 'due_reminder' ? preferences.dueRemindersEnabled : preferences.dailySummaryEnabled;
     if (enabled) return true;
@@ -132,7 +134,7 @@ export async function evaluateDueReminderRule(
 
   for (const reminder of reminders) {
     const deliveryBucket = reminderDeliveryBucket(reminder);
-    if (repository.hasNotificationDelivery('due_reminder', 'stakeholder', deliveryBucket)) {
+    if (repository.hasNotificationDelivery('due_reminder', HOUSEHOLD_DELIVERY_USER_ID, deliveryBucket)) {
       logger.debug({ reminderId: reminder.id, deliveryBucket }, 'due-reminder rule: already delivered for this occurrence');
       continue;
     }
@@ -156,7 +158,7 @@ export async function evaluateDueReminderRule(
     );
 
     if (results.some((result) => result.delivered)) {
-      repository.recordNotificationDelivery('due_reminder', 'stakeholder', reminder.id, deliveryBucket, now.toISOString());
+      repository.recordNotificationDelivery('due_reminder', HOUSEHOLD_DELIVERY_USER_ID, reminder.id, deliveryBucket, now.toISOString());
       logger.info({ reminderId: reminder.id, deliveryBucket }, 'due-reminder rule: delivered');
     }
   }
@@ -188,7 +190,7 @@ export async function evaluateDailySummaryRule(
   }
 
   const deliveryBucket = now.toISOString().slice(0, 10);
-  if (repository.hasNotificationDelivery('daily_summary', 'stakeholder', deliveryBucket)) {
+  if (repository.hasNotificationDelivery('daily_summary', HOUSEHOLD_DELIVERY_USER_ID, deliveryBucket)) {
     logger.debug({ deliveryBucket }, 'daily-summary rule: already delivered today');
     return;
   }
@@ -207,7 +209,7 @@ export async function evaluateDailySummaryRule(
   );
 
   if (results.some((result) => result.delivered)) {
-    repository.recordNotificationDelivery('daily_summary', 'stakeholder', null, deliveryBucket, now.toISOString());
+    repository.recordNotificationDelivery('daily_summary', HOUSEHOLD_DELIVERY_USER_ID, null, deliveryBucket, now.toISOString());
     logger.info({ deliveryBucket }, 'daily-summary rule: delivered');
   }
 }
@@ -335,12 +337,29 @@ function buildNudgeNotification(nudge: Nudge, pwaOrigin: string): NotificationPa
     body = `${nudge.entityName} — reminder approaching`;
   }
 
-  return {
+  const payload: NotificationPayload = {
     title: 'Olivia household nudge',
     body,
     url: `${pwaOrigin}/`,
     tag: `nudge-${nudge.entityType}-${nudge.entityId}`,
+    entityId: nudge.entityId,
+    entityType: nudge.entityType,
   };
+
+  // Add action buttons for routine and reminder nudges (not planning rituals)
+  if (nudge.entityType === 'routine') {
+    payload.actions = [
+      { action: 'mark_done', title: 'Mark done' },
+      { action: 'skip', title: 'Skip' },
+    ];
+  } else if (nudge.entityType === 'reminder') {
+    payload.actions = [
+      { action: 'done', title: 'Done' },
+      { action: 'snooze', title: 'Snooze' },
+    ];
+  }
+
+  return payload;
 }
 
 export function shouldHoldNudge(
@@ -372,6 +391,141 @@ export function shouldHoldNudge(
   return false;
 }
 
+/**
+ * Evaluates enabled automation rules against the current nudge set.
+ * For each matching rule, executes the configured action and logs the result.
+ * Called on the same 30-minute cycle as nudge push evaluation.
+ */
+export function evaluateAutomationRules(
+  repository: InboxRepository,
+  logger: FastifyBaseLogger,
+  now: Date = new Date()
+): void {
+  const rules = repository.listEnabledAutomationRules();
+  if (rules.length === 0) return;
+
+  const nudges = repository.getNudgePayloads(now);
+  if (nudges.length === 0) return;
+
+  // Use the start of the current evaluation cycle as the dedup boundary
+  const cycleStart = now.toISOString();
+
+  for (const nudge of nudges) {
+    const matchingRules = rules.filter((rule) => ruleMatchesNudge(rule, nudge, repository, now));
+
+    for (const rule of matchingRules) {
+      // Dedup: skip if this rule already fired for this entity in the current cycle window (30 min)
+      const dedupSince = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
+      if (repository.hasRecentAutomationExecution(rule.id, nudge.entityId, dedupSince)) {
+        continue;
+      }
+
+      try {
+        executeAutomationAction(rule, nudge, repository, logger, now);
+        repository.createAutomationLogEntry({
+          id: randomUUID(),
+          ruleId: rule.id,
+          entityType: nudge.entityType,
+          entityId: nudge.entityId,
+          actionType: rule.actionType,
+          executedAt: cycleStart,
+          userId: rule.userId
+        });
+        logger.info(
+          { ruleId: rule.id, entityId: nudge.entityId, action: rule.actionType },
+          'automation rule executed'
+        );
+      } catch (error) {
+        logger.warn(
+          { ruleId: rule.id, entityId: nudge.entityId, error },
+          'automation rule execution failed (non-fatal)'
+        );
+      }
+    }
+  }
+
+  // Purge old log entries
+  const purged = repository.purgeOldAutomationLog();
+  if (purged > 0) {
+    logger.info({ purged }, 'purged old automation log entries');
+  }
+}
+
+function ruleMatchesNudge(
+  rule: AutomationRule,
+  nudge: Nudge,
+  repository: InboxRepository,
+  now: Date
+): boolean {
+  // Scope check: if rule is scoped to a specific entity, it must match
+  if (rule.scopeType === 'specific' && rule.scopeEntityId !== nudge.entityId) {
+    return false;
+  }
+
+  switch (rule.triggerType) {
+    case 'routine_overdue_days': {
+      if (nudge.entityType !== 'routine') return false;
+      if (!nudge.overdueSince) return false;
+      const overdueDate = new Date(nudge.overdueSince);
+      const daysOverdue = Math.floor((now.getTime() - overdueDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysOverdue >= rule.triggerThreshold;
+    }
+    case 'reminder_snooze_count': {
+      if (nudge.entityType !== 'reminder') return false;
+      const snoozeCount = repository.getReminderSnoozeCount(nudge.entityId);
+      return snoozeCount >= rule.triggerThreshold;
+    }
+    case 'reminder_overdue_days': {
+      if (nudge.entityType !== 'reminder') return false;
+      if (!nudge.overdueSince) return false;
+      const overdueDate = new Date(nudge.overdueSince);
+      const daysOverdue = Math.floor((now.getTime() - overdueDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysOverdue >= rule.triggerThreshold;
+    }
+    default:
+      return false;
+  }
+}
+
+function executeAutomationAction(
+  rule: AutomationRule,
+  nudge: Nudge,
+  repository: InboxRepository,
+  _logger: FastifyBaseLogger,
+  now: Date
+): void {
+  switch (rule.actionType) {
+    case 'skip_routine_occurrence': {
+      const routine = repository.getRoutine(nudge.entityId);
+      if (!routine) throw new Error(`Routine ${nudge.entityId} not found`);
+      const { updatedRoutine, occurrence } = skipRoutineOccurrence(routine, rule.userId, now);
+      repository.completeRoutineOccurrence(updatedRoutine, occurrence, routine.version);
+      break;
+    }
+    case 'resolve_reminder': {
+      const reminder = repository.getReminder(nudge.entityId, now);
+      if (!reminder) throw new Error(`Reminder ${nudge.entityId} not found`);
+      const timeline = repository.listReminderTimeline(nudge.entityId);
+      const mutation = completeReminderOccurrence(reminder, now, timeline);
+      const attributedTimeline = mutation.timelineEntries.map((e) => ({ ...e, userId: rule.userId }));
+      repository.updateReminder(mutation.reminder, attributedTimeline, reminder.version);
+      break;
+    }
+    case 'snooze_reminder': {
+      const reminder = repository.getReminder(nudge.entityId, now);
+      if (!reminder) throw new Error(`Reminder ${nudge.entityId} not found`);
+      const snoozedUntil = new Date(now.getTime() + NUDGE_SNOOZE_INTERVAL_HOURS * 60 * 60 * 1000).toISOString();
+      const timeline = repository.listReminderTimeline(nudge.entityId);
+      const mutation = snoozeReminder(reminder, snoozedUntil, now, timeline);
+      const attributedTimeline = mutation.timelineEntries.map((e) => ({ ...e, userId: rule.userId }));
+      repository.updateReminder(mutation.reminder, attributedTimeline, reminder.version);
+      break;
+    }
+    default:
+      throw new Error(`Unknown action type: ${rule.actionType}`);
+  }
+}
+
 export async function evaluateNudgePushRule(
   repository: InboxRepository,
   push: PushProvider,
@@ -396,77 +550,56 @@ export async function evaluateNudgePushRule(
     return;
   }
 
-  // ─── Deliver to Web Push subscriptions ─────────────────────────────────────
-  if (push.isConfigured()) {
-    const allSubscriptions = repository.listPushSubscriptions();
+  // Unified subscription delivery — one table, dispatch by payload type
+  const allSubscriptions = repository.listAllNotificationSubscriptions();
 
-    for (const nudge of nudges) {
-      if (shouldHoldNudge(nudge, repository, config, logger, now)) continue;
+  for (const nudge of nudges) {
+    if (shouldHoldNudge(nudge, repository, config, logger, now)) continue;
 
-      // Per-user targeting: reminder nudges go to the creator's subscriptions only;
-      // household-wide nudges (routines, planning rituals, freshness) go to all.
-      let targetSubscriptions = allSubscriptions;
-      if (nudge.entityType === 'reminder') {
-        const creatorUserId = repository.getReminderCreatorUserId(nudge.entityId);
-        if (creatorUserId) {
-          const userSubs = repository.listPushSubscriptionsForUser(creatorUserId);
-          if (userSubs.length > 0) {
-            targetSubscriptions = userSubs;
-          }
-          // Fall back to all subscriptions if creator has no subscriptions
+    // Per-user targeting: reminder nudges go to the creator's subscriptions only;
+    // household-wide nudges (routines, planning rituals, freshness) go to all.
+    let targetSubscriptions = allSubscriptions;
+    if (nudge.entityType === 'reminder') {
+      const creatorUserId = repository.getReminderCreatorUserId(nudge.entityId);
+      if (creatorUserId) {
+        const userSubs = repository.listNotificationSubscriptions(creatorUserId);
+        if (userSubs.length > 0) {
+          targetSubscriptions = userSubs;
         }
-      }
-
-      const notification = buildNudgeNotification(nudge, config.pwaOrigin);
-
-      for (const subscription of targetSubscriptions) {
-        const alreadySent = repository.hasPushNotificationLog(
-          subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
-        );
-        if (alreadySent) continue;
-
-        try {
-          await push.send(
-            { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh_key, auth: subscription.auth_key } },
-            notification
-          );
-          repository.recordPushNotificationLog(subscription.id, nudge.entityType, nudge.entityId, now);
-          logger.info({ subscriptionId: subscription.id, entityType: nudge.entityType, entityId: nudge.entityId }, 'nudge push delivered');
-        } catch (error) {
-          const statusCode = (error as { statusCode?: number }).statusCode;
-          if (statusCode === 410) {
-            repository.deletePushSubscription(subscription.endpoint);
-            logger.info({ subscriptionId: subscription.id }, 'nudge push: 410 Gone — subscription removed');
-            break;
-          }
-          logger.warn({ subscriptionId: subscription.id, entityId: nudge.entityId, error }, 'nudge push delivery failed (non-fatal)');
-        }
+        // Fall back to all subscriptions if creator has no subscriptions
       }
     }
-  }
 
-  // ─── Deliver to APNs subscriptions (native iOS) ────────────────────────────
-  if (apns.isConfigured()) {
-    const notifSubs = repository.listAllNotificationSubscriptions();
-    const apnsSubs = notifSubs.filter((s) => isApnsSubscriptionPayload(s.payload as Record<string, unknown>));
+    const notification = buildNudgeNotification(nudge, config.pwaOrigin);
 
-    for (const subscription of apnsSubs) {
-      const token = (subscription.payload as Record<string, unknown>).token as string;
-      for (const nudge of nudges) {
-        const alreadySent = repository.hasPushNotificationLog(
-          subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
-        );
-        if (alreadySent) continue;
-        if (shouldHoldNudge(nudge, repository, config, logger, now)) continue;
+    for (const subscription of targetSubscriptions) {
+      const alreadySent = repository.hasPushNotificationLog(
+        subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
+      );
+      if (alreadySent) continue;
 
-        const notification = buildNudgeNotification(nudge, config.pwaOrigin);
-        try {
-          await apns.send(token, notification);
-          repository.recordPushNotificationLog(subscription.id, nudge.entityType, nudge.entityId, now);
-          logger.info({ subscriptionId: subscription.id, entityType: nudge.entityType, entityId: nudge.entityId }, 'nudge push delivered (APNs)');
-        } catch (error) {
-          logger.warn({ subscriptionId: subscription.id, entityId: nudge.entityId, error }, 'nudge APNs delivery failed (non-fatal)');
+      try {
+        const payload = subscription.payload as Record<string, unknown>;
+        if (isApnsSubscriptionPayload(payload)) {
+          if (!apns.isConfigured()) continue;
+          await apns.send(payload.token, notification);
+        } else if (isPushSubscriptionPayload(payload)) {
+          if (!push.isConfigured()) continue;
+          await push.send(payload, notification);
+        } else {
+          logger.warn({ subscriptionId: subscription.id }, 'nudge push: unknown payload type; skipping');
+          continue;
         }
+        repository.recordPushNotificationLog(subscription.id, nudge.entityType, nudge.entityId, now);
+        logger.info({ subscriptionId: subscription.id, entityType: nudge.entityType, entityId: nudge.entityId }, 'nudge push delivered');
+      } catch (error) {
+        const statusCode = (error as { statusCode?: number }).statusCode;
+        if (statusCode === 410) {
+          repository.deleteNotificationSubscriptionByEndpoint(subscription.endpoint);
+          logger.info({ subscriptionId: subscription.id }, 'nudge push: 410 Gone — subscription removed');
+          break;
+        }
+        logger.warn({ subscriptionId: subscription.id, entityId: nudge.entityId, error }, 'nudge push delivery failed (non-fatal)');
       }
     }
   }
@@ -510,6 +643,7 @@ export function startBackgroundJobs(
   const nudgeIntervalId = setInterval(() => {
     void (async () => {
       try {
+        evaluateAutomationRules(repository, logger);
         await evaluateNudgePushRule(repository, push, apns, config, logger);
       } catch (error) {
         logger.error({ error }, 'nudge push scheduler run failed');

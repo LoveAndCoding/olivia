@@ -7,8 +7,15 @@ import { resolveApiUrl } from './api';
 
 const MAX_REPORTS_PER_WINDOW = 5;
 const WINDOW_MS = 60_000; // 1 minute
+const MAX_RECENT_ERRORS = 3;
 
 const timestamps: number[] = [];
+const recentErrors: string[] = [];
+
+/** Returns the last 3 client-side error messages (most recent first). */
+export function getRecentErrors(): string[] {
+  return [...recentErrors];
+}
 
 function isRateLimited(): boolean {
   const now = Date.now();
@@ -29,6 +36,11 @@ export interface ErrorReportPayload {
  * Report an error to POST /api/errors. Fire-and-forget — never throws.
  */
 export function reportError(payload: ErrorReportPayload): void {
+  // Always capture for feedback context, even if rate-limited for API reporting
+  const summary = payload.message.slice(0, 200);
+  recentErrors.unshift(summary);
+  if (recentErrors.length > MAX_RECENT_ERRORS) recentErrors.length = MAX_RECENT_ERRORS;
+
   if (isRateLimited()) return;
   timestamps.push(Date.now());
 

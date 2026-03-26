@@ -21,7 +21,6 @@ export const inboxItemsTable = sqliteTable('inbox_items', {
 export const inboxItemHistoryTable = sqliteTable('inbox_item_history', {
   id: text('id').primaryKey(),
   itemId: text('item_id').notNull(),
-  actorRole: text('actor_role').notNull(),
   userId: text('user_id'),
   eventType: text('event_type').notNull(),
   fromValue: text('from_value'),
@@ -37,7 +36,6 @@ export const deviceSyncStateTable = sqliteTable('device_sync_state', {
 
 export const notificationSubscriptionsTable = sqliteTable('notification_subscriptions', {
   id: text('id').primaryKey(),
-  actorRole: text('actor_role').notNull(),
   userId: text('user_id'),
   endpoint: text('endpoint').notNull(),
   payload: text('payload').notNull(),
@@ -65,7 +63,6 @@ export const remindersTable = sqliteTable('reminders', {
 export const reminderTimelineTable = sqliteTable('reminder_timeline', {
   id: text('id').primaryKey(),
   reminderId: text('reminder_id').notNull(),
-  actorRole: text('actor_role').notNull(),
   userId: text('user_id'),
   eventType: text('event_type').notNull(),
   fromValue: text('from_value'),
@@ -75,8 +72,7 @@ export const reminderTimelineTable = sqliteTable('reminder_timeline', {
 });
 
 export const reminderNotificationPreferencesTable = sqliteTable('reminder_notification_preferences', {
-  actorRole: text('actor_role').primaryKey(),
-  userId: text('user_id'),
+  userId: text('user_id').primaryKey(),
   enabled: integer('enabled', { mode: 'boolean' }).notNull(),
   dueRemindersEnabled: integer('due_reminders_enabled', { mode: 'boolean' }).notNull(),
   dailySummaryEnabled: integer('daily_summary_enabled', { mode: 'boolean' }).notNull(),
@@ -86,7 +82,6 @@ export const reminderNotificationPreferencesTable = sqliteTable('reminder_notifi
 export const notificationDeliveryLogTable = sqliteTable('notification_delivery_log', {
   id: text('id').primaryKey(),
   notificationType: text('notification_type').notNull(),
-  actorRole: text('actor_role').notNull(),
   userId: text('user_id'),
   reminderId: text('reminder_id'),
   deliveryBucket: text('delivery_bucket').notNull(),
@@ -127,7 +122,6 @@ export const listItemHistoryTable = sqliteTable('list_item_history', {
   id: text('id').primaryKey(),
   listId: text('list_id').notNull(),
   itemId: text('item_id'),
-  actorRole: text('actor_role').notNull(),
   userId: text('user_id'),
   eventType: text('event_type').notNull(),
   fromValue: text('from_value'),
@@ -189,16 +183,6 @@ export const mealEntriesTable = sqliteTable('meal_entries', {
   version: integer('version').notNull()
 });
 
-export const pushSubscriptionsTable = sqliteTable('push_subscriptions', {
-  id: text('id').primaryKey(),
-  householdId: text('household_id').notNull(),
-  endpoint: text('endpoint').notNull().unique(),
-  p256dhKey: text('p256dh_key').notNull(),
-  authKey: text('auth_key').notNull(),
-  userId: text('user_id'),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-});
 
 export const pushNotificationLogTable = sqliteTable('push_notification_log', {
   id: text('id').primaryKey(),
@@ -234,6 +218,43 @@ export const householdFreshnessTable = sqliteTable('household_freshness', {
   lastHealthCheckDismissedAt: text('last_health_check_dismissed_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull()
+});
+
+export const feedbackTable = sqliteTable('feedback', {
+  id: text('id').primaryKey(),
+  householdId: text('household_id').notNull(),
+  userId: text('user_id').notNull(),
+  category: text('category').notNull(),
+  description: text('description').notNull(),
+  contextJson: text('context_json').notNull(),
+  screenshotBase64: text('screenshot_base64'),
+  status: text('status').notNull().default('new'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+});
+
+export const automationRulesTable = sqliteTable('automation_rules', {
+  id: text('id').primaryKey(),
+  householdId: text('household_id').notNull(),
+  userId: text('user_id').notNull(),
+  triggerType: text('trigger_type').notNull(),
+  triggerThreshold: integer('trigger_threshold').notNull().default(3),
+  actionType: text('action_type').notNull(),
+  scopeType: text('scope_type').notNull().default('all'),
+  scopeEntityId: text('scope_entity_id'),
+  enabled: integer('enabled').notNull().default(1),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+});
+
+export const automationLogTable = sqliteTable('automation_log', {
+  id: text('id').primaryKey(),
+  ruleId: text('rule_id').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  actionType: text('action_type').notNull(),
+  executedAt: text('executed_at').notNull(),
+  userId: text('user_id').notNull()
 });
 
 export const conversationMessagesTable = sqliteTable('conversation_messages', {

@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ListItem } from '@olivia/contracts';
-import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
 import {
   loadListDetail,
   updateListTitleCommand,
@@ -35,7 +35,7 @@ import { showErrorToast } from '../lib/error-toast';
 export function ListDetailPage() {
   const params = useParams({ from: '/lists/$listId' });
   const navigate = useNavigate();
-  const { role } = useRole();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [showEditTitleSheet, setShowEditTitleSheet] = useState(false);
   const [showArchiveSheet, setShowArchiveSheet] = useState(false);
@@ -52,8 +52,8 @@ export function ListDetailPage() {
   const [showUncheckAllConfirm, setShowUncheckAllConfirm] = useState(false);
 
   const detailQuery = useQuery({
-    queryKey: ['list-detail', role, params.listId],
-    queryFn: () => loadListDetail(role, params.listId),
+    queryKey: ['list-detail', currentUser?.id, params.listId],
+    queryFn: () => loadListDetail(params.listId),
   });
 
   const list = detailQuery.data?.list;
@@ -75,18 +75,18 @@ export function ListDetailPage() {
   }, []);
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['list-detail', role, params.listId] });
+    await queryClient.invalidateQueries({ queryKey: ['list-detail', currentUser?.id, params.listId] });
     await queryClient.invalidateQueries({ queryKey: ['lists-active'] });
     await queryClient.invalidateQueries({ queryKey: ['lists-archived'] });
     await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-  }, [queryClient, role, params.listId]);
+  }, [queryClient, currentUser?.id, params.listId]);
 
   const handleEditTitle = useCallback(async (newTitle: string) => {
     if (!list) return;
     setShowEditTitleSheet(false);
     setBusy(true);
     try {
-      await updateListTitleCommand(role, list.id, list.version, newTitle);
+      await updateListTitleCommand(list.id, list.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
     } catch (err) {
@@ -94,14 +94,14 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, role, invalidate, showBanner]);
+  }, [list, currentUser?.id, invalidate, showBanner]);
 
   const handleArchiveConfirm = useCallback(async () => {
     if (!list) return;
     setShowArchiveSheet(false);
     setBusy(true);
     try {
-      await archiveListCommand(role, list.id, list.version);
+      await archiveListCommand(list.id, list.version);
       await invalidate();
       void navigate({ to: '/lists' });
     } catch (err) {
@@ -109,14 +109,14 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, role, invalidate, navigate]);
+  }, [list, currentUser?.id, invalidate, navigate]);
 
   const handleDeleteListConfirm = useCallback(async () => {
     if (!list) return;
     setShowDeleteListSheet(false);
     setBusy(true);
     try {
-      await deleteListCommand(role, list.id);
+      await deleteListCommand(list.id);
       await invalidate();
       void navigate({ to: '/lists' });
     } catch (err) {
@@ -124,44 +124,44 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, role, invalidate, navigate]);
+  }, [list, currentUser?.id, invalidate, navigate]);
 
   const handleAddItem = useCallback(async (body: string) => {
     if (!list) return;
     try {
-      await addListItemCommand(role, list.id, body);
+      await addListItemCommand(list.id, body);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not add item');
     }
-  }, [list, role, invalidate]);
+  }, [list, currentUser?.id, invalidate]);
 
   const handleCheckItem = useCallback(async (item: ListItem) => {
     if (!list) return;
     try {
-      await checkListItemCommand(role, list.id, item.id, item.version);
+      await checkListItemCommand(list.id, item.id, item.version);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not check item');
     }
-  }, [list, role, invalidate]);
+  }, [list, currentUser?.id, invalidate]);
 
   const handleUncheckItem = useCallback(async (item: ListItem) => {
     if (!list) return;
     try {
-      await uncheckListItemCommand(role, list.id, item.id, item.version);
+      await uncheckListItemCommand(list.id, item.id, item.version);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not uncheck item');
     }
-  }, [list, role, invalidate]);
+  }, [list, currentUser?.id, invalidate]);
 
   const handleEditItemSave = useCallback(async (newBody: string) => {
     if (!list || !editItemTarget) return;
     setEditItemTarget(null);
     setBusy(true);
     try {
-      await updateListItemBodyCommand(role, list.id, editItemTarget.id, editItemTarget.version, newBody);
+      await updateListItemBodyCommand(list.id, editItemTarget.id, editItemTarget.version, newBody);
       await invalidate();
       showBanner('Updated', 'mint');
     } catch (err) {
@@ -169,28 +169,28 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, editItemTarget, role, invalidate, showBanner]);
+  }, [list, editItemTarget, currentUser?.id, invalidate, showBanner]);
 
   const handleDeleteItemConfirm = useCallback(async () => {
     if (!list || !deleteItemTarget) return;
     setDeleteItemTarget(null);
     setBusy(true);
     try {
-      await removeListItemCommand(role, list.id, deleteItemTarget.id);
+      await removeListItemCommand(list.id, deleteItemTarget.id);
       await invalidate();
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not remove item');
     } finally {
       setBusy(false);
     }
-  }, [list, deleteItemTarget, role, invalidate]);
+  }, [list, deleteItemTarget, currentUser?.id, invalidate]);
 
   const handleClearCompleted = useCallback(async () => {
     if (!list) return;
     setShowClearConfirm(false);
     setBusy(true);
     try {
-      await clearCompletedItemsCommand(role, list.id);
+      await clearCompletedItemsCommand(list.id);
       await invalidate();
       showBanner('Cleared', 'mint');
     } catch (err) {
@@ -198,14 +198,14 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, role, invalidate, showBanner]);
+  }, [list, currentUser?.id, invalidate, showBanner]);
 
   const handleUncheckAll = useCallback(async () => {
     if (!list) return;
     setShowUncheckAllConfirm(false);
     setBusy(true);
     try {
-      await uncheckAllItemsCommand(role, list.id);
+      await uncheckAllItemsCommand(list.id);
       await invalidate();
       showBanner('Items unchecked', 'mint');
       setCompletedExpanded(false);
@@ -214,7 +214,7 @@ export function ListDetailPage() {
     } finally {
       setBusy(false);
     }
-  }, [list, role, invalidate, showBanner]);
+  }, [list, currentUser?.id, invalidate, showBanner]);
 
   const listOverflowActions = useMemo(() => {
     if (!list) return [];

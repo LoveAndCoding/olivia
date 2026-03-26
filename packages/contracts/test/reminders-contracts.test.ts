@@ -67,7 +67,6 @@ describe('reminder contracts', () => {
         {
           id: '4ac7e5aa-8ad7-4eb5-8747-7749f3a67cff',
           reminderId,
-          actorRole: 'stakeholder',
           eventType: 'created',
           fromValue: null,
           toValue: { scheduledAt: '2026-03-20T15:00:00.000Z' },
@@ -78,7 +77,7 @@ describe('reminder contracts', () => {
     });
     const settings = reminderSettingsResponseSchema.parse({
       preferences: {
-        actorRole: 'stakeholder',
+        userId: 'a0000000-0000-4000-8000-000000000001',
         enabled: true,
         dueRemindersEnabled: true,
         dailySummaryEnabled: false,
@@ -92,11 +91,9 @@ describe('reminder contracts', () => {
 
   it('preserves preview/confirm semantics for reminder writes', () => {
     const previewCreate = previewCreateReminderRequestSchema.parse({
-      actorRole: 'stakeholder',
       inputText: 'Remind me next Thursday to bring the vet records.'
     });
     const confirmCreate = confirmCreateReminderRequestSchema.parse({
-      actorRole: 'stakeholder',
       approved: true,
       finalReminder: {
         id: reminderId,
@@ -109,7 +106,6 @@ describe('reminder contracts', () => {
       }
     });
     const confirmUpdate = confirmUpdateReminderRequestSchema.parse({
-      actorRole: 'stakeholder',
       reminderId,
       expectedVersion: 2,
       approved: true,
@@ -119,20 +115,17 @@ describe('reminder contracts', () => {
       }
     });
     const complete = completeReminderRequestSchema.parse({
-      actorRole: 'stakeholder',
       reminderId,
       expectedVersion: 2,
       approved: true
     });
     const snooze = snoozeReminderRequestSchema.parse({
-      actorRole: 'stakeholder',
       reminderId,
       expectedVersion: 2,
       approved: true,
       snoozedUntil: '2026-03-20T19:00:00.000Z'
     });
     const cancel = cancelReminderRequestSchema.parse({
-      actorRole: 'stakeholder',
       reminderId,
       expectedVersion: 2,
       approved: true
@@ -151,7 +144,6 @@ describe('reminder contracts', () => {
       outboxCommandSchema.parse({
         kind: 'reminder_create',
         commandId: '7d7f0fa2-4cc7-46be-b8fa-ac555d218787',
-        actorRole: 'stakeholder',
         approved: true,
         finalReminder: {
           id: reminderId,
@@ -166,7 +158,6 @@ describe('reminder contracts', () => {
       outboxCommandSchema.parse({
         kind: 'reminder_update',
         commandId: '8b6e4f28-f4ad-4ae7-a1b3-15e0dd8f615a',
-        actorRole: 'stakeholder',
         reminderId,
         expectedVersion: 2,
         approved: true,
@@ -175,7 +166,6 @@ describe('reminder contracts', () => {
       outboxCommandSchema.parse({
         kind: 'reminder_complete',
         commandId: '8426d3d1-d1fc-4c4d-b2c9-92fbb67f18ff',
-        actorRole: 'stakeholder',
         reminderId,
         expectedVersion: 2,
         approved: true
@@ -183,7 +173,6 @@ describe('reminder contracts', () => {
       outboxCommandSchema.parse({
         kind: 'reminder_snooze',
         commandId: '562d4763-3fd4-4c36-bf94-a19ee4d9efd3',
-        actorRole: 'stakeholder',
         reminderId,
         expectedVersion: 2,
         approved: true,
@@ -192,7 +181,6 @@ describe('reminder contracts', () => {
       outboxCommandSchema.parse({
         kind: 'reminder_cancel',
         commandId: 'cb9fb5ce-28a7-4663-b79c-634dbe5f4df8',
-        actorRole: 'stakeholder',
         reminderId,
         expectedVersion: 2,
         approved: true

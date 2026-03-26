@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowsClockwise, Bell, ForkKnife, Tray, Check } from '@phosphor-icons/react';
 import { BottomNav } from '../components/bottom-nav';
-import { useRole } from '../lib/role';
 import { loadActivityHistory } from '../lib/sync';
 import type { ActivityHistoryDay, ActivityHistoryItem } from '@olivia/contracts';
 
@@ -128,7 +127,6 @@ function DaySection({ day }: { day: ActivityHistoryDay }) {
 
 export function HistoryPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['activityHistory'],
@@ -146,11 +144,6 @@ export function HistoryPage() {
           <div className="screen-title">History</div>
         </div>
 
-        {role === 'spouse' && (
-          <div className="spouse-banner" role="note">
-            You have read-only access to the household.
-          </div>
-        )}
 
         {isLoading && (
           <div className="history-loading" role="status" aria-live="polite">

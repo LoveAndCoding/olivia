@@ -18,6 +18,36 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-073: M35 complete — identity refactor done, M36 defined
+- Date: 2026-03-25
+- Area: milestone completion
+- Decision: Close M35 with exit criteria met. actorRole eliminated from all non-test, non-migration source files. All tests pass with userId-based identity. Track D and Track F specs approved. M36 (Automation & Feedback Build) defined: implement Track F first (lower-risk), then Track D (higher-impact). Both specs are approved and ready for implementation planning.
+- Rationale: the identity refactor was the prerequisite for automation (rules need userId, not roles) and for multi-tenancy. All 7 subtasks complete. The remaining 8 `actorRole` references are in Dexie migration history and cannot be changed.
+- Alternatives considered: (1) Keep M35 open until automation is built — rejected because the milestone objective (identity refactor) is complete and the specs are separate deliverables. (2) Skip M36 and go straight to household feedback — rejected because the board explicitly requested automation and feedback features.
+- Trade-offs: M35 delivered the identity refactor but not the automation/feedback implementation (deferred to M36). This keeps milestones focused.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md` (M35, M36), D-071, D-072, OLI-309
+
+### D-072: In-app feedback spec approved — full-screen route, no Paperclip integration in Phase 1
+- Date: 2026-03-25
+- Area: feature spec / in-app feedback
+- Decision: Approved Track F in-app feedback spec (`docs/specs/in-app-feedback.md`). Resolved 2 open questions: (1) Form presentation is a full-screen route (`/settings/feedback`), not a modal — communicates intentionality and avoids accidental dismissal. (2) No Paperclip integration in Phase 1 — the feedback table is the canonical store; coupling to internal tooling adds unnecessary dependency.
+- Rationale: L-033 established that in-app friction reporting is more valuable than external bug tracking. This spec addresses that learning with a minimal, user-initiated feature that captures device context automatically. 14 acceptance criteria, no AI involvement, no trust model change.
+- Alternatives considered: (1) Modal overlay — rejected as too dismissible. (2) Auto-create Paperclip issues — rejected as unnecessary coupling.
+- Trade-offs: fire-and-forget (no response to user) may feel like shouting into a void. Acceptable for Phase 1 at household scale.
+- Status: active
+- Related docs: `docs/specs/in-app-feedback.md`, OLI-315, L-033, L-035
+
+### D-071: Automation foundation spec approved — push action buttons and lightweight automation rules
+- Date: 2026-03-25
+- Area: feature spec / automation
+- Decision: Approved Track D automation foundation spec (`docs/specs/automation-foundation.md`). Two capabilities: (1) Push notification action buttons — mark done/skip/snooze from the OS notification drawer. (2) Lightweight automation rules — user-defined if-then rules evaluated in the existing 30-min scheduler loop. Resolved 2 of 3 open questions: no rule execution notifications in Phase 1 (log is sufficient), spouse can see and edit all rules (household-shared). One open question remains for Tech Lead: iOS/Capacitor push action button API surface.
+- Rationale: Board requested "trust and automation" (M29 feedback). This spec introduces Olivia's first trusted execution in a bounded, auditable, reversible way — user-defined only, no AI, non-destructive actions only. Push action buttons reduce the 4-tap friction to 1 tap for common nudge actions.
+- Alternatives considered: (1) AI-suggested rules — deferred to Phase 2. (2) Notification on rule execution — rejected for Phase 1 (noisy when multiple rules fire).
+- Trade-offs: automation rules are a trust model expansion (advisory-only → user-delegated execution). Bounded by: opt-in creation, 20-rule cap, non-destructive actions only, full audit log, easy disable/delete. Chat cannot manage rules in Phase 1.
+- Status: active
+- Related docs: `docs/specs/automation-foundation.md`, OLI-314, D-002, A-002, L-027
+
 ### D-070: Test notification button and scheduled notification visibility — diagnostic tooling for push pipeline
 - Date: 2026-03-24
 - Area: push notifications / diagnostic tooling

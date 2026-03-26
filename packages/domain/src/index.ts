@@ -18,7 +18,6 @@ import {
   sharedListSchema,
   type ActivityHistoryDay,
   type ActivityHistoryItem,
-  type ActorRole,
   type DraftItem,
   type DraftReminder,
   type GeneratedListRef,
@@ -231,7 +230,6 @@ export function createInboxItem(draft: DraftItem, now: Date = new Date()): { ite
   const historyEntry = historyEntrySchema.parse({
     id: createId(),
     itemId: item.id,
-    actorRole: 'stakeholder',
     eventType: 'created',
     fromValue: null,
     toValue: item,
@@ -379,7 +377,7 @@ export function createReminder(draft: DraftReminder, now: Date = new Date()): Re
   return {
     reminder,
     timelineEntries: [
-      createReminderTimelineEntry(reminder.id, 'stakeholder', 'created', null, draft, timestamp)
+      createReminderTimelineEntry(reminder.id, 'created', null, draft, timestamp)
     ]
   };
 }
@@ -420,7 +418,7 @@ export function updateReminder(
     reminder: updatedReminder,
     timelineEntries: [
       ...refreshed.timelineEntries,
-      createReminderTimelineEntry(reminder.id, 'stakeholder', 'rescheduled', fromValue, toValue, nextTimestamp)
+      createReminderTimelineEntry(reminder.id, 'rescheduled', fromValue, toValue, nextTimestamp)
     ]
   };
 }
@@ -439,7 +437,6 @@ export function completeReminderOccurrence(
   const resolvedOccurrenceAt = resolveReminderOccurrenceAt(refreshed.reminder, now);
   const completionEntry = createReminderTimelineEntry(
     reminder.id,
-    'stakeholder',
     'completed',
     { occurrenceAt: resolvedOccurrenceAt.toISOString() },
     { completedAt: nextTimestamp },
@@ -483,7 +480,6 @@ export function completeReminderOccurrence(
       completionEntry,
       createReminderTimelineEntry(
         reminder.id,
-        'system_rule',
         'recurrence_advanced',
         { scheduledAt: resolvedOccurrenceAt.toISOString() },
         { scheduledAt: nextScheduledAt, cadence: refreshed.reminder.recurrenceCadence },
@@ -521,7 +517,6 @@ export function snoozeReminder(
       ...refreshed.timelineEntries,
       createReminderTimelineEntry(
         reminder.id,
-        'stakeholder',
         'snoozed',
         { snoozedUntil: refreshed.reminder.snoozedUntil, state: refreshed.reminder.state },
         { snoozedUntil },
@@ -554,7 +549,7 @@ export function cancelReminder(
     reminder: cancelledReminder,
     timelineEntries: [
       ...refreshed.timelineEntries,
-      createReminderTimelineEntry(reminder.id, 'stakeholder', 'cancelled', null, { cancelledAt: nextTimestamp }, nextTimestamp)
+      createReminderTimelineEntry(reminder.id, 'cancelled', null, { cancelledAt: nextTimestamp }, nextTimestamp)
     ]
   };
 }
@@ -802,7 +797,6 @@ function materializeMissedRecurringOccurrences(
       timelineEntries.push(
         createReminderTimelineEntry(
           normalizedReminder.id,
-          'system_rule',
           'missed_occurrence_logged',
           null,
           { occurrenceAt: cursor, cadence: normalizedReminder.recurrenceCadence },
@@ -832,7 +826,6 @@ function createHistoryEntry(
   return historyEntrySchema.parse({
     id: createId(),
     itemId,
-    actorRole: 'stakeholder',
     eventType,
     fromValue,
     toValue,
@@ -843,7 +836,6 @@ function createHistoryEntry(
 
 function createReminderTimelineEntry(
   reminderId: string,
-  actorRole: ReminderTimelineEntry['actorRole'],
   eventType: ReminderTimelineEntry['eventType'],
   fromValue: unknown,
   toValue: unknown,
@@ -854,7 +846,6 @@ function createReminderTimelineEntry(
   return reminderTimelineEntrySchema.parse({
     id: createId(),
     reminderId,
-    actorRole,
     eventType,
     fromValue,
     toValue,
@@ -1063,7 +1054,6 @@ export function uncheckItem(item: ListItem, now: Date = new Date()): ListItem {
 function createListHistoryEntry(
   listId: string,
   itemId: string | null,
-  actorRole: ActorRole,
   eventType: ListEventType,
   fromValue: unknown,
   toValue: unknown,
@@ -1074,7 +1064,6 @@ function createListHistoryEntry(
     id: createId(),
     listId,
     itemId,
-    actorRole,
     eventType,
     fromValue,
     toValue,
@@ -1083,48 +1072,48 @@ function createListHistoryEntry(
   });
 }
 
-export function createListCreatedHistoryEntry(list: SharedList, actorRole: ActorRole): ListItemHistoryEntry {
-  return createListHistoryEntry(list.id, null, actorRole, 'list_created', null, { title: list.title }, list.createdAt);
+export function createListCreatedHistoryEntry(list: SharedList): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, 'list_created', null, { title: list.title }, list.createdAt);
 }
 
-export function createListTitleUpdatedHistoryEntry(list: SharedList, oldTitle: string, actorRole: ActorRole): ListItemHistoryEntry {
-  return createListHistoryEntry(list.id, null, actorRole, 'list_title_updated', { title: oldTitle }, { title: list.title }, list.updatedAt);
+export function createListTitleUpdatedHistoryEntry(list: SharedList, oldTitle: string): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, 'list_title_updated', { title: oldTitle }, { title: list.title }, list.updatedAt);
 }
 
-export function createListArchivedHistoryEntry(list: SharedList, actorRole: ActorRole): ListItemHistoryEntry {
-  return createListHistoryEntry(list.id, null, actorRole, 'list_archived', { status: 'active' }, { status: 'archived' }, list.updatedAt);
+export function createListArchivedHistoryEntry(list: SharedList): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, 'list_archived', { status: 'active' }, { status: 'archived' }, list.updatedAt);
 }
 
-export function createListRestoredHistoryEntry(list: SharedList, actorRole: ActorRole): ListItemHistoryEntry {
-  return createListHistoryEntry(list.id, null, actorRole, 'list_restored', { status: 'archived' }, { status: 'active' }, list.updatedAt);
+export function createListRestoredHistoryEntry(list: SharedList): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, 'list_restored', { status: 'archived' }, { status: 'active' }, list.updatedAt);
 }
 
-export function createItemAddedHistoryEntry(item: ListItem, actorRole: ActorRole): ListItemHistoryEntry {
-  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_added', null, { body: item.body }, item.createdAt);
+export function createItemAddedHistoryEntry(item: ListItem): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, 'item_added', null, { body: item.body }, item.createdAt);
 }
 
-export function createItemBodyUpdatedHistoryEntry(item: ListItem, oldBody: string, actorRole: ActorRole): ListItemHistoryEntry {
-  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_body_updated', { body: oldBody }, { body: item.body }, item.updatedAt);
+export function createItemBodyUpdatedHistoryEntry(item: ListItem, oldBody: string): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, 'item_body_updated', { body: oldBody }, { body: item.body }, item.updatedAt);
 }
 
-export function createItemCheckedHistoryEntry(item: ListItem, actorRole: ActorRole): ListItemHistoryEntry {
-  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_checked', { checked: false }, { checked: true, checkedAt: item.checkedAt }, item.updatedAt);
+export function createItemCheckedHistoryEntry(item: ListItem): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, 'item_checked', { checked: false }, { checked: true, checkedAt: item.checkedAt }, item.updatedAt);
 }
 
-export function createItemUncheckedHistoryEntry(item: ListItem, actorRole: ActorRole): ListItemHistoryEntry {
-  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_unchecked', { checked: true }, { checked: false }, item.updatedAt);
+export function createItemUncheckedHistoryEntry(item: ListItem): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, 'item_unchecked', { checked: true }, { checked: false }, item.updatedAt);
 }
 
-export function createItemRemovedHistoryEntry(listId: string, item: ListItem, actorRole: ActorRole, now: Date = new Date()): ListItemHistoryEntry {
-  return createListHistoryEntry(listId, item.id, actorRole, 'item_removed', { body: item.body }, null, now.toISOString());
+export function createItemRemovedHistoryEntry(listId: string, item: ListItem, now: Date = new Date()): ListItemHistoryEntry {
+  return createListHistoryEntry(listId, item.id, 'item_removed', { body: item.body }, null, now.toISOString());
 }
 
-export function createItemsClearedHistoryEntry(listId: string, clearedCount: number, actorRole: ActorRole, now: Date = new Date()): ListItemHistoryEntry {
-  return createListHistoryEntry(listId, null, actorRole, 'items_cleared', { count: clearedCount }, null, now.toISOString());
+export function createItemsClearedHistoryEntry(listId: string, clearedCount: number, now: Date = new Date()): ListItemHistoryEntry {
+  return createListHistoryEntry(listId, null, 'items_cleared', { count: clearedCount }, null, now.toISOString());
 }
 
-export function createItemsUncheckedAllHistoryEntry(listId: string, uncheckedCount: number, actorRole: ActorRole, now: Date = new Date()): ListItemHistoryEntry {
-  return createListHistoryEntry(listId, null, actorRole, 'items_unchecked_all', { count: uncheckedCount }, null, now.toISOString());
+export function createItemsUncheckedAllHistoryEntry(listId: string, uncheckedCount: number, now: Date = new Date()): ListItemHistoryEntry {
+  return createListHistoryEntry(listId, null, 'items_unchecked_all', { count: uncheckedCount }, null, now.toISOString());
 }
 
 // ─── Recurring Routines domain helpers ────────────────────────────────────────

@@ -36,10 +36,11 @@ Use this structure for future entries:
 - Statement: Olivia should begin by suggesting, organizing, and drafting rather than taking consequential actions autonomously.
 - Confidence: high
 - Why it matters: this assumption shapes permissions, workflows, risk posture, and product ethos.
-- Evidence so far: stakeholder direction favors local control, explicit approvals, and low-risk household support. M29 household feedback (2026-03-22) reinforced this: the chat interface violated advisory-only by creating 8-9 unsolicited tasks, producing negative value. The board explicitly stated "trust and automation is maybe a better immediate fix" over expanding AI capabilities. Advisory-only is validated, but the chat surface needs to be brought into compliance with it.
-- Validation path: completed for the trust model itself. Ongoing validation: ensure all AI surfaces (especially chat) enforce advisory-only behavior consistently.
-- Status: validated
-- Related docs: `docs/vision/product-ethos.md`, `docs/vision/product-vision.md`, L-032
+- Evidence so far: stakeholder direction favors local control, explicit approvals, and low-risk household support. M29 household feedback (2026-03-22) reinforced this: the chat interface violated advisory-only by creating 8-9 unsolicited tasks, producing negative value. The board explicitly stated "trust and automation is maybe a better immediate fix" over expanding AI capabilities. Advisory-only is validated for AI surfaces, but the chat surface needs to be brought into compliance with it. D-071 (2026-03-25) approved the first bounded expansion: user-defined automation rules that execute non-destructive actions autonomously. This is user-delegated trusted execution, not AI-driven autonomy — the user creates the rule, defines the trigger and action, and can disable it at any time. Advisory-only remains the default for all AI-initiated behavior.
+- Validation path: completed for the core trust model. The bounded expansion (D-071) needs household validation: do automation rules feel like a natural trust upgrade or a loss of control? Monitor during M35 deployment.
+- Status: validated (with bounded expansion approved — D-071)
+- Related docs: `docs/vision/product-ethos.md`, `docs/vision/product-vision.md`, L-032, D-071, `docs/specs/automation-foundation.md`
+- Updated: 2026-03-25 — Added note about D-071 automation foundation approval, which introduces Olivia's first user-delegated trusted execution beyond pure advisory-only.
 
 ### A-003: Early interaction can remain channel-agnostic
 - Date: 2026-03-08

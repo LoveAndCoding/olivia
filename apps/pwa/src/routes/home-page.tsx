@@ -7,7 +7,6 @@ import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix, Stethoscope } from '@p
 import { rankRemindersForSurfacing } from '@olivia/domain';
 import { getWeekBounds } from '@olivia/domain';
 import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, WeeklyReminder, WeeklyMealEntry, WeeklyInboxItem, User } from '@olivia/contracts';
-import { useRole } from '../lib/role';
 import { loadWeeklyView, confirmCreateReminderCommand, snoozeReminderCommand, loadReminderView } from '../lib/sync';
 import { useAuth } from '../lib/auth';
 import { getHouseholdMembers } from '../lib/auth-api';
@@ -400,7 +399,6 @@ function UpcomingPreview({ days, todayStr }: { days: WeeklyDayView[]; todayStr: 
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { role } = useRole();
   const queryClient = useQueryClient();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { user: currentUser, getSessionToken } = useAuth();
@@ -417,7 +415,7 @@ export function HomePage() {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [onboardingStartError, setOnboardingStartError] = useState(false);
 
-  const { nudges, dismiss: dismissNudge, removeNudge } = useNudges(role);
+  const { nudges, dismiss: dismissNudge, removeNudge } = useNudges();
 
   // Onboarding state query
   const onboardingQuery = useQuery({
@@ -459,8 +457,8 @@ export function HomePage() {
   });
 
   const reminderQuery = useQuery({
-    queryKey: ['reminder-view', role],
-    queryFn: () => loadReminderView(role)
+    queryKey: ['reminder-view', currentUser?.id],
+    queryFn: () => loadReminderView()
   });
 
   // Nudge card logic (inherited from MVP home screen)
@@ -532,7 +530,7 @@ export function HomePage() {
   const handleCreateSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateSheet(false);
     try {
-      await confirmCreateReminderCommand(role, draft);
+      await confirmCreateReminderCommand(draft);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setBanner({ message: 'Reminder created', variant: 'mint' });
@@ -540,13 +538,13 @@ export function HomePage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not create reminder');
     }
-  }, [role, queryClient]);
+  }, [currentUser?.id, queryClient]);
 
   const handleSnoozeSelect = useCallback(async (isoString: string) => {
     if (!snoozeTarget) return;
     setSnoozeTarget(null);
     try {
-      await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
+      await snoozeReminderCommand(snoozeTarget.id, snoozeTarget.version, isoString);
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setBanner({ message: `😴 Snoozed until ${formatSnoozeUntil(isoString)}`, variant: 'sky' });
@@ -554,7 +552,7 @@ export function HomePage() {
     } catch (err) {
       showErrorToast((err as Error).message || 'Could not snooze reminder');
     }
-  }, [snoozeTarget, role, queryClient]);
+  }, [snoozeTarget, currentUser?.id, queryClient]);
 
   // Max items per workflow section in Today
   const MAX_TODAY_ITEMS = 4;
@@ -593,7 +591,6 @@ export function HomePage() {
       <div className="screen-scroll" ref={scrollAreaRef}>
         {/* Proactive nudge tray */}
         <NudgeTray
-          role={role}
           nudges={nudges}
           onDismiss={dismissNudge}
           onRemove={removeNudge}

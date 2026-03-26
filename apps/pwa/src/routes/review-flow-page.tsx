@@ -10,7 +10,7 @@ import type {
 } from '@olivia/contracts';
 import { getReviewWindowsForOccurrence, formatReviewWindowAsDateStrings } from '@olivia/domain';
 import { ArrowsClockwise, Bell, ForkKnife, Tray, Check } from '@phosphor-icons/react';
-import { useRole } from '../lib/role';
+import { useAuth } from '../lib/auth';
 import { loadRoutineDetail, loadActivityHistory, loadWeeklyView, submitRitualCompletion, loadRitualSummaries } from '../lib/sync';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -583,7 +583,7 @@ export function ReviewFlowPage() {
   const { routineId, occurrenceId } = params;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { role } = useRole();
+  const { user: currentUser } = useAuth();
 
   const [step, setStep] = useState<Step>(1);
   const [notes, setNotes] = useState('');
@@ -601,8 +601,8 @@ export function ReviewFlowPage() {
   const [overviewIsEditing, setOverviewIsEditing] = useState(false);
 
   const routineQuery = useQuery({
-    queryKey: ['routine-detail', routineId, role],
-    queryFn: () => loadRoutineDetail(role, routineId),
+    queryKey: ['routine-detail', routineId, currentUser?.id],
+    queryFn: () => loadRoutineDetail(routineId),
   });
 
   const routine = routineQuery.data?.routine;
@@ -703,20 +703,20 @@ export function ReviewFlowPage() {
 
     try {
       await submitRitualCompletion(
-        role, routineId, occurrenceId, routine.version,
+        routineId, occurrenceId, routine.version,
         notes.trim() || null,
         acceptedRecapNarrative,
         acceptedOverviewNarrative
       );
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-      await queryClient.invalidateQueries({ queryKey: ['routine-detail', role, routineId] });
-      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-detail', currentUser?.id, routineId] });
+      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', currentUser?.id] });
       void navigate({ to: '/routines' });
     } catch {
       setCompleteError("Couldn't save your review. Try again.");
       setCompleting(false);
     }
-  }, [routine, completing, role, routineId, occurrenceId, notes, recapDraftState, overviewDraftState, navigate, queryClient]);
+  }, [routine, completing, currentUser?.id, routineId, occurrenceId, notes, recapDraftState, overviewDraftState, navigate, queryClient]);
 
   if (routineQuery.isLoading) {
     return (
