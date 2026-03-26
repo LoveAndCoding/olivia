@@ -26,6 +26,7 @@ import { ReviewRecordDetailPage } from './routes/review-record-detail-page';
 import { OnboardingPage } from './routes/onboarding-page';
 import { HealthCheckPage } from './routes/health-check-page';
 import { AuthPage } from './routes/auth-page';
+import { FeedbackPage } from './routes/feedback-page';
 
 // Auth-aware root component: redirects to /auth when unauthenticated,
 // and renders auth page without AppLayout.
@@ -101,6 +102,7 @@ const moreTasksRoute = createRoute({ getParentRoute: () => rootRoute, path: '/mo
 const moreHistoryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/history', component: HistoryPage });
 const moreWeekRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/week', component: WeekPage });
 const moreSettingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/settings', component: SettingsPage });
+const moreFeedbackRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/settings/feedback', component: FeedbackPage });
 
 // ── Supporting routes (token-compliant, hidden from primary nav) ─────────────
 const itemRoute = createRoute({ getParentRoute: () => rootRoute, path: '/items/$itemId', component: ItemDetailPage });
@@ -156,6 +158,11 @@ const settingsRedirectRoute = createRoute({
   path: '/settings',
   beforeLoad: () => { throw redirect({ to: '/more/settings' }); }
 });
+const feedbackRedirectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings/feedback',
+  beforeLoad: () => { throw redirect({ to: '/more/settings/feedback' }); }
+});
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
@@ -168,6 +175,7 @@ const routeTree = rootRoute.addChildren([
   moreHistoryRoute,
   moreWeekRoute,
   moreSettingsRoute,
+  moreFeedbackRoute,
   itemRoute,
   remindersRoute,
   reminderDetailRoute,
@@ -187,6 +195,7 @@ const routeTree = rootRoute.addChildren([
   historyRedirectRoute,
   weekRedirectRoute,
   settingsRedirectRoute,
+  feedbackRedirectRoute,
 ]);
 
 export const router = createRouter({ routeTree });
