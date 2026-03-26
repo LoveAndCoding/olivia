@@ -4,7 +4,6 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { useNavigate } from '@tanstack/react-router';
 import { clientDb } from '../lib/client-db';
 import { useAuth } from '../lib/auth';
 import { effectiveApiBaseUrl, resolveApiUrl, fetchAutomationRules } from '../lib/api';

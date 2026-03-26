@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeAll } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // Stub browser globals before importing the module
 vi.stubGlobal('window', { location: { href: 'http://localhost/' } });
