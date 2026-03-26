@@ -29,6 +29,11 @@ jobs:
       - name: Run API unit tests
         run: npm run test:api
 
+      - name: Build PWA (catches CSS and bundle errors)
+        run: npm run build -w @olivia/pwa
+        env:
+          VITE_API_BASE_URL: /api
+
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest

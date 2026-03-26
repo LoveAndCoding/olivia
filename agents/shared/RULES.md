@@ -21,6 +21,12 @@ These rules apply to every agent. Your role-specific AGENTS.md may add to them b
 - **Self-assign via checkout only** when explicitly @-mentioned with a clear handoff.
 - `@mentions` trigger heartbeats — use sparingly, they cost budget.
 
+## CSS Merge Conflicts
+
+- **CSS merge conflicts must be resolved manually.** Never use programmatic find-and-replace to resolve conflicts in `.css` files. CSS has structural dependencies (selector nesting, closing braces) that break when both sides are blindly concatenated.
+- After resolving any CSS conflict, run `npx vite build` and verify zero CSS syntax warnings before committing.
+- See L-036 for context.
+
 ## Decision Boundaries
 
 - **No product decisions.** If a spec is ambiguous, route to VP of Product.

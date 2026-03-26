@@ -6447,6 +6447,11 @@ input[type="date"].rem-form-input {
 
 /* Feedback form screen */
 .feedback-screen {
+  padding: 0 16px env(safe-area-inset-bottom, 0);
+  min-height: 100vh;
+  background: var(--bg);
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    Automation Rules — Settings entry point row
    ══════════════════════════════════════════════════════════════════════ */
@@ -6513,6 +6518,12 @@ input[type="date"].rem-form-input {
   background: var(--bg);
 }
 .feedback-screen__title {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 24px;
+}
 .auto-header {
   margin-bottom: 24px;
 }
@@ -7096,6 +7107,15 @@ input[type="date"].rem-form-input {
   border-bottom: none;
 }
 .feedback-context-field__label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 2px;
+}
+
 /* Threshold stepper */
 .auto-threshold {
   display: flex;
@@ -7378,6 +7398,8 @@ input[type="date"].rem-form-input {
 @keyframes feedback-toast-out {
   from { transform: translateY(0); opacity: 1; }
   to { transform: translateY(20px); opacity: 0; }
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    Automation Rules — History screen
    ══════════════════════════════════════════════════════════════════════ */

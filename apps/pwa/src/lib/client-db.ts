@@ -185,8 +185,30 @@ class OliviaClientDb extends Dexie {
       outbox: 'commandId, kind, state, createdAt',
       meta: 'key'
     });
-    // OLI-310: change reminderSettingsCache key from actorRole to userId
+    // OLI-310: drop reminderSettingsCache to allow primary key change (actorRole → userId).
+    // Dexie does not support changing primary keys in-place; delete in v9, recreate in v10.
+    // Data loss is acceptable — this table is a cache that re-fetches from the server.
     this.version(9).stores({
+      items: 'id, status, owner, updatedAt, pendingSync',
+      historyCache: 'itemId',
+      reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',
+      reminderTimelineCache: 'reminderId',
+      reminderSettingsCache: null, // delete table to allow PK change
+      sharedLists: 'id, status, updatedAt, pendingSync',
+      listItems: 'id, listId, position, pendingSync',
+      routines: 'id, status, owner, currentDueDate, updatedAt, pendingSync',
+      routineOccurrences: 'id, routineId, dueDate',
+      mealPlans: 'id, status, weekStartDate, updatedAt, pendingSync',
+      mealEntries: 'id, planId, dayOfWeek, position',
+      reviewRecords: 'id, ritualOccurrenceId, reviewDate, completedAt, pendingSync',
+      nudgeDismissals: 'entityId, dismissedAt',
+      freshnessThrottle: 'date',
+      healthCheckProgress: 'id',
+      outbox: 'commandId, kind, state, createdAt',
+      meta: 'key'
+    });
+    // OLI-310: recreate reminderSettingsCache with userId as primary key
+    this.version(10).stores({
       items: 'id, status, owner, updatedAt, pendingSync',
       historyCache: 'itemId',
       reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',

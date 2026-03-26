@@ -14,6 +14,7 @@ These are non-negotiable. Violating any of these is a process failure.
 4. **Always checkout before working**: Never PATCH to `in_progress` manually.
 5. **Never retry a 409**: The task belongs to someone else.
 6. **Budget discipline**: Above 80% spend, critical tasks only.
+7. **CEO does not do engineering work**: Do not merge PRs, resolve merge conflicts, rebase branches, or fix code. Delegate all engineering work to engineers. The CEO reviews, unblocks, and decides — never touches code. See L-036 for why.
 
 ## Memory and Planning
 

@@ -331,3 +331,12 @@ Use this structure for future entries:
 - Implication: future H4 specs (activity history, planning ritual support) should follow the same pattern: synthesize and surface existing H3 state before adding AI-generated narrative or new entity types. AI enhancement is a Phase 2 addition, not a Phase 1 requirement.
 - Source: unified weekly view spec (OLI-38), D-022, D-024
 - Related docs: `docs/specs/unified-weekly-view.md`, `docs/roadmap/roadmap.md`
+
+### L-036: Programmatic CSS merge conflict resolution breaks stylesheets — always resolve CSS conflicts manually
+- Date: 2026-03-26
+- Area: engineering process / merge conflicts
+- Learning: When resolving merge conflicts in a 7000+ line CSS file using a programmatic find-and-replace (keeping both sides), the script dropped body content and closing braces from several rules, breaking the entire stylesheet. CSS syntax errors do not cause JavaScript test failures, so 525 unit tests passed while the app was visually broken — unstyled pages, broken navigation, and pages that failed to render.
+- Why it matters: CSS merge conflicts require structural understanding — which selectors need content between braces, which need closing. A bulk approach that works for simple code conflicts destroys CSS structure. The gap between "tests pass" and "app works" is widest for styling issues, and this gap let a broken release ship.
+- Implication: (1) CSS merge conflicts must be resolved manually with awareness of selector structure. (2) `vite build` must be run before any PR merge — it catches CSS syntax errors as warnings that unit tests miss. (3) The CEO should not resolve complex merge conflicts without an engineer reviewing the result. (4) Consider adding a build-verify step to the milestone exit criteria alongside "tests pass."
+- Source: M36 v0.8.0 release breakage (OLI-317)
+- Related docs: L-028, L-035
