@@ -37,7 +37,10 @@ import {
   type StaleItem,
   type StaleItemEntityType,
   type ArchivableEntityType,
-  type HealthCheckState
+  type HealthCheckState,
+  feedbackItemSchema,
+  type FeedbackItem,
+  type FeedbackStatus
 } from '@olivia/contracts';
 
 const DEFAULT_REMINDER_PREFERENCES_UPDATED_AT = new Date(0).toISOString();
@@ -2163,6 +2166,49 @@ export class InboxRepository {
       ON CONFLICT(id) DO UPDATE SET last_health_check_dismissed_at = ?, updated_at = ?
     `).run(timestamp, timestamp, timestamp, timestamp, timestamp);
   }
+
+  // ── Feedback ──────────────────────────────────────────────────────
+
+  createFeedback(feedback: FeedbackItem): void {
+    this.db.prepare(`
+      INSERT INTO feedback (id, household_id, user_id, category, description, context_json, screenshot_base64, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      feedback.id,
+      feedback.householdId,
+      feedback.userId,
+      feedback.category,
+      feedback.description,
+      JSON.stringify(feedback.contextJson),
+      feedback.screenshotBase64,
+      feedback.status,
+      feedback.createdAt,
+      feedback.updatedAt
+    );
+  }
+
+  listFeedback(filters?: { status?: FeedbackStatus }): FeedbackItem[] {
+    let sql = 'SELECT * FROM feedback';
+    const params: unknown[] = [];
+    if (filters?.status) {
+      sql += ' WHERE status = ?';
+      params.push(filters.status);
+    }
+    sql += ' ORDER BY created_at DESC';
+    const rows = this.db.prepare(sql).all(...params) as Record<string, unknown>[];
+    return rows.map(mapFeedbackRow);
+  }
+
+  getFeedback(id: string): FeedbackItem | null {
+    const row = this.db.prepare('SELECT * FROM feedback WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    return row ? mapFeedbackRow(row) : null;
+  }
+
+  updateFeedbackStatus(id: string, status: FeedbackStatus): FeedbackItem | null {
+    const now = new Date().toISOString();
+    this.db.prepare('UPDATE feedback SET status = ?, updated_at = ? WHERE id = ?').run(status, now, id);
+    return this.getFeedback(id);
+  }
 }
 
 export type OnboardingSessionRow = {
@@ -2193,6 +2239,20 @@ const mapChatMessageRow = (row: Record<string, unknown>): ChatMessageRow => ({
   toolCalls: row.tool_calls ? JSON.parse(String(row.tool_calls)) : null,
   createdAt: String(row.created_at)
 });
+
+const mapFeedbackRow = (row: Record<string, unknown>): FeedbackItem =>
+  feedbackItemSchema.parse({
+    id: String(row.id),
+    householdId: String(row.household_id),
+    userId: String(row.user_id),
+    category: String(row.category),
+    description: String(row.description),
+    contextJson: JSON.parse(String(row.context_json)),
+    screenshotBase64: row.screenshot_base64 ? String(row.screenshot_base64) : null,
+    status: String(row.status),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at)
+  });
 
 const mapOnboardingSessionRow = (row: Record<string, unknown>): OnboardingSessionRow => ({
   id: String(row.id),

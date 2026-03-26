@@ -7,6 +7,9 @@ import {
   completeRitualResponseSchema,
   reviewRecordSchema,
   ritualSummaryResponseSchema,
+  submitFeedbackResponseSchema,
+  listFeedbackResponseSchema,
+  updateFeedbackResponseSchema,
   type ActivityHistoryResponse,
   type ChatConversationResponse,
   type NudgesResponse,
@@ -15,6 +18,11 @@ import {
   type CompleteRitualResponse,
   type ReviewRecord,
   type RitualSummaryResponse,
+  type SubmitFeedbackRequest,
+  type SubmitFeedbackResponse,
+  type ListFeedbackResponse,
+  type UpdateFeedbackResponse,
+  type FeedbackStatus,
   bulkListActionResponseSchema,
   activeListIndexResponseSchema,
   activeRoutineIndexResponseSchema,
@@ -957,4 +965,31 @@ export async function completeHealthCheck(): Promise<{ success: boolean }> {
 
 export async function dismissHealthCheck(): Promise<{ success: boolean }> {
   return request<{ success: boolean }>('/api/freshness/health-check-dismiss', { method: 'POST' });
+}
+
+// ── Feedback ──────────────────────────────────────────────────────────
+
+export async function submitFeedback(body: SubmitFeedbackRequest): Promise<SubmitFeedbackResponse> {
+  return submitFeedbackResponseSchema.parse(
+    await request<SubmitFeedbackResponse>('/api/feedback', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    })
+  );
+}
+
+export async function fetchFeedback(status?: FeedbackStatus): Promise<ListFeedbackResponse> {
+  const qs = status ? `?status=${status}` : '';
+  return listFeedbackResponseSchema.parse(
+    await request<ListFeedbackResponse>(`/api/feedback${qs}`)
+  );
+}
+
+export async function updateFeedbackStatus(id: string, status: FeedbackStatus): Promise<UpdateFeedbackResponse> {
+  return updateFeedbackResponseSchema.parse(
+    await request<UpdateFeedbackResponse>(`/api/feedback/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status })
+    })
+  );
 }

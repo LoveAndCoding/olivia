@@ -1750,3 +1750,61 @@ export type GenerateInviteResponse = z.infer<typeof generateInviteResponseSchema
 export type ClaimInviteRequest = z.infer<typeof claimInviteRequestSchema>;
 export type ClaimInviteResponse = z.infer<typeof claimInviteResponseSchema>;
 export type HouseholdMembersResponse = z.infer<typeof householdMembersResponseSchema>;
+
+// ── Feedback ──────────────────────────────────────────────────────────
+
+export const feedbackCategorySchema = z.enum(['bug', 'feature_request', 'general']);
+export const feedbackStatusSchema = z.enum(['new', 'acknowledged', 'resolved']);
+
+export const feedbackContextSchema = z.object({
+  route: z.string(),
+  appVersion: z.string(),
+  deviceInfo: z.string(),
+  recentErrors: z.array(z.string()).max(3).default([])
+});
+
+export const feedbackItemSchema = z.object({
+  id: z.string(),
+  householdId: z.string(),
+  userId: z.string(),
+  category: feedbackCategorySchema,
+  description: z.string().min(10),
+  contextJson: feedbackContextSchema,
+  screenshotBase64: z.string().nullable(),
+  status: feedbackStatusSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
+export const submitFeedbackRequestSchema = z.object({
+  category: feedbackCategorySchema.default('bug'),
+  description: z.string().trim().min(10),
+  context: feedbackContextSchema,
+  screenshotBase64: z.string().nullable().optional()
+});
+
+export const submitFeedbackResponseSchema = z.object({
+  feedback: feedbackItemSchema
+});
+
+export const listFeedbackResponseSchema = z.object({
+  items: z.array(feedbackItemSchema)
+});
+
+export const updateFeedbackRequestSchema = z.object({
+  status: feedbackStatusSchema
+});
+
+export const updateFeedbackResponseSchema = z.object({
+  feedback: feedbackItemSchema
+});
+
+export type FeedbackCategory = z.infer<typeof feedbackCategorySchema>;
+export type FeedbackStatus = z.infer<typeof feedbackStatusSchema>;
+export type FeedbackContext = z.infer<typeof feedbackContextSchema>;
+export type FeedbackItem = z.infer<typeof feedbackItemSchema>;
+export type SubmitFeedbackRequest = z.infer<typeof submitFeedbackRequestSchema>;
+export type SubmitFeedbackResponse = z.infer<typeof submitFeedbackResponseSchema>;
+export type ListFeedbackResponse = z.infer<typeof listFeedbackResponseSchema>;
+export type UpdateFeedbackRequest = z.infer<typeof updateFeedbackRequestSchema>;
+export type UpdateFeedbackResponse = z.infer<typeof updateFeedbackResponseSchema>;

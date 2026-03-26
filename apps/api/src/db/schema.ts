@@ -220,6 +220,19 @@ export const householdFreshnessTable = sqliteTable('household_freshness', {
   updatedAt: text('updated_at').notNull()
 });
 
+export const feedbackTable = sqliteTable('feedback', {
+  id: text('id').primaryKey(),
+  householdId: text('household_id').notNull(),
+  userId: text('user_id').notNull(),
+  category: text('category').notNull(),
+  description: text('description').notNull(),
+  contextJson: text('context_json').notNull(),
+  screenshotBase64: text('screenshot_base64'),
+  status: text('status').notNull().default('new'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+});
+
 export const conversationMessagesTable = sqliteTable('conversation_messages', {
   id: text('id').primaryKey(),
   conversationId: text('conversation_id').notNull(),

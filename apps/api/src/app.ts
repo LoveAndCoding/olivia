@@ -93,6 +93,12 @@ import {
   chatConversationQuerySchema,
   skipRoutineOccurrenceRequestSchema,
   skipRoutineOccurrenceResponseSchema,
+  submitFeedbackRequestSchema,
+  submitFeedbackResponseSchema,
+  listFeedbackResponseSchema,
+  updateFeedbackRequestSchema,
+  updateFeedbackResponseSchema,
+  feedbackStatusSchema,
   ONBOARDING_ENTITY_THRESHOLD,
   type DraftItem,
   type DraftReminder,
@@ -2741,6 +2747,59 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
   });
 
   // ─── Error Handler ──────────────────────────────────────────────────────────
+
+  // ── Feedback ──────────────────────────────────────────────────────
+
+  app.post('/api/feedback', async (request, reply) => {
+    const body = submitFeedbackRequestSchema.parse(request.body);
+    const userId = resolveUserId(request)!;
+    const householdId = request.user?.householdId ?? 'default';
+
+    const now = new Date().toISOString();
+    const feedback = {
+      id: randomUUID(),
+      householdId,
+      userId,
+      category: body.category,
+      description: body.description,
+      contextJson: body.context,
+      screenshotBase64: body.screenshotBase64 ?? null,
+      status: 'new' as const,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    repository.createFeedback(feedback);
+    request.log.info({ feedbackId: feedback.id }, 'feedback submitted');
+
+    const response = submitFeedbackResponseSchema.parse({ feedback });
+    return reply.status(201).send(response);
+  });
+
+  app.get('/api/feedback', async (request, reply) => {
+    const query = request.query as Record<string, string | undefined>;
+    const statusFilter = query.status
+      ? feedbackStatusSchema.parse(query.status)
+      : undefined;
+
+    const items = repository.listFeedback(statusFilter ? { status: statusFilter } : undefined);
+    const response = listFeedbackResponseSchema.parse({ items });
+    return reply.send(response);
+  });
+
+  app.patch('/api/feedback/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = updateFeedbackRequestSchema.parse(request.body);
+
+    const existing = repository.getFeedback(id);
+    if (!existing) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Feedback not found.' });
+    }
+
+    const updated = repository.updateFeedbackStatus(id, body.status);
+    const response = updateFeedbackResponseSchema.parse({ feedback: updated });
+    return reply.send(response);
+  });
 
   app.setErrorHandler((error, request, reply) => {
     const statusCode = (error as Error & { statusCode?: number }).statusCode ?? 400;
