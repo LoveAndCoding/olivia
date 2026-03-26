@@ -349,7 +349,7 @@ Notes:
 ## M36: Automation & Feedback Build
 Objective: implement the automation foundation (Track D) and in-app feedback (Track F) on the clean userId-based identity model.
 
-Status: not started
+Status: in_progress
 
 Context:
 - M35 delivered a clean identity model and approved specs for both features.
