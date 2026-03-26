@@ -4,9 +4,10 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { useNavigate } from '@tanstack/react-router';
 import { clientDb } from '../lib/client-db';
 import { useAuth } from '../lib/auth';
-import { effectiveApiBaseUrl, resolveApiUrl } from '../lib/api';
+import { effectiveApiBaseUrl, resolveApiUrl, fetchAutomationRules } from '../lib/api';
 import { HouseholdSection } from '../components/auth/HouseholdSection';
 import { runDiagnosticProbe, type ConnectivityDiagnostic } from '../lib/connectivity';
 import { loadNotificationState, saveDemoNotificationSubscription, saveNativeNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
@@ -255,6 +256,7 @@ export function SettingsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [activeTheme, setActiveTheme] = useState<ThemeMode>(readSavedTheme);
+  const autoRulesQuery = useQuery({ queryKey: ['automation-rules'], queryFn: fetchAutomationRules });
   const notificationQuery = useQuery({ queryKey: ['notification-subscriptions', currentUser?.id], queryFn: () => loadNotificationState() });
   const reminderSettingsQuery = useQuery({ queryKey: ['reminder-settings', currentUser?.id], queryFn: () => loadReminderSettings() });
 
@@ -536,6 +538,26 @@ export function SettingsPage() {
             <span className="feedback-row__icon">💬</span>
             <span className="feedback-row__label">Send Feedback</span>
             <span className="feedback-row__chevron">›</span>
+          </button>
+
+          {/* Automation Rules row */}
+          <button
+            type="button"
+            className="auto-row"
+            onClick={() => void navigate({ to: '/more/settings/automation' })}
+          >
+            <div className="auto-row__icon">⚡</div>
+            <div className="auto-row__content">
+              <div className="auto-row__label">Automation Rules</div>
+              <div className="auto-row__count">
+                {autoRulesQuery.data
+                  ? autoRulesQuery.data.rules.length === 0
+                    ? 'No rules yet'
+                    : `${autoRulesQuery.data.rules.filter((r) => r.enabled).length} active`
+                  : ''}
+              </div>
+            </div>
+            <div className="auto-row__chevron">›</div>
           </button>
 
           <div className="card stack-md">

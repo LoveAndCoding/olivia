@@ -27,6 +27,9 @@ import { OnboardingPage } from './routes/onboarding-page';
 import { HealthCheckPage } from './routes/health-check-page';
 import { AuthPage } from './routes/auth-page';
 import { FeedbackPage } from './routes/feedback-page';
+import { AutomationRulesPage } from './routes/automation-rules-page';
+import { AutomationCreatePage } from './routes/automation-create-page';
+import { AutomationHistoryPage } from './routes/automation-history-page';
 
 // Auth-aware root component: redirects to /auth when unauthenticated,
 // and renders auth page without AppLayout.
@@ -103,6 +106,9 @@ const moreHistoryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/
 const moreWeekRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/week', component: WeekPage });
 const moreSettingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/settings', component: SettingsPage });
 const moreFeedbackRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/settings/feedback', component: FeedbackPage });
+const automationRulesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/settings/automation', component: AutomationRulesPage });
+const automationCreateRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/settings/automation/create', component: AutomationCreatePage });
+const automationHistoryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more/settings/automation/history', component: AutomationHistoryPage });
 
 // ── Supporting routes (token-compliant, hidden from primary nav) ─────────────
 const itemRoute = createRoute({ getParentRoute: () => rootRoute, path: '/items/$itemId', component: ItemDetailPage });
@@ -176,6 +182,9 @@ const routeTree = rootRoute.addChildren([
   moreWeekRoute,
   moreSettingsRoute,
   moreFeedbackRoute,
+  automationRulesRoute,
+  automationCreateRoute,
+  automationHistoryRoute,
   itemRoute,
   remindersRoute,
   reminderDetailRoute,
