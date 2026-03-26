@@ -85,8 +85,10 @@ export function FeedbackPage() {
         screenshotBase64: screenshot ?? null,
       });
       // Navigate back and show toast via session flag
+      // Use replace so the feedback form is removed from history — prevents
+      // the device back button from looping back to the form after submit.
       sessionStorage.setItem('olivia-feedback-toast', '1');
-      void navigate({ to: '/more/settings' });
+      void navigate({ to: '/more/settings', replace: true });
     } catch {
       setError('Something went wrong — please try again.');
     } finally {
