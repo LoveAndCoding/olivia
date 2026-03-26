@@ -9,7 +9,8 @@ import { useAuth } from '../lib/auth';
 import { effectiveApiBaseUrl, resolveApiUrl, fetchAutomationRules } from '../lib/api';
 import { HouseholdSection } from '../components/auth/HouseholdSection';
 import { runDiagnosticProbe, type ConnectivityDiagnostic } from '../lib/connectivity';
-import { loadNotificationState, saveDemoNotificationSubscription, saveNativeNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
+import { loadNotificationState, saveNativeNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
+import { registerWebPushSubscription } from '../lib/push-opt-in';
 import { OliviaMessage } from '../components/reminders/OliviaMessage';
 import type { ReminderNotificationPreferencesInput } from '@olivia/contracts';
 
@@ -424,10 +425,14 @@ export function SettingsPage() {
                           // Always register on native when enabling — ensures APNs token is saved
                           // even if permission was already granted via iOS settings
                           await PushNotifications.register();
-                        } else if (browserPermission === 'default' && typeof Notification !== 'undefined') {
-                          const perm = await Notification.requestPermission();
-                          setBrowserPermission(perm);
-                          if (perm !== 'granted') return;
+                        } else if (typeof Notification !== 'undefined') {
+                          if (browserPermission === 'default') {
+                            const perm = await Notification.requestPermission();
+                            setBrowserPermission(perm);
+                            if (perm !== 'granted') return;
+                          }
+                          // Create a real Web Push subscription and register it with the server
+                          await registerWebPushSubscription();
                         }
                       }
                       await savePrefs({
@@ -577,7 +582,7 @@ export function SettingsPage() {
                   }
                 } else {
                   if (typeof Notification !== 'undefined' && Notification.permission === 'default') await Notification.requestPermission();
-                  await saveDemoNotificationSubscription();
+                  await registerWebPushSubscription();
                 }
                 await queryClient.invalidateQueries({ queryKey: ['notification-subscriptions', currentUser?.id] });
               }}

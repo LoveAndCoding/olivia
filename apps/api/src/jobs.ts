@@ -635,21 +635,24 @@ export function startBackgroundJobs(
     }
   };
 
+  const runNudge = async () => {
+    try {
+      evaluateAutomationRules(repository, logger);
+      await evaluateNudgePushRule(repository, push, apns, config, logger);
+    } catch (error) {
+      logger.error({ error }, 'nudge push scheduler run failed');
+    }
+  };
+
+  // Run first evaluation immediately on startup, then on interval
+  void runOnce();
   const intervalId = setInterval(() => void runOnce(), config.notificationIntervalMs);
 
   // Nudge push scheduler (separate interval from reminder notifications)
   const nudgePushIntervalMs = config.nudgePushIntervalMs ?? 1_800_000;
   logger.info({ nudgePushIntervalMs }, 'starting nudge push scheduler');
-  const nudgeIntervalId = setInterval(() => {
-    void (async () => {
-      try {
-        evaluateAutomationRules(repository, logger);
-        await evaluateNudgePushRule(repository, push, apns, config, logger);
-      } catch (error) {
-        logger.error({ error }, 'nudge push scheduler run failed');
-      }
-    })();
-  }, nudgePushIntervalMs);
+  void runNudge();
+  const nudgeIntervalId = setInterval(() => void runNudge(), nudgePushIntervalMs);
 
   return () => {
     clearInterval(intervalId);
