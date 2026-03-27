@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-03-27
+
+### Fixed
+- Push notifications now register properly when enabling them from the Settings page
+- Feedback form submit button styling restored and back button no longer loops
+
 ## [0.8.0] - 2026-03-26
 
 ### Added
